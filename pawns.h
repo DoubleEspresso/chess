@@ -1,0 +1,41 @@
+#pragma once
+#ifndef HEDWIG_PAWNS_H
+#define HEDWIG_PAWNS_H
+
+#include "board.h"
+
+struct PawnEntry
+{
+	U64 key;
+	int value;
+
+	U64 doubledPawns[2];
+	U64 isolatedPawns[2];
+	U64 backwardPawns[2];
+	U64 chainPawns[2];
+	U64 passedPawns[2];
+	U64 kingPawns[2];
+	U64 attacks[2];
+	U64 undefended[2];
+        U64 chainBase[2];
+};
+
+class PawnTable
+{
+public:
+	PawnTable();
+	~PawnTable();
+
+	bool init();
+	PawnEntry * get(Board& b, GamePhase gp);
+	int eval(Board& b, Color c, GamePhase gp, int idx);
+	void clear();
+private:
+	U64 nb_elts;
+	size_t sz_kb;
+	PawnEntry * table;
+};
+
+extern PawnTable pawnTable;
+
+#endif

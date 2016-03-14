@@ -1,0 +1,87 @@
+#pragma once
+#ifndef HEDWIG_SEARCH_H
+#define HEDWIG_SEARCH_H
+
+#ifdef WIN32
+#define NOMINMAX
+#endif
+
+#include <vector>
+#ifdef DEBUG
+#include <cassert>
+#endif
+
+#include "definitions.h"
+#include "globals.h"
+#include "utils.h"
+#include "board.h"
+
+//#include "tt.h"
+//#include "sqs.h"
+//#include "pawns.h"
+//#include "opts.h"
+//#include "log.h"
+
+//#include "evaluate.h"
+//#include "order.h"
+//#include "uci.h"
+
+enum NodeType { ROOT, PV, CUT, SPLIT, NONPV, NONE };
+
+class ThreadWorker;
+class MoveSelect;
+class SplitBlock;
+
+struct Score
+{
+	int beta;
+	int eval;
+};
+
+struct Limits
+{
+	int wtime;
+	int btime;
+	int winc;
+	int binc;
+	int movestogo;
+	int nodes;
+	int movetime;
+	int mate;
+	int depth;
+	bool infinite;
+	bool ponder;
+};
+
+
+
+struct Node
+{
+	NodeType type;
+	U16 currmove, bestmove;
+	U16 killer1, killer2, threat;
+	int ply, static_eval, threat_gain;
+	bool isNullSearch;
+	bool givescheck;
+	U16 pv[MAXDEPTH];
+
+	SplitBlock * sb;
+};
+
+struct SignalsType
+{
+	bool stop, stopOnPonderhit, firstRootMove, failedLowAtRoot, timesUp;
+};
+
+namespace Search
+{
+	// alpha-beta search
+	extern void run(Board& b, int dpth);
+	extern void from_thread(Board& b, int alpha, int beta, int depth, Node& node);
+};
+
+// global data
+extern std::vector<U16> RootMoves;
+extern SignalsType UCI_SIGNALS;
+
+#endif

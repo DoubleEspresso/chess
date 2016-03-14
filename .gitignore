@@ -1,0 +1,10 @@
+#visual studio related
+*.filters
+
+#misc
+*.tar
+*.tar.gz
+
+
+#directories
+x64\
