@@ -14,8 +14,8 @@ EXE_OS =
 THREADED =
 GIT_VERSION =
 # build info
-SRC := hedwig.cpp threads.cpp globals.cpp magic.cpp uci.cpp move.cpp board.cpp bench.cpp material.cpp pawns.cpp evaluate.cpp search.cpp hashtable.cpp moveselect.cpp zobrist.cpp
-OBJS = hedwig.o threads.o globals.o magic.o uci.o move.o board.o bench.o material.o pawns.o evaluate.o search.o hashtable.o moveselect.o zobrist.o
+SRC := hedwig.cpp threads.cpp globals.cpp magic.cpp uci.cpp move.cpp board.cpp bench.cpp material.cpp pawns.cpp evaluate.cpp search.cpp hashtable.cpp moveselect.cpp zobrist.cpp book.cpp
+OBJS = hedwig.o threads.o globals.o magic.o uci.o move.o board.o bench.o material.o pawns.o evaluate.o search.o hashtable.o moveselect.o zobrist.o book.o
 
 #====================================
 #  makefile options

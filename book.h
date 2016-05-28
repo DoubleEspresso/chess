@@ -4,6 +4,7 @@
 
 #include "types.h"
 #include "utils.h"
+#include "definitions.h"
 
 struct polyglot_entry
 {
@@ -16,27 +17,22 @@ struct polyglot_entry
 
 class Book
 {
-  Board * b;
   polyglot_entry * e;
 
  public:
-  Book(char* fen);
+  Book();
   ~Book();
 
   // offsets for access to random number array below
   int piece_idx(int type, int color, int r, int c);
   int piece_idx(int type, int color, int sq);
   int castle_idx(int cright) { return 768 + cright; }
-  int ep_idx(int file) { return 772+file; } // only need the file for polyglot entries
+  int ep_idx(int file) { return 772 + file; } // only need the file for polyglot entries
   int stm_idx() { return 780; } // end of array
   
-  // load from fen etc.
-  void set_piece(char& c, int s);
-
-  // computation
-  U64 compute_key(char * fen);
-  U64 compute_key(Board& board);
-
+  // load from fen and keys computation
+  void update_piece_key(U64& k, char& c, int s, int (&bps)[8], int (&wps)[8]);
+  bool compute_key(char * fen);
 
   // binary file search/creation
   bool search();
@@ -54,7 +50,7 @@ class Book
 #  define U64t(u) (u##ULL)
 #endif
 // polyglot random numbers
-const uint64 Random64[781] = {
+const U64 Random64[781] = {
    U64t(0x9D39247E33776D41), U64t(0x2AF7398005AAA5C7), U64t(0x44DB015024623547), U64t(0x9C15F73E62A76AE2),
    U64t(0x75834465489C0C89), U64t(0x3290AC3A203001BF), U64t(0x0FBBAD1F61042279), U64t(0xE83A908FF2FB60CA),
    U64t(0x0D7E765D58755C10), U64t(0x1A083822CEAFE02D), U64t(0x9605D5F0E25EC3B0), U64t(0xD021FF5CD13A2ED5),
