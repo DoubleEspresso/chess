@@ -22,159 +22,174 @@ int piece_vals[5] = { PawnValueMG, KnightValueMG, BishopValueMG, RookValueMG, Qu
 
 void MoveStats::update(U16& m, U16& last, Node* stack, int d, int c, U16 * quiets)
 {
-	int f = get_from(m);
-	int t = get_to(m);
-	int type = int((m & 0xf000) >> 12);
-	if (type == QUIET) history[c][f][t] += pow(2, d);
-	// the previous move does not address the threat created by "m", decrease its score
-	if (last != MOVE_NONE)
-	{
-		int f = get_from(last);
-		int t = get_to(last);
-		int type = int((last & 0xf000) >> 12);
-		if (type == QUIET) history[c = WHITE ? BLACK : WHITE][f][t] -= pow(2, d);
-	}
-	// reduce all other quiets -- seems to not help much
-	if (quiets)
-	{
-		for (int j = 0; U16 mv = quiets[j]; ++j)
-		{
-			if (m == mv) continue;
-			else if (mv == MOVE_NONE) break;
-			int f = get_from(mv);
-			int t = get_to(mv);
-			history[c][f][t] -= pow(2, d);
-		}
-	}
+  // called when eval >= beta in main search --> last move was a blunder (?)
+  if (m == MOVE_NONE) return;
+  int f = get_from(m);
+  int t = get_to(m);
+  int type = int((m & 0xf000) >> 12);
+  if (type == QUIET) history[c][f][t] += pow(2, d);
 
-	// update the stack killers
-	if (type == QUIET && m != stack->killer1) { stack->killer2 = stack->killer1; stack->killer1 = m; }
+  // if we get here, eval >= beta, so last move is most likely a blunder, reduce the history score of it
+  if (last != MOVE_NONE)
+    {
+      int f = get_from(last);
+      int t = get_to(last);
+      int type = int((last & 0xf000) >> 12);
+      if (type == QUIET) history[c = WHITE ? BLACK : WHITE][f][t] -= pow(2, d-1); // d-1, was previous move?
+    }
+  // reduce all other quiets -- seems to not help much
+  /*
+  if (quiets)
+    {
+      for (int j = 0; U16 mv = quiets[j]; ++j)
+	{
+	  if (m == mv) continue;
+	  else if (mv == MOVE_NONE) break;
+	  int f = get_from(mv);
+	  int t = get_to(mv);
+	  history[c][f][t] -= pow(2, d);
+	}
+    }
+  */
+  // update the stack killers
+  if (type == QUIET && m != stack->killer1) { stack->killer2 = stack->killer1; stack->killer1 = m; }
 }
 
 // dbg print movelist -- deprecated
 void MoveSelect::print_list()
 {
-	printf("\n.....start....\n");
-	if (ttmv)
+  printf("\n.....start....\n");
+  if (ttmv)
+    {
+      std::string s = UCI::move_to_string(ttmv);
+      std::cout << "currmove " << s << " (ttmove)" << std::endl;
+    }
+  if (killers[0])
+    {
+      std::string s = UCI::move_to_string(killers[0]);
+      std::cout << "currmove " << s << " (killer-1)" << std::endl;
+    }
+  if (killers[1])
+    {
+      std::string s = UCI::move_to_string(killers[1]);
+      std::cout << "currmove " << s << " (killer-2)" << std::endl;
+    }
+  printf(".....captures....\n");
+  if (captures)
+    {
+      for (int j = 0; U16 mv = captures[j].m; ++j)
 	{
-		std::string s = UCI::move_to_string(ttmv);
-		std::cout << "currmove " << s << " (ttmove)" << std::endl;
+	  std::string s = UCI::move_to_string(mv);
+	  std::cout << "currmove " << s << " " << captures[j].score << std::endl;
 	}
-	if (killers[0])
+    }
+  printf(".....quiets....\n");
+  if (quiets)
+    {
+      for (int j = 0; U16 mv = quiets[j].m; ++j)
 	{
-		std::string s = UCI::move_to_string(killers[0]);
-		std::cout << "currmove " << s << " (killer-1)" << std::endl;
+	  std::string s = UCI::move_to_string(mv);
+	  std::cout << "currmove " << s << " " << quiets[j].score << std::endl;
 	}
-	if (killers[1])
-	{
-		std::string s = UCI::move_to_string(killers[1]);
-		std::cout << "currmove " << s << " (killer-2)" << std::endl;
-	}
-	printf(".....captures....\n");
-	if (captures)
-	{
-		for (int j = 0; U16 mv = captures[j].m; ++j)
-		{
-			std::string s = UCI::move_to_string(mv);
-			std::cout << "currmove " << s << " " << captures[j].score << std::endl;
-		}
-	}
-	printf(".....quiets....\n");
-	if (quiets)
-	{
-		for (int j = 0; U16 mv = quiets[j].m; ++j)
-		{
-			std::string s = UCI::move_to_string(mv);
-			std::cout << "currmove " << s << " " << quiets[j].score << std::endl;
-		}
-	}
-	printf(".....end....\n\n");
-
+    }
+  printf(".....end....\n\n");
+  
 }
 
 void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats, U16& killer1, U16& killer2, U16& lastmove, U16& threat, int threatgain)
 {
-	statistics = &stats;
-
-	for (; !mvs.end(); ++mvs)
+  statistics = &stats;
+  
+  for (; !mvs.end(); ++mvs)
+    {
+      U16 m = mvs.move();
+      int from = int(m & 0x3f);
+      int to = int((m & 0xfc0) >> 6);
+      int mt = int((m & 0xf000) >> 12);
+      int p = b.piece_on(from);
+      int c = b.whos_move();
+      
+      int last_to = int((lastmove & 0xfc0) >> 6);
+      int last_from = int(lastmove & 0x3f);
+      
+      if (m == killer1 && m != tt_mv) { killers[0] = m; continue; }
+      else if (m == killer2 && m != tt_mv) { killers[1] = m; continue; }
+      else if ((mt == CAPTURE || mt == PROMOTION_CAP || mt == EP) && m != tt_mv)
 	{
-		U16 m = mvs.move();
-		int from = int(m & 0x3f);
-		int to = int((m & 0xfc0) >> 6);
-		int mt = int((m & 0xf000) >> 12);
-		int p = b.piece_on(from);
-		int c = b.whos_move();
-
-		int last_to = int((lastmove & 0xfc0) >> 6);
-
-		if (m == killer1 && m != tt_mv) { killers[0] = m; continue; }
-		else if (m == killer2 && m != tt_mv) { killers[1] = m; continue; }
-		else if ((mt == CAPTURE || mt == PROMOTION_CAP || mt == EP) && m != tt_mv)
-		{
-			captures[c_sz].m = m;
-			int score = 0;
-			// catch ep captures
-			if0(mt == EP)
-			{
-				captures[c_sz++].score = score;
-				continue;
-			}
-
-			score = piece_vals[b.piece_on(to)] - piece_vals[b.piece_on(from)];
-			//score = b.see_move(m);
-			if (score <= 0) score = b.see_move(m);
-			if (score == 0 && b.checks_king(m) && b.is_dangerous(m, p)) score += 1;// piece_vals[b.piece_on(from)];
-
-			// the threat move from null-refutation, bonus if we capture the threatening piece
-			// was only used if score == 0
-			//if (score == 0 && threat && to == get_from(threat)) score += piece_vals[b.piece_on(to)] / 2;// - vals_mg[b.piece_on(from)];
-			captures[c_sz++].score = score;
-
-		}
-		else if ((mt == QUIET || mt == CASTLE_KS ||
-			mt == CASTLE_QS || mt == PROMOTION || mt == EVASION) && m != tt_mv)
-		{
-			quiets[q_sz].m = m;
-			int score = statistics->score(m, b.whos_move());
-
-			// if previous bestmove attacks the from-sq, give a bonus for avoiding the capture/attack
-			if (last_to == from)
-			{
-				int diff = (piece_vals[b.piece_on(from)] - piece_vals[b.piece_on(last_to)]);
-				score += (diff < 0 ? -piece_vals[b.piece_on(from)] : piece_vals[b.piece_on(from)]);
-			}
-			// bonus for avoiding the capture from the threat move (from null search)
-			if (threat != MOVE_NONE && get_to(threat) == get_from(m)) { score += piece_vals[b.piece_on(from)]/2; } //threatgain/2; }
-
-			// try to boost those quiet checks which are potentially dangerous
-			if (score == (NINF - 1) && b.checks_king(m) && b.is_dangerous(m, p)) score += 1;// piece_vals[b.piece_on(from)];
-
-			// if the score is still 0, check the piece square tables and score the move based on the to-square-from-sq difference...
-			if (score == (NINF - 1)) score += (square_score(c, p, b.phase(), to) -square_score(c, p, b.phase(), from));
-
-			quiets[q_sz++].score = score;
-		}
-		else if (m == tt_mv && m != MOVE_NONE)
-		{
-			use_tt = true;
-			ttmv = tt_mv;
-		}
+	  captures[c_sz].m = m;
+	  int score = 0;
+	  // catch ep captures
+	  if0(mt == EP)
+	    {
+	      captures[c_sz++].score = score;
+	      continue;
+	    }
+	  
+	  score = piece_vals[b.piece_on(to)] - piece_vals[b.piece_on(from)];
+	  //score = b.see_move(m);
+	  if (score <= 0) score = b.see_move(m);
+	  if (score == 0 && b.checks_king(m) && b.is_dangerous(m, p)) score += 1;// piece_vals[b.piece_on(from)];
+	  
+	  // the threat move from null-refutation, bonus if we capture the threatening piece
+	  // was only used if score == 0
+	  //if (score == 0 && threat && to == get_from(threat)) score += piece_vals[b.piece_on(to)] / 2;// - vals_mg[b.piece_on(from)];
+	  captures[c_sz++].score = score;
+	  
 	}
+      else if ((mt == QUIET || mt == CASTLE_KS ||
+		mt == CASTLE_QS || mt == PROMOTION || mt == EVASION) && m != tt_mv)
+	{
+	  quiets[q_sz].m = m;
+	  int score = statistics->score(m, b.whos_move());
+	  //printf("...initial score = %d ", score);
 
-	// insertion sort based on score
-	if (q_sz > 1) std::sort(quiets, quiets + q_sz, GreaterThan);
-	if (c_sz > 1) std::sort(captures, captures + c_sz, GreaterThan);
-
-	// NB. really need a better system here...this is terrible, it assumes the user
-	// will use nextmove always after "load"...it's very fragile..and, on top of that, the 
-	// init routine takes a lot of time to zero the move-list arrays.
-	stored_qsz = q_sz;
-	stored_csz = c_sz;
-	q_sz = 0;
-	c_sz = 0;
-
-	// debug move ordering
-	//print_list();
+	  // gives bonus for evading being captured
+	  if (b.attackers_of(from) & U64(last_to) )//&& get_to(threat) == get_from(m))//(b.attackers_of(from) & U64(get_to(threat))))//(last_to == from)
+	    {
+	      int diff = (piece_vals[b.piece_on(from)] - piece_vals[b.piece_on(get_to(threat))]);
+	      //b.print();
+	      //printf("..lastmove = %s, this move = %s, diff = %d\n\n", UCI::move_to_string(lastmove).c_str(), UCI::move_to_string(m).c_str(), -diff);
+	      score += (-diff);//(diff < 0 ? -piece_vals[b.piece_on(from)] : piece_vals[b.piece_on(from)]);
+	    }
+	  // bonus for avoiding the capture from the threat move (from null search)
+	  //if (threat != MOVE_NONE && get_to(threat) == get_from(m)) { score += piece_vals[b.piece_on(from)]/2; } //threatgain/2; }
+	  
+	  // try to boost those quiet checks which are potentially dangerous
+	  if (score == (NINF - 1) && b.checks_king(m) && b.is_dangerous(m, p)) score += 1;// piece_vals[b.piece_on(from)];
+	  
+	  // if the score is still 0, check the piece square tables and score the move based on the to-square-from-sq difference...
+	  if (score == (NINF - 1)) 
+	    {	      	      
+	      score += (square_score(c, p, b.phase(), to) - square_score(c, p, b.phase(), from));
+	    }
+	  quiets[q_sz++].score = score;
+	  //printf("...final score = %d\n",score);
+	}
+      else if (m == tt_mv && m != MOVE_NONE)
+	{
+	  use_tt = true;
+	  ttmv = tt_mv;
+	}
+    }
+  
+  // insertion sort based on score
+  if (q_sz > 1) std::sort(quiets, quiets + q_sz, GreaterThan);
+  if (c_sz > 1) std::sort(captures, captures + c_sz, GreaterThan);
+  
+  // NB. really need a better system here...this is terrible, it assumes the user
+  // will use nextmove always after "load"...it's very fragile..and, on top of that, the 
+  // init routine takes a lot of time to zero the move-list arrays.
+  stored_qsz = q_sz;
+  stored_csz = c_sz;
+  q_sz = 0;
+  c_sz = 0;
+  /*
+  // debug move ordering
+  printf("---------------------------------\n");
+  b.print();
+  print_list();
+  printf("---------------------------------\n\n\n");
+  */
 }
 
 // note : scores are initialized to large negative numbers

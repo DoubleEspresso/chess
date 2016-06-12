@@ -657,15 +657,16 @@ int Board::smallest_attacker(int sq, int color, int& from)
 // to determine the safety of the "to-square".
 int Board::see_move(U16& move)
 {
-	int value = 0;
-	int square = get_to(move);
 
-	BoardData pd;
-	do_move(pd, move);
-	value = see(square);
-	undo_move(move);
-
-	return -value;
+  int square = get_to(move);
+  int value = material.material_value(piece_on(square), phase());
+  
+  BoardData pd;
+  do_move(pd, move);
+  value += (-see(square));
+  undo_move(move);
+  
+  return value;
 }
 
 // note: standard method to return a score based on the "most reasonable"
