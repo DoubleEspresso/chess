@@ -297,6 +297,28 @@ void UCI::uci_command(std::string cmd, int& GAME_OVER)
 	}
 }
 
+void UCI::analyze(Board& b)
+{
+  Limits limits;
+  memset(&limits, 0, sizeof(limits));
+  limits.infinite = true;
+
+  hashTable.clear();
+  material.clear();
+  pawnTable.clear();
+  RootMoves.clear();
+  
+  timer_thread->search_limits = &limits;
+  
+  //std::memcpy(&ROOT_BOARD, &b, sizeof(Board));
+  ROOT_BOARD = b;
+  ROOT_DEPTH = 64;
+  UCI_SIGNALS.stop = false;
+  //ttable.clear(); 
+  Threads.start_thinking(ROOT_BOARD);  
+  Threads.wait_for_search_finished();
+}
+
 void UCI::load_position(std::string& pos)
 {
 	std::string token;

@@ -16,6 +16,7 @@
 //#include "evaluate.h" // testing
 //#include "search.h" //testing
 #include "utils.h"
+#include "board.h"
 
 namespace UCI
 {
@@ -26,6 +27,7 @@ namespace UCI
 	void move_from_string(std::string& move);
 	//void run_testing(int fixed_time, int fixed_depth);
 	std::string move_to_string(U16& m);
+	void analyze(Board& b);
 	//std::string move_to_san(U16& m);
 };
 

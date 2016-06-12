@@ -69,14 +69,18 @@ int main(int argc, char ** argv)
 // TODO: include a usage method here.
 void parse_args(int argc, char* argv[])
 {
-	bool dotest = false;
-	int testtime = 0;
-	int testdepth = 0;
-	for (int j = 0; j<argc; ++j)
+  bool dotest = false;
+  int testtime = 0;
+  int testdepth = 0;
+  for (int j = 0; j<argc; ++j)
+    {
+      if (!strcmp(argv[j], "-test"))
 	{
-		if (!strcmp(argv[j], "-test"))
-		{
-			//std::ifstream file(argv[j + 1]);
+	  printf("..start testing\n");
+	  std::istringstream fen("3rn2k/ppb2rpp/2ppqp2/5N2/2P1P3/1P5Q/PB3PPP/3RR1K1 w - -");
+	  Board b(fen);
+	  UCI::analyze(b);
+		  //std::ifstream file(argv[j + 1]);
 			//std::string line, curr_id, past_id;
 			//EPDTest et;
 			//past_id = "";

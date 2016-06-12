@@ -806,6 +806,12 @@ U64 Board::pinned(int c)
 	return pinned & colored_pieces(fc);
 }
 
+bool Board::pawn_on_7(int c)
+{
+  U64 row = RowBB[(c == BLACK ? 1 : 6)];
+  return row & pieces[c][PAWN];
+}
+
 void Board::set_piece(char& c, int s)
 {
 	for (int p = W_PAWN; p <= B_KING; ++p)

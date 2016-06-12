@@ -153,8 +153,8 @@ namespace
 	    stack->currmove = stack->bestmove = e.move;
 	    return e.value;
 	  }
-	//else if (e.bound == BOUND_LOW && e.value >= beta) return e.value;
-	//else if (e.bound == BOUND_HIGH && e.value <= alpha ) return e.value;
+	//else if (e.bound == BOUND_LOW && e.value >= beta && pv_node) return e.value;
+	//else if (e.bound == BOUND_HIGH && e.value <= alpha && pv_node ) return e.value;
       }
     
     // 2. -- mate distance pruning
@@ -176,7 +176,39 @@ namespace
     // 3. -- static evaluation of position    
     int static_eval = (ttvalue > NINF ? ttvalue : ttstatic_value > NINF ? ttstatic_value : Eval::evaluate(b));
 
-    // 4. -- null move search    
+    // 4. -- drop into qsearch if we are losing
+    if (depth <= 4 &&
+	!pv_node && ttm == MOVE_NONE &&
+	!stack->isNullSearch &&
+	static_eval + 600 <= alpha &&
+	!b.in_check() &&
+	!b.pawn_on_7(b.whos_move()))
+      {
+	int ralpha = alpha - 650;
+	if (depth <= 1)
+	  {
+	    return qsearch<NONPV>(b, alpha, beta, depth, stack, false);
+	  }
+	int v = qsearch<NONPV>(b, ralpha, ralpha + 1, depth, stack, false);
+	if (v <= ralpha)
+	  {
+	    return v;
+	  }
+      }
+
+    // 5. -- futility pruning
+    if (depth <= 5 && 
+	!pv_node && !b.in_check() &&
+	!stack->isNullSearch &&
+	static_eval - 200*depth >= beta && 
+	beta < INF - stack->ply &&
+	b.non_pawn_material(b.whos_move()))
+      {
+	return beta; // fail hard
+      }
+	
+
+    // 6. -- null move search    
     if (!pv_node &&
 	depth >= 2 &&
 	!stack->isNullSearch &&
@@ -195,8 +227,35 @@ namespace
 	
 	if(null_eval >= beta) return beta;
       }
+
+    // 7. -- probcut from stockfish
+    if (!pv_node && 
+	depth >= 500 && !b.in_check() &&
+	!stack->isNullSearch)
+      {
+	BoardData pd;
+	MoveSelect ms; // slow initialization method
+	MoveGenerator mvs(b, LEGAL);
+	U16 move; 
+	int rbeta = beta + 200;
+	int rdepth = depth - 4;
+	ms.load(mvs, b, ttm, statistics, stack->killer1, stack->killer2, lastmove, stack->threat, stack->threat_gain);
+	while (ms.nextmove(*stack, move, false))
+	  {
+	    b.do_move(pd, move);
+	    stack->currmove = move;
+	    eval = -search<NONPV>(b, -rbeta, -rbeta + 1, rdepth, stack + 1);
+	    b.undo_move(move);
+	    if (eval >= rbeta)
+	      {
+		//printf("..probcut prune\n");
+		return beta; // fail hard.
+	      }
+	  }
+      }
     
-    // 5. -- internal iterative deepening
+    
+    // 7. -- internal iterative deepening
     if (ttm == MOVE_NONE &&
 	!stack->isNullSearch &&
 	depth >= (pv_node ? 6 : 8) &&
@@ -295,21 +354,21 @@ namespace
 	else
 	  {
 	    pvMove = false;
-
 	    // LMR 
-	    int R = newdepth;
+	    int R = 0;
 	    if (move != ttm &&
 		move != stack->killer1 &&
 		move != stack->killer2 &&
-		//static_eval < alpha &&
 		!inCheck && !givesCheck &&
 		piece != PAWN &&
-		newdepth > 6)
+		quiets_searched > 0 &&
+		newdepth > 3)
 	      {
-		R -= R / 4;
-		if (quiets_searched > 3) R -= 1;
+		R += 1;
+		if (quiets_searched > 4) R += 1;
 	      }	    
-	    eval = (R <= 1 ? -qsearch<NONPV>(b, -alpha-1, -alpha, R, stack + 1, givesCheck) : -search<NONPV>(b, -alpha-1, -alpha, R, stack + 1));
+	    int LMR = newdepth - R;
+	    eval = (LMR <= 1 ? -qsearch<NONPV>(b, -alpha-1, -alpha, LMR, stack + 1, givesCheck) : -search<NONPV>(b, -alpha-1, -alpha, LMR, stack + 1));
 	  }
 	if (!pvMove && (eval > alpha && eval < beta))
 	  {
@@ -397,8 +456,8 @@ namespace
 	ttstatic_value = e.static_value;
 	ttval = e.value;
 	if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta) return e.value;
-	//else if (e.bound == BOUND_LOW && e.value >= beta) return e.value;
-	//else if (e.bound == BOUND_HIGH && e.value <= alpha ) return e.value;
+	//else if (e.bound == BOUND_LOW && e.value >= beta && pv_node) return e.value;
+	//else if (e.bound == BOUND_HIGH && e.value <= alpha && pv_node ) return e.value;
       }
     
     // stand pat lower bound -- tried using static_eval for the stand-pat value, play was weak

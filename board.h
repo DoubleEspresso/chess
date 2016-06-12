@@ -113,6 +113,7 @@ public:
 	int color_on(int s);
 	Piece piece_on(int s);
 	inline int get_ep_sq();
+	bool pawn_on_7(int c);
 
 	// hash table keys for a given position
 	inline U64 material_key() const;
