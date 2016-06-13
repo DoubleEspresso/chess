@@ -35,22 +35,21 @@ void MoveStats::update(U16& m, U16& last, Node* stack, int d, int c, U16 * quiet
       int f = get_from(last);
       int t = get_to(last);
       int type = int((last & 0xf000) >> 12);
-      if (type == QUIET) history[c = WHITE ? BLACK : WHITE][f][t] -= pow(2, d-1); // d-1, was previous move?
+      if (type == QUIET) history[c = WHITE ? BLACK : WHITE][f][t] -= pow(2, d); 
     }
-  // reduce all other quiets -- seems to not help much
-  /*
-  if (quiets)
-    {
-      for (int j = 0; U16 mv = quiets[j]; ++j)
-	{
-	  if (m == mv) continue;
-	  else if (mv == MOVE_NONE) break;
-	  int f = get_from(mv);
-	  int t = get_to(mv);
-	  history[c][f][t] -= pow(2, d);
-	}
-    }
-  */
+  // reduce all other quiets -- do not uncomment -- see : position fen 1rb2rk1/5ppp/p2p4/2pP4/B3Q3/3P4/PqP2P1P/R4R1K w - - 2 19   
+  //if (quiets)
+  //{
+	 // for (int j = 0; U16 mv = quiets[j]; ++j)
+	 // {
+		//  if (m == mv) continue;
+		//  else if (mv == MOVE_NONE) break;
+		//  int f = get_from(mv);
+		//  int t = get_to(mv);
+		//  history[c][f][t] -= pow(2, d);
+	 // }
+  //}
+
   // update the stack killers
   if (type == QUIET && m != stack->killer1) { stack->killer2 = stack->killer1; stack->killer1 = m; }
 }
@@ -85,13 +84,13 @@ void MoveSelect::print_list()
     }
   printf(".....quiets....\n");
   if (quiets)
-    {
-      for (int j = 0; U16 mv = quiets[j].m; ++j)
-	{
-	  std::string s = UCI::move_to_string(mv);
-	  std::cout << "currmove " << s << " " << quiets[j].score << std::endl;
-	}
-    }
+  {
+	  for (int j = 0; U16 mv = quiets[j].m; ++j)
+	  {
+		  std::string s = UCI::move_to_string(mv);
+		  std::cout << "currmove " << s << " " << quiets[j].score << std::endl;
+	  }
+  }
   printf(".....end....\n\n");
   
 }

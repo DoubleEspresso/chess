@@ -47,7 +47,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v110</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -154,6 +154,7 @@
   <ItemGroup>
     <ClCompile Include="bench.cpp" />
     <ClCompile Include="board.cpp" />
+    <ClCompile Include="book.cpp" />
     <ClCompile Include="evaluate.cpp" />
     <ClCompile Include="globals.cpp" />
     <ClCompile Include="hashtable.cpp" />
@@ -163,7 +164,7 @@
     <ClCompile Include="move.cpp" />
     <ClCompile Include="moveselect.cpp" />
     <ClCompile Include="pawns.cpp" />
-    <ClCompile Include="search.cpp" />
+    <ClCompile Include="search2.cpp" />
     <ClCompile Include="threads.cpp" />
     <ClCompile Include="uci.cpp" />
     <ClCompile Include="zobrist.cpp" />
@@ -172,6 +173,7 @@
     <ClInclude Include="bench.h" />
     <ClInclude Include="bits.h" />
     <ClInclude Include="board.h" />
+    <ClInclude Include="book.h" />
     <ClInclude Include="definitions.h" />
     <ClInclude Include="evaluate.h" />
     <ClInclude Include="globals.h" />

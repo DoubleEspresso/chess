@@ -153,8 +153,8 @@ namespace
 	    stack->currmove = stack->bestmove = e.move;
 	    return e.value;
 	  }
-	//else if (e.bound == BOUND_LOW && e.value >= beta && pv_node) return e.value;
-	//else if (e.bound == BOUND_HIGH && e.value <= alpha && pv_node ) return e.value;
+	//else if (e.bound == BOUND_LOW && e.value >= beta) return e.value;
+	//else if (e.bound == BOUND_HIGH && e.value <= alpha) return e.value;
       }
     
     // 2. -- mate distance pruning
@@ -408,6 +408,7 @@ namespace
       {
 	alpha = aorig;
 	ttb = BOUND_HIGH;
+	//printf("..store high bound, alpha=%d, eval=%d, beta=%d\n", alpha, eval, beta);
       }
     else if (alpha >= beta)
       {
@@ -456,8 +457,8 @@ namespace
 	ttstatic_value = e.static_value;
 	ttval = e.value;
 	if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta) return e.value;
-	//else if (e.bound == BOUND_LOW && e.value >= beta && pv_node) return e.value;
-	//else if (e.bound == BOUND_HIGH && e.value <= alpha && pv_node ) return e.value;
+	//else if (e.bound == BOUND_LOW && e.value >= beta) return e.value;
+	//else if (e.bound == BOUND_HIGH && e.value <= alpha) return e.value;
       }
     
     // stand pat lower bound -- tried using static_eval for the stand-pat value, play was weak
@@ -524,7 +525,7 @@ namespace
       {
 	ttb = BOUND_LOW;
       }
-    else if (alpha > aorig && alpha < beta) ttb = BOUND_EXACT;
+    else ttb = BOUND_EXACT;
     
     if (ttb != BOUND_NONE) hashTable.store(key, data, depth, ttb, bestmove, adjust_score(alpha, stack->ply), stand_pat, iter_depth);   
     return alpha;
