@@ -89,33 +89,30 @@ void UCI::uci_command(std::string cmd, int& GAME_OVER)
 			//	std::cout << SanSquares[get_from(mvs.move())] << SanSquares[get_to(mvs.move())] << " ";
 			//std::cout << "" << std::endl;
 		}
-		else if (command == "qsearch_mvs")
-		{
-			for (MoveGenerator mvs(b, CAPTURE_CHECKS); !mvs.end(); ++mvs)
-			{
-				U16 m = mvs.move();
-				std::cout << SanSquares[get_from(m)] << SanSquares[get_to(m)] << "(" << move_to_string(m) << ") ";
-			}
-			std::cout << std::endl;
-		}
+		else if (command == "qsearch")
+		  {
+		    for (MoveGenerator mvs(b, false); !mvs.end(); ++mvs)
+		      {
+			U16 m = mvs.move();
+			std::cout << move_to_string(m);
+		      }
+		    std::cout << std::endl;
+		  }
 		else if (command == "pseudo_mvs")
-		{
-			//int count = 0;
-			//int size = 0;
-			//for (MoveGenerator mvs(b, PSEUDO_LEGAL); !mvs.end(); ++mvs)
-			//{
-
-
-			//	//std::cout << SanSquares[get_from(mvs.move())] << SanSquares[get_to(mvs.move())] << " ";
-			//	U16 m = mvs.move();
-			//	std::string smv = move_to_string(m);
-			//	std::cout << smv << " ";
-			//	if (b.is_legal(m)) count++;
-			//	size++;
-			//}
-			//std::cout << "" << std::endl;
-			//std::cout << " " << count << " of " << size << " are legal" << std::endl;
-
+		  {
+		    int count = 0;
+		    int size = 0;
+		    for (MoveGenerator mvs(b, PSEUDO_LEGAL); !mvs.end(); ++mvs)
+		      {						
+			//std::cout << SanSquares[get_from(mvs.move())] << SanSquares[get_to(mvs.move())] << " ";
+		    	U16 m = mvs.move();
+		    	std::string smv = move_to_string(m);
+		    	std::cout << smv << " ";
+		    	if (b.is_legal(m)) count++;
+		    	size++;
+		      }
+		    //std::cout << "" << std::endl;
+		    //std::cout << " " << count << " of " << size << " are legal" << std::endl;		    
 		}
 		else if (command == "bench_pawns")
 		{

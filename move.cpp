@@ -403,43 +403,43 @@ inline void MoveGenerator::append(U16 m)
 
 MoveList* MoveGenerator::generate(Board& b, MoveType mt)
 {
-	if0(mt == CAPTURE)
+  if0(mt == CAPTURE)
+    {
+      if0(b.in_check())
 	{
-		if0(b.in_check())
-		{
-			generate_piece_evasions(b);
-		}
-	  else generate_legal_caps(b);
+	  generate_piece_evasions(b);
 	}
+      else generate_legal_caps(b);
+    }
   else
-  {
-	  if0(b.in_check())
-	  {
-		  generate_piece_evasions(b);
-	  }
-	  else
-	  {
-		  generate_pawn_moves(b, mt);
-		  generate_piece_moves(b, mt);
-	  }
-  }
+    {
+      if0(b.in_check())
+	{
+	  generate_piece_evasions(b);
+	}
+      else
+	{
+	  generate_pawn_moves(b, mt);
+	  generate_piece_moves(b, mt);
+	}
+    }
   if0((mt == LEGAL || mt == CASTLE || mt == PSEUDO_LEGAL) &&
-	  !b.in_check()) generate_legal_castle_moves(b);
-
+      !b.in_check()) generate_legal_castle_moves(b);
+  
   if0 (mt == PSEUDO_LEGAL && last > 0)
-  {
-	  // allows accessing mvs.move() in move.h
-	  for (unsigned int i = 0; i<last; ++i)
-	  {
-		  legal_i[i] = i;
-	  }
-	  return list;
-  }
-
+    {
+      // allows accessing mvs.move() in move.h
+      for (unsigned int i = 0; i<last; ++i)
+	{
+	  legal_i[i] = i;
+	}
+      return list;
+    }
+  
   unsigned int _sz = last;
   unsigned int iter = 0;
   if (mt != PSEUDO_LEGAL && _sz > 0)
-  {
+    {
 	  U64 pinned = b.pinned();
 	  int ks = b.king_square();
 	  int ec = (b.whos_move() == WHITE ? BLACK : WHITE);
@@ -474,41 +474,39 @@ MoveList* MoveGenerator::generate(Board& b, MoveType mt)
 MoveList* MoveGenerator::generate_qsearch_mvs(Board& b)
 {
 
-	if0(b.in_check())
-	{
-		generate_piece_evasions(b);
-	}
+  if0(b.in_check())
+    {
+      generate_piece_evasions(b);
+    }
   else
-  {
-	  generate_piece_moves(b, LEGAL);
-	  generate_pawn_moves(b, LEGAL);
-	  if0(!b.in_check()) generate_legal_castle_moves(b);
-  }
-
+    {
+      generate_piece_moves(b, LEGAL);
+      generate_pawn_moves(b, LEGAL);
+      //if0(!b.in_check()) generate_legal_castle_moves(b);
+    }
+  
   unsigned int _sz = last;
   unsigned int iter = 0;
   if (_sz > 0)
-  {
-	  U64 pinned = b.pinned();
-	  int ks = b.king_square();
-	  int ec = (b.whos_move() == WHITE ? BLACK : WHITE);
-	  for (unsigned int i = 0; i<_sz; ++i)
-	  {
-		  int frm = (list[i].m & 0x3f);
-		  int to = ((list[i].m & 0xfc0) >> 6);
-		  int type = ((list[i].m & 0xf000) >> 12);
-		  int legal = 1;
-
-		  if (type == EP && !is_legal_ep(frm, to, ks, ec, b)) legal = 0;
-		  else if (frm == ks && !is_legal_km(ks, to, ec, b, type)) legal = 0;
-		  else if ((SquareBB[frm] & pinned) && !aligned(ks, frm, to)) legal = 0;
-
-		  // filters
-		  if (legal == 1 && type != CAPTURE && !b.checks_king(list[i].m) && !b.in_check()) legal = 0;
-		  //if (legal == 1 && !b.in_check() && !b.checks_king(list[i].m) ) legal = 0;
-		  //if (legal == 1  && type!=CAPTURE && !b.is_in_check() && !b.is_in_check()) legal = 0;
-		  (legal == 1 ? legal_i[iter++] = i : last--);
-	  }
-  }
+    {
+      U64 pinned = b.pinned();
+      int ks = b.king_square();
+      int ec = (b.whos_move() == WHITE ? BLACK : WHITE);
+      for (unsigned int i = 0; i<_sz; ++i)
+	{
+	  int frm = (list[i].m & 0x3f);
+	  int to = ((list[i].m & 0xfc0) >> 6);
+	  int type = ((list[i].m & 0xf000) >> 12);
+	  int legal = 1;
+	  
+	  if (type == EP && !is_legal_ep(frm, to, ks, ec, b)) legal = 0;
+	  else if (frm == ks && !is_legal_km(ks, to, ec, b, type)) legal = 0;
+	  else if ((SquareBB[frm] & pinned) && !aligned(ks, frm, to)) legal = 0;
+	  
+	  // qsearch filters
+	  if (legal == 1 && type != CAPTURE && !b.checks_king(list[i].m) && !b.in_check()) legal = 0;
+	  (legal == 1 ? legal_i[iter++] = i : last--);
+	}
+    }
   return list;
 }

@@ -77,7 +77,8 @@ void parse_args(int argc, char* argv[])
       if (!strcmp(argv[j], "-test"))
 	{
 	  printf("..start testing\n");
-	  std::istringstream fen("3rn2k/ppb2rpp/2ppqp2/5N2/2P1P3/1P5Q/PB3PPP/3RR1K1 w - -");
+	  //std::istringstream fen("3rn2k/ppb2rpp/2ppqp2/5N2/2P1P3/1P5Q/PB3PPP/3RR1K1 w - -");
+	  std::istringstream fen ("3q1rk1/r4ppp/1pp5/3pp1n1/1P1n4/P6P/BBPP1PP1/R2Q1RK1 b - - 1 20");
 	  Board b(fen);
 	  UCI::analyze(b);
 		  //std::ifstream file(argv[j + 1]);

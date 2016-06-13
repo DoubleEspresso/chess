@@ -447,8 +447,7 @@ namespace
     U16 lastmove = (stack - 1)->currmove;
     int moves_searched = 0;
 
-    // transposition table lookup
-    
+    // transposition table lookup    
     data = b.data_key();
     key = b.pos_key();
     if (hashTable.fetch(key, e) && e.depth >= depth)
@@ -469,8 +468,8 @@ namespace
     if (alpha >= beta && !inCheck) return beta;
        
     // searching only checks or captures causes it to miss obv. "forcing moves" at higher depths ..
-    //MoveGenerator mvs(b,inCheck);
-    MoveGenerator mvs(b, CAPTURE); // play is a little stronger with this one
+    MoveGenerator mvs(b,inCheck);
+    //MoveGenerator mvs(b, CAPTURE); // play is a little stronger with this one
 		
     // mate detection
     if (inCheck && mvs.size() == 0) return NINF + stack->ply;

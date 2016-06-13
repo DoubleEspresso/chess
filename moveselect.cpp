@@ -154,7 +154,7 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
 	  //if (threat != MOVE_NONE && get_to(threat) == get_from(m)) { score += piece_vals[b.piece_on(from)]/2; } //threatgain/2; }
 	  
 	  // try to boost those quiet checks which are potentially dangerous
-	  if (score == (NINF - 1) && b.checks_king(m) && b.is_dangerous(m, p)) score += 1;// piece_vals[b.piece_on(from)];
+	  if (score == (NINF - 1) && (b.checks_king(m) && b.is_dangerous(m, p))) score += 25;// piece_vals[b.piece_on(from)];
 	  
 	  // if the score is still 0, check the piece square tables and score the move based on the to-square-from-sq difference...
 	  if (score == (NINF - 1)) 
@@ -182,13 +182,13 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
   stored_csz = c_sz;
   q_sz = 0;
   c_sz = 0;
-  /*
+  
   // debug move ordering
-  printf("---------------------------------\n");
-  b.print();
-  print_list();
-  printf("---------------------------------\n\n\n");
-  */
+  
+  //printf("---------------------------------\n");
+  //b.print();
+  //print_list();
+  //printf("---------------------------------\n\n\n");  
 }
 
 // note : scores are initialized to large negative numbers
