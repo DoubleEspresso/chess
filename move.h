@@ -50,68 +50,68 @@ class Board;
 // and contains a score used exclusively for move ordering purposes
 struct MoveList
 {
-	U16 m;
-	int score;
+  U16 m;
+  int score;
 };
 
 inline bool operator <(const MoveList& x, const MoveList& y) 
 {
-	return x.score < y.score;
+  return x.score < y.score;
 }
 
 inline bool operator >(const MoveList& x, const MoveList& y)
 {
-	return x.score > y.score;
+  return x.score > y.score;
 }
 
 class MoveGenerator
 {
-public:
-	MoveGenerator(Board &b) : it(0), last(0)
-	{
-		generate(b, LEGAL);
-	}
-	MoveGenerator(Board& b, MoveType mt) : it(0), last(0)
-	{
-		if (mt == CAPTURE_CHECKS) generate_qsearch_mvs(b);
-		else generate(b, mt);
-	}
-
-	// this c'tor is meant for calls from qsearch only!!
-	MoveGenerator(Board& b, bool inCheck) : it(0), last(0)
-	{
-		if (inCheck) generate_qsearch_mvs(b);
-		else generate(b, CAPTURE);
-	}
-	~MoveGenerator() { };
-
-	inline U64 move_pawns(int c, int d, U64& b);
-	MoveList * generate(Board &b, MoveType mt);
-
-	void append_mv(U16 m) { list[last++].m = m; }
-	template<MoveType> inline void append(U16 m);
-	MoveList operator++() { return list[legal_i[it++]]; }
-	bool end() { return it == last; }
-	U16 move() { return list[legal_i[it]].m; }
-	int size() const { return last; }
-
-	template<MoveType> void serialize(U64 &b, int from);
-	template<MoveType> void serialize(U64 &b, Direction d);
-	template<MoveType> void serialize_promotion(U64 &b, Direction d);
-	MoveList * generate_pawn_moves(Board &b, MoveType mt);
-	MoveList * generate_piece_moves(Board &b, MoveType mt);
-	MoveList * generate_piece_evasions(Board& board);
-	MoveList * generate_legal_caps(Board& board);
-	MoveList * generate_qsearch_mvs(Board& b);
-	U64 generate_candidate_checkers(Board& b);
-	MoveList * generate_legal_castle_moves(Board& b);
-	inline bool is_legal_ep(int from, int to, int ks, int ec, Board& b);
-	inline bool is_legal_km(int ks, int to, int ec, Board& b, int type);
-
-private:
-	int it;
-	int last;
-	MoveList list[MAX_MOVES];
-	int legal_i[MAX_MOVES];
+ public:
+ MoveGenerator(Board &b) : it(0), last(0)
+    {
+      generate(b, LEGAL);
+    }
+ MoveGenerator(Board& b, MoveType mt) : it(0), last(0)
+    {
+      if (mt == CAPTURE_CHECKS) generate_qsearch_mvs(b);
+      else generate(b, mt);
+    }
+  
+  // this c'tor is meant for calls from qsearch only!!
+ MoveGenerator(Board& b, bool inCheck) : it(0), last(0)
+    {
+      if (inCheck) generate_qsearch_mvs(b);
+      else generate(b, CAPTURE);
+    }
+  ~MoveGenerator() { };
+  
+  inline U64 move_pawns(int c, int d, U64& b);
+  MoveList * generate(Board &b, MoveType mt);
+  
+  void append_mv(U16 m) { list[last++].m = m; }
+  template<MoveType> inline void append(U16 m);
+  MoveList operator++() { return list[legal_i[it++]]; }
+  bool end() { return it == last; }
+  U16 move() { return list[legal_i[it]].m; }
+  int size() const { return last; }
+  
+  template<MoveType> void serialize(U64 &b, int from);
+  template<MoveType> void serialize(U64 &b, Direction d);
+  template<MoveType> void serialize_promotion(U64 &b, Direction d);
+  MoveList * generate_pawn_moves(Board &b, MoveType mt);
+  MoveList * generate_piece_moves(Board &b, MoveType mt);
+  MoveList * generate_piece_evasions(Board& board);
+  MoveList * generate_legal_caps(Board& board);
+  MoveList * generate_qsearch_mvs(Board& b);
+  U64 generate_candidate_checkers(Board& b);
+  MoveList * generate_legal_castle_moves(Board& b);
+  inline bool is_legal_ep(int from, int to, int ks, int ec, Board& b);
+  inline bool is_legal_km(int ks, int to, int ec, Board& b, int type);
+  
+ private:
+  int it;
+  int last;
+  MoveList list[MAX_MOVES];
+  int legal_i[MAX_MOVES];
 };
 #endif

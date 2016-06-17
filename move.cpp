@@ -474,16 +474,16 @@ MoveList* MoveGenerator::generate(Board& b, MoveType mt)
 MoveList* MoveGenerator::generate_qsearch_mvs(Board& b)
 {
 
-  if0(b.in_check())
-    {
+  //if0(b.in_check())
+  //{
       generate_piece_evasions(b);
-    }
-  else
-    {
-      generate_piece_moves(b, LEGAL);
-      generate_pawn_moves(b, LEGAL);
+      //}
+      //else
+      //{
+      //generate_piece_moves(b, LEGAL);
+      //generate_pawn_moves(b, LEGAL);
       //if0(!b.in_check()) generate_legal_castle_moves(b);
-    }
+      //}
   
   unsigned int _sz = last;
   unsigned int iter = 0;
@@ -504,7 +504,7 @@ MoveList* MoveGenerator::generate_qsearch_mvs(Board& b)
 	  else if ((SquareBB[frm] & pinned) && !aligned(ks, frm, to)) legal = 0;
 	  
 	  // qsearch filters
-	  if (legal == 1 && type != CAPTURE && !b.checks_king(list[i].m) && !b.in_check()) legal = 0;
+	  //if (legal == 1 && type != CAPTURE && !b.checks_king(list[i].m) && !b.in_check()) legal = 0;
 	  (legal == 1 ? legal_i[iter++] = i : last--);
 	}
     }

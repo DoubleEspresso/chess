@@ -488,7 +488,7 @@ int Board::phase()
 bool Board::gives_check(U16& move)
 {
 	int to = get_to(move);
-	assert(to < 64);
+	//assert(to < 64);
 	U64 to_bm = SquareBB[to];
 	U64 attackers = attackers_of(king_square());
 	return to_bm & attackers;

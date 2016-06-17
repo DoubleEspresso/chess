@@ -153,8 +153,8 @@ namespace
 	    stack->currmove = stack->bestmove = e.move;
 	    return e.value;
 	  }
-	//else if (e.bound == BOUND_LOW && e.value >= beta) return e.value;
-	//else if (e.bound == BOUND_HIGH && e.value <= alpha) return e.value;
+	else if (e.bound == BOUND_LOW && e.value >= beta && pv_node) return e.value;
+	else if (e.bound == BOUND_HIGH && e.value <= alpha && pv_node) return e.value;
       }
     
     // 2. -- mate distance pruning
@@ -319,7 +319,7 @@ namespace
 	    move != ttm &&
 	    move != stack->killer1 &&
 	    move != stack->killer2 &&
-	    !inCheck && !givesCheck && isQuiet && //!pv_node &&
+	    !inCheck && !givesCheck && isQuiet && !pv_node &&
 	    eval < alpha && 
 	    eval > NINF + stack->ply )
 	  {
@@ -327,6 +327,7 @@ namespace
 	  }
 	
 	// exchange pruning at shallow depths - same thing done in qsearch...		    			
+	
 	if (newdepth <= 1 &&
 	    !inCheck && !givesCheck && !isQuiet && //!pv_node &&
 	    move != ttm &&
@@ -338,6 +339,7 @@ namespace
 	    continue;
 	  }	
 	
+
 	// PVS-type search within a fail-hard framework
 	b.do_move(pd, move);
 	
@@ -372,7 +374,7 @@ namespace
 	  }
 	if (!pvMove && (eval > alpha && eval < beta))
 	  {
-	    eval = (newdepth <= 1 ? -qsearch<NONPV>(b, -beta, -alpha, newdepth, stack + 1, givesCheck) : -search<NONPV>(b, -beta, -alpha, newdepth, stack + 1));
+	    eval = (newdepth <= 1 ? -qsearch<PV>(b, -beta, -alpha, newdepth, stack + 1, givesCheck) : -search<PV>(b, -beta, -alpha, newdepth, stack + 1));
 	  }
 	
 	b.undo_move(move);
@@ -456,13 +458,15 @@ namespace
 	ttstatic_value = e.static_value;
 	ttval = e.value;
 	if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta) return e.value;
-	//else if (e.bound == BOUND_LOW && e.value >= beta) return e.value;
-	//else if (e.bound == BOUND_HIGH && e.value <= alpha) return e.value;
+	else if (e.bound == BOUND_LOW && e.value >= beta && pv_node) return e.value;
+	else if (e.bound == BOUND_HIGH && e.value <= alpha && pv_node ) return e.value;
+
       }
     
     // stand pat lower bound -- tried using static_eval for the stand-pat value, play was weak
     int stand_pat = (ttval = NINF ? Eval::evaluate(b) : ttval);
-      
+    if (ttval = NINF) stand_pat = Eval::evaluate(b);
+
     if (stand_pat >= beta && !inCheck) return beta; 
     if (alpha < stand_pat && !inCheck) alpha = stand_pat;
     if (alpha >= beta && !inCheck) return beta;
@@ -485,19 +489,53 @@ namespace
       {
 	if (move == MOVE_NONE) continue;
 	
-	// prune captures which have see values < 0	  
-	if (!inCheck &&
-	    !b.checks_king(move) &&
-	    !pv_node &&
-	    move != ttm &&
-	    //eval <= alpha &&
-	    b.see_move(move) <= 0)
+	// move data
+	int piece = b.piece_on(get_from(move));
+	bool givesCheck = b.checks_king(move); // working ok
+	bool isQuiet =  b.is_quiet(move); // evasions
+
+	// prune evasions
+	bool canPrune =  (inCheck && !givesCheck && isQuiet &&
+			  move != ttm && !pv_node);// continue;
+	if (canPrune) continue;
+	
+	// futility pruning	       
+	/*
+	int fv = 350;
+	if (!givesCheck && !inCheck && 
+	    move != ttm && !pv_node &&
+	    piece != PAWN && )
+	    //eval - material.material_value(b.piece_on(get_to(move)), END_GAME ) >= beta)
+	    // eval + fv >= beta)
+	  {
+	    printf("%d %d %d", alpha, beta, eval);
+	    b.print();
+	    eval = alpha - fv;
+	    continue;*/
+	    /*
+	    int v = fv + material.material_value(b.piece_on(get_to(move)), END_GAME );	    
+	    if (v < beta)
+	      {
+		eval = (v > fv ? v : fv);
+		continue;
+	      }	    
+	    if (fv < beta && b.see_move(move) <= 0)
+	      {
+		eval = (eval > beta ? eval : beta);
+		continue;
+	      }	    
+	    */
+	//}	
+	
+	// prune captures which have see values <= 0	  
+	if ( (!inCheck || canPrune) &&
+	     !pv_node && //move != ttm &&
+	     b.see_move(move) < 0)
 	  continue;
 	
 	BoardData pd;	
 	b.do_move(pd, move);	
-	bool givesCheck = b.gives_check(move);
-	eval = -qsearch<type>(b, -beta, -alpha, depth - 1, stack + 1, givesCheck);	
+	eval = -qsearch<type>(b, -beta, -alpha, depth - 1, stack + 1, givesCheck);
 	b.undo_move(move);	
 	moves_searched++;
 	

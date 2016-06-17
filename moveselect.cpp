@@ -127,7 +127,7 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
 	  score = piece_vals[b.piece_on(to)] - piece_vals[b.piece_on(from)];
 	  //score = b.see_move(m);
 	  if (score <= 0) score = b.see_move(m);
-	  if (score == 0 && b.checks_king(m) && b.is_dangerous(m, p)) score += 1;// piece_vals[b.piece_on(from)];
+	  if (score == 0 && b.checks_king(m) && b.is_dangerous(m, p)) score += 25;// piece_vals[b.piece_on(from)];
 	  
 	  // the threat move from null-refutation, bonus if we capture the threatening piece
 	  // was only used if score == 0

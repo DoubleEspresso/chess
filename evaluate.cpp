@@ -75,7 +75,12 @@ int piece_vals_eg[5] = { PawnValueEG, KnightValueEG, BishopValueEG, RookValueEG,
 // white goes after h8 rook and eventually gets a terrible position (more difficult positional eval), stockfish likes f3 with ~ even score
 // does not see black knight to h6 at all
 // r3k1nr/1p2pN1p/2p2np1/p5b1/2B3b1/2N5/PPP2PPP/R2R2K1 w kq - 2 15 
-
+//
+// do not play b8a8 here as white, stockfish likes 00, followed by bf4 ..
+// 1R3b1r/p2kpp1p/N1prb1pn/q2p2N1/3P4/2P2P2/1P2Q1PP/2B1K2R w K - 2 20
+// 
+// don't stalemate!
+// 2k5/2P5/N6p/3K3p/1P5P/6P1/8/8 w - - 1 51
 namespace
 {
 	Clock timer;

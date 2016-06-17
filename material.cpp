@@ -33,7 +33,7 @@ MaterialTable::~MaterialTable()
 // main wrapper to material values defined in definitions.h
 int MaterialTable::material_value(int piece, int gamephase)
 {
-	return gamephase == MIDDLE_GAME ? piece_vals_mg[piece] : piece_vals_eg[gamephase];
+	return gamephase == MIDDLE_GAME ? piece_vals_mg[piece] : piece_vals_eg[piece];
 }
 
 bool MaterialTable::init()
