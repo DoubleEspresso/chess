@@ -1,3 +1,8 @@
+#include <cstring>
+#ifdef DEBUG
+#include <cassert>
+#endif
+
 #include "search.h"
 #include "hashtable.h"
 #include "material.h"
@@ -11,14 +16,13 @@
 SignalsType UCI_SIGNALS;
 std::vector<U16> RootMoves;
 
-
 namespace
 {
   int iter_depth = 0;
   int nb_time_allocs = 0; // measure large shifts in eval from one depth to the next, to adjust time allocation during search..
 
   MoveStats statistics;
-  U16 pv_line[MAXDEPTH];
+  //U16 pv_line[MAXDEPTH];
   std::vector<int> searchEvals;
   
   template<NodeType type>
@@ -28,9 +32,9 @@ namespace
   int qsearch(Board& b, int alpha, int beta, int depth, Node* stack, bool inCheck);
   
   int adjust_score(int bestScore, int ply);
-  void write_pv_to_tt(Board& b, U16 * pv, int depth);
+  //void write_pv_to_tt(Board& b, U16 * pv, int depth);
   void update_pv(U16* pv, U16& move, U16* child_pv);
-  void checkMoreTime(Board& b, Node * stack);
+  //void checkMoreTime(Board& b, Node * stack);
 };
 
 namespace Search
@@ -108,25 +112,25 @@ namespace
     int aorig = alpha;
     
     // node type
-    bool split_node = (type == SPLIT);
-    bool root_node = (type == ROOT);
+    //bool split_node = (type == SPLIT);
+    //bool root_node = (type == ROOT);
     bool pv_node = (type == ROOT || type == PV);
     
     U16 quiets[MAXDEPTH];
-    for (int j=0; j<MAXDEPTH; ++j) quiets[j] = MOVE_NONE;
+    //for (int j=0; j<MAXDEPTH; ++j) quiets[j] = MOVE_NONE;
     int moves_searched = 0;
     int quiets_searched = 0;
     U16 bestmove = MOVE_NONE;
-    U16 threat = MOVE_NONE;
+    //U16 threat = MOVE_NONE;
 
     // update stack info
     stack->ply = (stack - 1)->ply++;
-    stack->currmove = stack->bestmove = stack->killer1 = stack->killer2 = MOVE_NONE;
+    stack->currmove = stack->bestmove = (stack+2)->killer1 = (stack+2)->killer2 = MOVE_NONE;
     stack->givescheck = false;
 
     // update last move info
     U16 lastmove = (stack - 1)->currmove;
-    U16 lastbest = (stack - 1)->bestmove;
+    //U16 lastbest = (stack - 1)->bestmove;
 
     // init ttable entries
     TableEntry e;
@@ -262,15 +266,14 @@ namespace
 	!b.in_check() )
       {
 	int iid = depth - 2 - (pv_node ? 0 : depth / 4);
-	int v = NINF;
 	stack->isNullSearch = true;
 	if (pv_node)
 	  {
-	    v = search<PV>(b, alpha, beta, iid, stack);	    
+	    search<PV>(b, alpha, beta, iid, stack);	    
 	  }
 	else
 	  {
-	    v = search<NONPV>(b, alpha, beta, iid, stack);
+	    search<NONPV>(b, alpha, beta, iid, stack);
 	  }
 	stack->isNullSearch = false;
 	if (hashTable.fetch(key,e)) ttm = e.move;
@@ -429,7 +432,7 @@ namespace
   {
     int eval = NINF;
     int ttval = NINF;
-    int ttstatic_value = NINF;
+    //int ttstatic_value = NINF;
 
     U64 key = 0ULL;
     U64 data = 0ULL;
@@ -441,12 +444,12 @@ namespace
     U16 bestmove = MOVE_NONE;
     
     int aorig = alpha;
-    bool split = (b.get_worker()->currSplitBlock != NULL);
-    SplitBlock * split_point;
-    if (split) split_point = b.get_worker()->currSplitBlock;
+    //bool split = (b.get_worker()->currSplitBlock != NULL);
+    //SplitBlock * split_point;
+    //if (split) split_point = b.get_worker()->currSplitBlock;
         
     stack->ply = (stack - 1)->ply++;
-    U16 lastmove = (stack - 1)->currmove;
+    //U16 lastmove = (stack - 1)->currmove;
     int moves_searched = 0;
 
     // transposition table lookup    
@@ -455,7 +458,7 @@ namespace
     if (hashTable.fetch(key, e) && e.depth >= depth)
       {
 	ttm = e.move;
-	ttstatic_value = e.static_value;
+	//ttstatic_value = e.static_value;
 	ttval = e.value;
 	if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta) return e.value;
 	else if (e.bound == BOUND_LOW && e.value >= beta && pv_node) return e.value;
@@ -465,7 +468,7 @@ namespace
     
     // stand pat lower bound -- tried using static_eval for the stand-pat value, play was weak
     int stand_pat = (ttval = NINF ? Eval::evaluate(b) : ttval);
-    if (ttval = NINF) stand_pat = Eval::evaluate(b);
+    if (ttval == NINF) stand_pat = Eval::evaluate(b);
 
     if (stand_pat >= beta && !inCheck) return beta; 
     if (alpha < stand_pat && !inCheck) alpha = stand_pat;
@@ -490,7 +493,7 @@ namespace
 	if (move == MOVE_NONE) continue;
 	
 	// move data
-	int piece = b.piece_on(get_from(move));
+	//int piece = b.piece_on(get_from(move));
 	bool givesCheck = b.checks_king(move); // working ok
 	bool isQuiet =  b.is_quiet(move); // evasions
 
@@ -501,30 +504,30 @@ namespace
 	
 	// futility pruning	       
 	/*
-	int fv = 350;
-	if (!givesCheck && !inCheck && 
-	    move != ttm && !pv_node &&
-	    piece != PAWN && )
-	    //eval - material.material_value(b.piece_on(get_to(move)), END_GAME ) >= beta)
-	    // eval + fv >= beta)
+	  int fv = 350;
+	  if (!givesCheck && !inCheck && 
+	  move != ttm && !pv_node &&
+	  piece != PAWN && )
+	  //eval - material.material_value(b.piece_on(get_to(move)), END_GAME ) >= beta)
+	  // eval + fv >= beta)
 	  {
-	    printf("%d %d %d", alpha, beta, eval);
-	    b.print();
-	    eval = alpha - fv;
-	    continue;*/
-	    /*
-	    int v = fv + material.material_value(b.piece_on(get_to(move)), END_GAME );	    
-	    if (v < beta)
-	      {
-		eval = (v > fv ? v : fv);
-		continue;
-	      }	    
-	    if (fv < beta && b.see_move(move) <= 0)
-	      {
-		eval = (eval > beta ? eval : beta);
-		continue;
-	      }	    
-	    */
+	  printf("%d %d %d", alpha, beta, eval);
+	  b.print();
+	  eval = alpha - fv;
+	  continue;*/
+	/*
+	  int v = fv + material.material_value(b.piece_on(get_to(move)), END_GAME );	    
+	  if (v < beta)
+	  {
+	  eval = (v > fv ? v : fv);
+	  continue;
+	  }	    
+	  if (fv < beta && b.see_move(move) <= 0)
+	  {
+	  eval = (eval > beta ? eval : beta);
+	  continue;
+	  }	    
+	*/
 	//}	
 	
 	// prune captures which have see values <= 0	  

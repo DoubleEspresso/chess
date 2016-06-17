@@ -11,8 +11,7 @@
 
 namespace Eval
 {
-
-	extern int evaluate(Board& b);
+  extern int evaluate(Board& b);
 };
 
 

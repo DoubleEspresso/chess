@@ -4,23 +4,19 @@ BITS = $(shell uname -m)
 OS = $(shell uname) 
 OSFLAVOR =
 
-USERMACROS =
-CFLAGS =
+USERMACROS = -DNDEBUG -DTHREADED
+CFLAGS = -Wall -O3 -fomit-frame-pointer -fstrict-aliasing -fno-rtti -std=gnu++11 -pthread
 DFLAGS =
-LFLAGS =
-INSTALL =
+LFLAGS = -lpthread -lrt
+INSTALL = /usr/local/bin
 EXE_BITS =
 EXE_OS =
 THREADED =
 GIT_VERSION =
 # build info
-SRC := hedwig.cpp threads.cpp globals.cpp magic.cpp uci.cpp move.cpp board.cpp bench.cpp material.cpp pawns.cpp evaluate.cpp search2.cpp hashtable.cpp moveselect.cpp zobrist.cpp book.cpp
+SRC := main.cpp threads.cpp globals.cpp magic.cpp uci.cpp move.cpp board.cpp bench.cpp material.cpp pawns.cpp evaluate.cpp search2.cpp hashtable.cpp moveselect.cpp zobrist.cpp book.cpp
 OBJS =$(SRCS:.cpp=.o)
 
-
-#====================================
-#  makefile options
-#  
 # compiler
 ifeq ($(COMP),)
    CC = g++
@@ -28,30 +24,8 @@ else
    CC = $(COMP)
 endif
 
-# mode
-ifeq ($(MODE),)
-   MODE = debug
-   USERMACROS += -DDEBUG
-   CFLAGS += -Wall
-   CFLAGS += -g
-   CFLAGS += -ggdb
-else
-   MODE = release
-   CFLAGS += -Wall -O3 -fomit-frame-pointer -fstrict-aliasing -fno-rtti -save-temps -std=gnu++11
-   #CFLAGS += -pthread
-   USERMACROS += -DNDEBUG
-endif
-
-# threads
-ifeq ($(THREADED),)
-   USERMACROS += -DTHREADED
-   CFLAGS += -pthread
-   LFLAGS += -lpthread -lrt
-endif
-
 # arch
 ifeq ($(ARCH),i386)
-   #CFLAGS += -march=$(ARCH)
    CFLAGS += -sse
    CFLAGS += -O2
 endif
@@ -83,25 +57,26 @@ ifeq ($(OS),Linux )
    USERMACROS += -DOS=\"unix\"
 endif
 
-
 # executable
-EXE = hedwig-$(EXE_OS)-$(EXE_BITS)
+EXE = hedwig.exe #-$(EXE_OS)-$(EXE_BITS)
 
-# git version/date
+# git version info
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always --tags)
 USERMACROS += -DBUILD_DATE="\"$$(date)\""
 USERMACROS += -DVERSION=\"$(GIT_VERSION)\"
 
-# collect object files here
 OBJ := $(patsubst %.cpp, %.o, $(filter %.cpp,$(SRC)))
 
 .PHONY:all
 all: information link
 
+debug: CFLAGS += -g -ggdb
+debug: USERMACROS:=$(filter-out -DNDEBUG, $(USERMACROS))
+debug: USERMACROS += -DDEBUG
+debug: all
+
 information:
 	@echo ".............................."
-	@echo "Build Information : "
-	@echo "...Building "$(MODE)" mode"
 	@echo "...ARCH    = "$(ARCH)
 	@echo "...BITS    = "$(BITS)
 	@echo "...CC      = "$(CC)
@@ -111,8 +86,7 @@ information:
 	@echo "...EXE     = "$(EXE)
 	@echo "..............................."
 	@echo ""
-	@echo ""
-#linking the program
+
 link: $(OBJ)
 	$(CC) -o $(EXE) $(OBJ) $(LFLAGS)
 
@@ -123,9 +97,6 @@ install: all
 	if [ ! -d $(INSTALL) ]; then \
 		mkdir -p $(INSTALL); \
 	fi 
-	if [ ! -d $(LOG) ]; then \
-		mkdir -p $(LOG); \
-	fi
 	mv $(EXE) $(INSTALL)
 	find . -name "*.o" | xargs rm -vf 
 

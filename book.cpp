@@ -127,6 +127,7 @@ bool Book::compute_key(char* fen)
 
   e->key = piece_key ^ castle_key ^ ep_key ^ stm_key;
   printf("..encoded position key for fen(%s) == %lx\n", fen, e->key);
+  return true;
 }
 
 
@@ -136,7 +137,7 @@ void Book::update_piece_key(U64& k, char& c, int s, int (&bps)[8], int (&wps)[8]
   int idx = -1;
   int piece = -1;
   int color = -1;
-  for(int j=0; j<SanPiece.length(); ++j)
+  for(unsigned int j=0; j<SanPiece.length(); ++j)
     {
       if (c == SanPiece[j])
 	{

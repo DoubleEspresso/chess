@@ -40,14 +40,14 @@ void MoveStats::update(U16& m, U16& last, Node* stack, int d, int c, U16 * quiet
   // reduce all other quiets -- do not uncomment -- see : position fen 1rb2rk1/5ppp/p2p4/2pP4/B3Q3/3P4/PqP2P1P/R4R1K w - - 2 19   
   //if (quiets)
   //{
-	 // for (int j = 0; U16 mv = quiets[j]; ++j)
-	 // {
-		//  if (m == mv) continue;
-		//  else if (mv == MOVE_NONE) break;
-		//  int f = get_from(mv);
-		//  int t = get_to(mv);
-		//  history[c][f][t] -= pow(2, d);
-	 // }
+  // for (int j = 0; U16 mv = quiets[j]; ++j)
+  // {
+  //  if (m == mv) continue;
+  //  else if (mv == MOVE_NONE) break;
+  //  int f = get_from(mv);
+  //  int t = get_to(mv);
+  //  history[c][f][t] -= pow(2, d);
+  // }
   //}
 
   // update the stack killers
@@ -84,13 +84,13 @@ void MoveSelect::print_list()
     }
   printf(".....quiets....\n");
   if (quiets)
-  {
-	  for (int j = 0; U16 mv = quiets[j].m; ++j)
-	  {
-		  std::string s = UCI::move_to_string(mv);
-		  std::cout << "currmove " << s << " " << quiets[j].score << std::endl;
-	  }
-  }
+    {
+      for (int j = 0; U16 mv = quiets[j].m; ++j)
+	{
+	  std::string s = UCI::move_to_string(mv);
+	  std::cout << "currmove " << s << " " << quiets[j].score << std::endl;
+	}
+    }
   printf(".....end....\n\n");
   
 }
@@ -109,7 +109,7 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
       int c = b.whos_move();
       
       int last_to = int((lastmove & 0xfc0) >> 6);
-      int last_from = int(lastmove & 0x3f);
+      //int last_from = int(lastmove & 0x3f);
       
       if (m == killer1 && m != tt_mv) { killers[0] = m; continue; }
       else if (m == killer2 && m != tt_mv) { killers[1] = m; continue; }
@@ -197,91 +197,91 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
 void MoveSelect::sort(MoveList * ml, int length)
 {
 
-	std::sort(ml, ml + length, GreaterThan);
+  std::sort(ml, ml + length, GreaterThan);
 
 }
 
 bool MoveSelect::nextmove(Node& node, U16& out, bool split)
 {
-	if (split)
+  if (split)
+    {
+      // call nextmove from the thread data at this node.
+      //U16 move;
+      //bool do_next = b.get_worker()->currSplitBlock->ms->nextmove(b,out,false);//node->ms->nextmove(b,out,false);
+      //node.sb->split_mutex.lock();
+      bool do_next = node.sb->ms->nextmove(node, out, false);
+      //node.sb->split_mutex.unlock();
+      if (out == MOVE_NONE || !do_next) return false;
+      //else { out = move; return true; }
+      // dbg 
+      //std::cout << std::endl;
+      //std::cout << " ==================== thread- " << b.get_worker()->idx << " ===================== " << std::endl;
+      //std::cout << " dbg all quiets " << std::endl;
+      //int qsz=0;
+      //MoveList * tmp_quiets = b.get_worker()->currSplitBlock->ms->get_quites(qsz);//node->ms->get_quites(qsz);
+      //for (int j=0; j<qsz; ++j) std::cout << " " << SanSquares[get_from(tmp_quiets[j].m)] + SanSquares[get_to(tmp_quiets[j].m)];
+      //std::cout << std::endl;
+
+      //std::cout << " dbg all caps " << std::endl;
+      //int csz=0;
+      //MoveList * tmp_caps = b.get_worker()->currSplitBlock->ms->get_captures(csz);//node->ms->get_captures(csz);
+      //for (int j=0; j<csz; ++j) std::cout << " " << SanSquares[get_from(tmp_caps[j].m)] + SanSquares[get_to(tmp_caps[j].m)];
+      //std::cout << " thread-" << b.get_worker()->idx << " mv "<< SanSquares[get_from(out)] + SanSquares[get_to(out)] << std::endl;
+      //std::cout << std::endl;
+      return do_next;
+    }
+  if (select_phase >= PHASE_END) return false;
+  switch (select_phase)
+    {
+    case PHASE_TT:
+      if (use_tt)
 	{
-		// call nextmove from the thread data at this node.
-		//U16 move;
-		//bool do_next = b.get_worker()->currSplitBlock->ms->nextmove(b,out,false);//node->ms->nextmove(b,out,false);
-		//node.sb->split_mutex.lock();
-		bool do_next = node.sb->ms->nextmove(node, out, false);
-		//node.sb->split_mutex.unlock();
-		if (out == MOVE_NONE || !do_next) return false;
-		//else { out = move; return true; }
-		// dbg 
-		//std::cout << std::endl;
-		//std::cout << " ==================== thread- " << b.get_worker()->idx << " ===================== " << std::endl;
-		//std::cout << " dbg all quiets " << std::endl;
-		//int qsz=0;
-		//MoveList * tmp_quiets = b.get_worker()->currSplitBlock->ms->get_quites(qsz);//node->ms->get_quites(qsz);
-		//for (int j=0; j<qsz; ++j) std::cout << " " << SanSquares[get_from(tmp_quiets[j].m)] + SanSquares[get_to(tmp_quiets[j].m)];
-		//std::cout << std::endl;
-
-		//std::cout << " dbg all caps " << std::endl;
-		//int csz=0;
-		//MoveList * tmp_caps = b.get_worker()->currSplitBlock->ms->get_captures(csz);//node->ms->get_captures(csz);
-		//for (int j=0; j<csz; ++j) std::cout << " " << SanSquares[get_from(tmp_caps[j].m)] + SanSquares[get_to(tmp_caps[j].m)];
-		//std::cout << " thread-" << b.get_worker()->idx << " mv "<< SanSquares[get_from(out)] + SanSquares[get_to(out)] << std::endl;
-		//std::cout << std::endl;
-		return do_next;
+	  use_tt = false;
+	  out = ttmv;
 	}
-	if (select_phase >= PHASE_END) return false;
-	switch (select_phase)
+      else out = MOVE_NONE;
+
+      select_phase++;
+      break;
+    case PHASE_KILLER1:
+      out = killers[0];
+      select_phase++;
+      return true;
+    case PHASE_CAPTURE:
+      // the "good" captures (scores >= 0)
+      //printf("cap phase\n");
+      if (captures[c_sz].score >= 0)
 	{
-	case PHASE_TT:
-		if (use_tt)
-		{
-			use_tt = false;
-			out = ttmv;
-		}
-		else out = MOVE_NONE;
-
-		select_phase++;
-		break;
-	case PHASE_KILLER1:
-		out = killers[0];
-		select_phase++;
-		return true;
-	case PHASE_CAPTURE:
-		// the "good" captures (scores >= 0)
-		//printf("cap phase\n");
-		if (captures[c_sz].score >= 0)
-		{
-			//std::cout << " select:" << SanSquares[get_from(captures[c_sz].m)] + SanSquares[get_to(captures[c_sz].m)] << std::endl;
-			out = captures[c_sz].m; c_sz++; return true;
-		}
-		else if (captures[c_sz].score < 0 && captures[c_sz].score >= NINF && captures[c_sz].m != MOVE_NONE)
-		{
-			//std::cout << " select:" << SanSquares[get_from(captures[c_sz].m)] + SanSquares[get_to(captures[c_sz].m)] << std::endl;
-			out = captures[c_sz].m; c_sz++; return true;
-		}
-
-		// if we get here, the previous 2 conditions failed..
-		select_phase++;
-		out = MOVE_NONE;
-		break;
-
-	case PHASE_KILLER2:
-		out = killers[1];
-		select_phase++;
-		return true;
-	case PHASE_QUIET:
-		//printf("quiet phase : qsz = %d\n",q_sz);
-		//std::cout << " select:" << SanSquares[get_from(quiets[q_sz].m)] + SanSquares[get_to(quiets[q_sz].m)] << std::endl;
-		out = quiets[q_sz].m; q_sz++;
-		if (out == MOVE_NONE)
-		{
-			select_phase++;
-			return false;
-		}
-		break;
+	  //std::cout << " select:" << SanSquares[get_from(captures[c_sz].m)] + SanSquares[get_to(captures[c_sz].m)] << std::endl;
+	  out = captures[c_sz].m; c_sz++; return true;
 	}
-	return true;
+      else if (captures[c_sz].score < 0 && captures[c_sz].score >= NINF && captures[c_sz].m != MOVE_NONE)
+	{
+	  //std::cout << " select:" << SanSquares[get_from(captures[c_sz].m)] + SanSquares[get_to(captures[c_sz].m)] << std::endl;
+	  out = captures[c_sz].m; c_sz++; return true;
+	}
+
+      // if we get here, the previous 2 conditions failed..
+      select_phase++;
+      out = MOVE_NONE;
+      break;
+
+    case PHASE_KILLER2:
+      out = killers[1];
+      select_phase++;
+      return true;
+    case PHASE_QUIET:
+      //printf("quiet phase : qsz = %d\n",q_sz);
+      //std::cout << " select:" << SanSquares[get_from(quiets[q_sz].m)] + SanSquares[get_to(quiets[q_sz].m)] << std::endl;
+      out = quiets[q_sz].m; q_sz++;
+      if (out == MOVE_NONE)
+	{
+	  select_phase++;
+	  return false;
+	}
+      break;
+    }
+  return true;
 }
 
 
