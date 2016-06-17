@@ -5,7 +5,7 @@ OS = $(shell uname)
 OSFLAVOR =
 
 USERMACROS = -DNDEBUG -DTHREADED
-CFLAGS = -Wall -O3 -fomit-frame-pointer -fstrict-aliasing -fno-rtti -std=gnu++11 -pthread
+CFLAGS = -Wall -O3 -fomit-frame-pointer -fstrict-aliasing -ffast-math -std=gnu++11 -pthread
 DFLAGS =
 LFLAGS = -lpthread -lrt
 INSTALL = /usr/local/bin

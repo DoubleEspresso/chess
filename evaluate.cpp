@@ -81,6 +81,10 @@ int piece_vals_eg[5] = { PawnValueEG, KnightValueEG, BishopValueEG, RookValueEG,
 // 
 // don't stalemate!
 // 2k5/2P5/N6p/3K3p/1P5P/6P1/8/8 w - - 1 51
+//
+// engine outputs garbage .. and struggles with Bf4 for 7 seconds, before realizing it drops piece
+// r1b1kb1r/1p2q1pp/p2pp2n/1Np1n1N1/4P3/8/PPP1BPPP/R1BQK2R w KQkq - 0 10
+
 namespace
 {
   Clock timer;
