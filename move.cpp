@@ -1,6 +1,7 @@
 #include "move.h"
 #include "board.h"
 #include "magic.h"
+#include "uci.h"
 
 using namespace Globals;
 using namespace Magic;
@@ -508,6 +509,7 @@ MoveList* MoveGenerator::generate_qsearch_caps_checks(Board& b)
   generate_piece_moves(b, PSEUDO_LEGAL);
   unsigned int _sz = last;
   unsigned int iter = 0;
+
   if (_sz > 0)
     {
       U64 pinned = b.pinned();
@@ -525,7 +527,10 @@ MoveList* MoveGenerator::generate_qsearch_caps_checks(Board& b)
 	  else if ((SquareBB[frm] & pinned) && !aligned(ks, frm, to)) legal = 0;
 	  
 	  // qsearch filters
-	  if (legal == 1 && type != CAPTURE && !b.checks_king(list[i].m)) legal = 0;
+	  //if (legal == 1 && b.checks_king(list[i].m)) legal = 1; // not working
+	  if (legal == 1 && type == CAPTURE) legal = 1;
+	  else legal = 0;
+
 	  (legal == 1 ? legal_i[iter++] = i : last--);
 	}
     }

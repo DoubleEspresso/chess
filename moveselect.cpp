@@ -108,7 +108,7 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
       int p = b.piece_on(from);
       int c = b.whos_move();
       
-      int last_to = int((lastmove & 0xfc0) >> 6);
+      //int last_to = int((lastmove & 0xfc0) >> 6);
       //int last_from = int(lastmove & 0x3f);
       
       if (m == killer1 && m != tt_mv) { killers[0] = m; continue; }
@@ -127,7 +127,8 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
 	  score = piece_vals[b.piece_on(to)] - piece_vals[b.piece_on(from)];
 	  //score = b.see_move(m);
 	  if (score <= 0) score = b.see_move(m);
-	  if (score == 0 && b.checks_king(m) && b.is_dangerous(m, p)) score += 25;// piece_vals[b.piece_on(from)];
+	  //if (score == 0 && b.checks_king(m) && b.is_dangerous(m, p)) score += 25;// piece_vals[b.piece_on(from)];
+	  if (b.checks_king(m) && b.is_dangerous(m, p)) score += 25;// piece_vals[b.piece_on(from)];
 	  
 	  // the threat move from null-refutation, bonus if we capture the threatening piece
 	  // was only used if score == 0
@@ -143,24 +144,28 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
 	  //printf("...initial score = %d ", score);
 
 	  // gives bonus for evading being captured
+	  /*
 	  if (b.attackers_of(from) & U64(last_to) )//&& get_to(threat) == get_from(m))//(b.attackers_of(from) & U64(get_to(threat))))//(last_to == from)
 	    {
-	      int diff = (piece_vals[b.piece_on(from)] - piece_vals[b.piece_on(get_to(threat))]);
-	      //b.print();
-	      //printf("..lastmove = %s, this move = %s, diff = %d\n\n", UCI::move_to_string(lastmove).c_str(), UCI::move_to_string(m).c_str(), -diff);
+	      int diff = (piece_vals[b.piece_on(from)] - piece_vals[b.piece_on(last_to)]); // piece is now on "to" square of lastmove
+	      b.print();
+	      printf("..lastmove = %s, this move = %s, diff = %d, piece_on(last_to) = %d\n", UCI::move_to_string(lastmove).c_str(), UCI::move_to_string(m).c_str(), -diff, b.piece_on(last_to));
 	      score += (-diff);//(diff < 0 ? -piece_vals[b.piece_on(from)] : piece_vals[b.piece_on(from)]);
 	    }
+	  */
+
 	  // bonus for avoiding the capture from the threat move (from null search)
 	  //if (threat != MOVE_NONE && get_to(threat) == get_from(m)) { score += piece_vals[b.piece_on(from)]/2; } //threatgain/2; }
 	  
 	  // try to boost those quiet checks which are potentially dangerous
 	  if (score == (NINF - 1) && (b.checks_king(m) && b.is_dangerous(m, p))) score += 25;// piece_vals[b.piece_on(from)];
 	  
-	  // if the score is still 0, check the piece square tables and score the move based on the to-square-from-sq difference...
+	  // if the score is still 0, check the piece square tables and score the move based on the to-square-from-sq difference...	  
 	  if (score == (NINF - 1)) 
 	    {	      	      
 	      score += (square_score(c, p, b.phase(), to) - square_score(c, p, b.phase(), from));
 	    }
+	  
 	  quiets[q_sz++].score = score;
 	  //printf("...final score = %d\n",score);
 	}

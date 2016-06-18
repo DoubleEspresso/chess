@@ -511,6 +511,7 @@ bool Board::checks_king(U16& move)
   undo_move(move);
   return incheck;
 }
+
 bool Board::legal_ep(int frm, int to, int ks, int ec)
 {
   int csq = to + (ec == WHITE ? NORTH : SOUTH);

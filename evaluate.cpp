@@ -84,7 +84,12 @@ int piece_vals_eg[5] = { PawnValueEG, KnightValueEG, BishopValueEG, RookValueEG,
 //
 // engine outputs garbage .. and struggles with Bf4 for 7 seconds, before realizing it drops piece
 // r1b1kb1r/1p2q1pp/p2pp2n/1Np1n1N1/4P3/8/PPP1BPPP/R1BQK2R w KQkq - 0 10
-
+//
+// should find qxd3 for black easily .. does not
+// position fen r2r2k1/p1p2pp1/1pn2n1p/3qp3/2P5/3P1N2/PP3PPP/R1BQR1K1 b - - 0 18
+//
+// should find rd5 as black, rh5 threat
+// 3rr1k1/ppp1bppp/2p5/2P5/3P1Q2/4B1Pq/PP3P1P/2R2RK1 b - - 2 19
 namespace
 {
   Clock timer;
@@ -457,7 +462,6 @@ namespace
     int *sqs = b.sq_of<KNIGHT>(c);
     int them = (c == WHITE ? BLACK : WHITE);
     U64 pinned = (c == WHITE ? ei.w_pinned : ei.b_pinned);
-
 
     for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
       {

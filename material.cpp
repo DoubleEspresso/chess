@@ -11,7 +11,7 @@ namespace
   // phase
   int piece_vals_mg[5] = { PawnValueMG, KnightValueEG, BishopValueMG, RookValueMG, QueenValueMG };
   int piece_vals_eg[5] = { PawnValueEG, KnightValueEG, BishopValueEG, RookValueEG, QueenValueEG };
-
+  
   // weight factors
   //float weights_mg[4] = { 50.00, 1.50, 3.00, 0.50};
   //float weights_eg[4] = { 100.00, 3.00, 1.15, 0.25};
@@ -38,7 +38,7 @@ int MaterialTable::material_value(int piece, int gamephase)
 
 bool MaterialTable::init()
 {
-  int sz_kb = 10*1024;//opts["MaterialHashKB"];
+  int sz_kb = 100*1024;//opts["MaterialHashKB"];
   nb_elts = 1024 * sz_kb / sizeof(MaterialEntry);
 
   nb_elts = nearest_power_of_2(nb_elts);
@@ -110,10 +110,10 @@ MaterialEntry * MaterialTable::get(Board& b)
       float w3 = (phase == MIDDLE_GAME ? weights_mg[2] : weights_eg[2]);
       float w4 = (phase == MIDDLE_GAME ? weights_mg[3] : weights_eg[3]);
 
-      //// corrections
+      // corrections
       float corr = 0.0;
 
-      //// 1. encourage keeping bishop pair
+      // 1. encourage keeping bishop pair
       corr += w1 * piece_diffs[BISHOP];
 
       //// 2. encourage to trade when up material, in endgame, there are fewer pieces by default and
@@ -123,7 +123,7 @@ MaterialEntry * MaterialTable::get(Board& b)
       //	corr += w2 * 1 / piece_count * base;
       //}
 
-      //// 3. rook/queen redundant penalties according GM Larry Kaufman's "principle of the redundancy of major pieces"
+      // 3. rook/queen redundant penalties according GM Larry Kaufman's "principle of the redundancy of major pieces"
       corr -= w3 * (piece_count_w[ROOK] - piece_count_b[ROOK]);
       corr -= w4 * (piece_count_w[QUEEN] - piece_count_b[QUEEN]);
 		

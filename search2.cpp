@@ -142,7 +142,6 @@ namespace
 
     if (UCI_SIGNALS.stop) return DRAW;
 
-
     // 1. -- ttable lookup 
     data = b.data_key();
     key = b.pos_key();
@@ -157,7 +156,7 @@ namespace
 	    stack->currmove = stack->bestmove = e.move;
 	    return e.value;
 	  }
-	else if (e.bound == BOUND_LOW && e.value >= beta && pv_node) return e.value;
+	else if (e.bound == BOUND_LOW && e.value >= beta && pv_node) return e.value; // commented is better for now
 	else if (e.bound == BOUND_HIGH && e.value <= alpha && pv_node) return e.value;
       }
     
@@ -304,7 +303,7 @@ namespace
 	int extension = 0; int reduction = 1; // always reduce current depth by 1
 	if (inCheck) extension += 1; 
 
-	if (depth >= 10 &&
+	if (depth >= 8 &&
 	    !inCheck && !givesCheck && isQuiet &&
 	    move != ttm &&
 	    move != stack->killer1 &&
@@ -329,8 +328,7 @@ namespace
 	    continue;
 	  }
 	
-	// exchange pruning at shallow depths - same thing done in qsearch...		    			
-	
+	// exchange pruning at shallow depths - same thing done in qsearch...		    				
 	if (newdepth <= 1 &&
 	    !inCheck && !givesCheck && !isQuiet && //!pv_node &&
 	    move != ttm &&
@@ -342,7 +340,6 @@ namespace
 	    continue;
 	  }	
 	
-
 	// PVS-type search within a fail-hard framework
 	b.do_move(pd, move);
 	
@@ -367,7 +364,7 @@ namespace
 		!inCheck && !givesCheck &&
 		piece != PAWN &&
 		quiets_searched > 0 &&
-		newdepth > 3)
+		newdepth > 10)
 	      {
 		R += 1;
 		if (quiets_searched > 4) R += 1;
@@ -392,7 +389,7 @@ namespace
 	    return beta;
 	  }
 
-	if (eval > alpha)
+	if (eval > alpha && pv_node)
 	  {
 	    stack->bestmove = move;
 	    alpha = eval;
@@ -413,7 +410,6 @@ namespace
       {
 	alpha = aorig;
 	ttb = BOUND_HIGH;
-	//printf("..store high bound, alpha=%d, eval=%d, beta=%d\n", alpha, eval, beta);
       }
     else if (alpha >= beta)
       {
@@ -461,9 +457,8 @@ namespace
 	//ttstatic_value = e.static_value;
 	ttval = e.value;
 	if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta) return e.value;
-	else if (e.bound == BOUND_LOW && e.value >= beta && pv_node) return e.value;
+	else if (e.bound == BOUND_LOW && e.value >= beta && pv_node) return e.value; // commented is better
 	else if (e.bound == BOUND_HIGH && e.value <= alpha && pv_node ) return e.value;
-
       }
     
     // stand pat lower bound -- tried using static_eval for the stand-pat value, play was weak

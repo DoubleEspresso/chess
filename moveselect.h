@@ -39,11 +39,10 @@ enum SelectPhase { PHASE_TT, PHASE_CAPTURE, PHASE_KILLER1, PHASE_KILLER2, PHASE_
 
 class MoveSelect
 {
-public:
+ public:
  MoveSelect() : c_sz(0), stored_csz(0), q_sz(0), stored_qsz(0), use_tt(0), ttmv(MOVE_NONE), select_phase(PHASE_TT), statistics(0)
     {
-      // slow init, but otherwise valgrind complains about un-inited values...
-      // in theory not a problem (?)
+      // slow init ..
       for (int j = 0; j<MAX_MOVES; ++j)
 	{
 	  captures[j].score = NINF - 1; captures[j].m = MOVE_NONE;
