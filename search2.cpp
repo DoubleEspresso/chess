@@ -367,7 +367,7 @@ namespace
 		newdepth > 10)
 	      {
 		R += 1;
-		//if (quiets_searched > 4) R += 1;
+		if (quiets_searched > 4) R += 1;
 	      }	    
 	    int LMR = newdepth - R;
 	    eval = (LMR <= 1 ? -qsearch<NONPV>(b, -alpha-1, -alpha, LMR, stack + 1, givesCheck) : -search<NONPV>(b, -alpha-1, -alpha, LMR, stack + 1));

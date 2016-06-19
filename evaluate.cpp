@@ -383,7 +383,7 @@ namespace
     // 5. development -- connected rooks, knights/bishops off back rank
 
     // evaluate space
-    //score += (eval_space<WHITE>(b, ei) - eval_space<BLACK>(b, ei));
+    score += (eval_space<WHITE>(b, ei) - eval_space<BLACK>(b, ei));
 
     // evaluate center control
     score += (eval_center<WHITE>(b, ei) - eval_center<BLACK>(b, ei));
@@ -1142,10 +1142,10 @@ namespace
     U64 bigCenter = CenterMaskBB;
 
     U64 pawns = (c == WHITE ? ei.white_pawns : ei.black_pawns);
-    //U64 knights = (c == WHITE ? b.get_pieces(WHITE, KNIGHT) : b.get_pieces(BLACK, KNIGHT));
-    //U64 bishops = (c == WHITE ? b.get_pieces(WHITE, BISHOP) : b.get_pieces(BLACK, BISHOP));
-    //U64 queens = (c == WHITE ? b.get_pieces(WHITE, QUEEN) : b.get_pieces(BLACK, QUEEN));
-    //U64 rooks = (c == WHITE ? b.get_pieces(WHITE, ROOK) : b.get_pieces(BLACK, ROOK));
+    U64 knights = (c == WHITE ? b.get_pieces(WHITE, KNIGHT) : b.get_pieces(BLACK, KNIGHT));
+    U64 bishops = (c == WHITE ? b.get_pieces(WHITE, BISHOP) : b.get_pieces(BLACK, BISHOP));
+    U64 queens = (c == WHITE ? b.get_pieces(WHITE, QUEEN) : b.get_pieces(BLACK, QUEEN));
+    U64 rooks = (c == WHITE ? b.get_pieces(WHITE, ROOK) : b.get_pieces(BLACK, ROOK));
 
     U64 attackers_of_big_center = 0ULL;
     while (bigCenter)
@@ -1164,32 +1164,32 @@ namespace
       }
 
     // knight weight
-    //if (knights)
-    //{
-    //	U64 knight_bm = knights & attackers_of_big_center;
-    //	if (knight_bm) score += 1;// *center_weights[ei.phase][KNIGHT];
-    //}
-
+    if (knights)
+      {
+	U64 knight_bm = knights & attackers_of_big_center;
+    	if (knight_bm) score += count(knight_bm) *center_weights[ei.phase][KNIGHT];
+      }
+    
     //// bishop weight
-    //if (bishops)
-    //{
-    //	U64 bish_bm = bishops & attackers_of_big_center;
-    //	if (bish_bm) score += 1;// *center_weights[ei.phase][BISHOP];
-    //}
-
+    if (bishops)
+      {
+	U64 bish_bm = bishops & attackers_of_big_center;
+    	if (bish_bm) score += count(bish_bm) *center_weights[ei.phase][BISHOP];
+      }
+    
     //// rook weight
-    //if (rooks)
-    //{
-    //	U64 rook_bm = rooks & attackers_of_big_center;
-    //	score += count(rook_bm);// *center_weights[ei.phase][ROOK];
-    //}
-
-    //// queen weight
-    //if (queens)
-    //{
-    //	U64 queen_bm = queens & attackers_of_big_center;
-    //	score += count(queen_bm) * center_weights[ei.phase][QUEEN];
-    //}
+    if (rooks)
+      {
+	U64 rook_bm = rooks & attackers_of_big_center;
+    	score += count(rook_bm) *center_weights[ei.phase][ROOK];
+      }
+    
+    // queen weight
+    if (queens)
+      {
+    	U64 queen_bm = queens & attackers_of_big_center;
+    	score += count(queen_bm) * center_weights[ei.phase][QUEEN];
+      }
 
     // give a small bonus for having pawns in the center (?)
     // this can help opening play avoid odd opening moves
