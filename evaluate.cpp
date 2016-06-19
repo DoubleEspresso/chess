@@ -90,6 +90,26 @@ int piece_vals_eg[5] = { PawnValueEG, KnightValueEG, BishopValueEG, RookValueEG,
 //
 // should find rd5 as black, rh5 threat
 // 3rr1k1/ppp1bppp/2p5/2P5/3P1Q2/4B1Pq/PP3P1P/2R2RK1 b - - 2 19
+// 
+// find nd5 here as white, followed by strong k attack
+// 1r2bbnr/3kpppp/3p1q2/8/2Q5/P1N1B3/1PP2PPP/R4K1R w - - 0 18
+//
+// find qa4+ here as white
+// 1r2bb1r/3kpppp/3p1q1n/8/2Q5/P1N1B3/1PP2PPP/R5KR w - - 2 19
+//
+// find nd5 here (winning) stockfish eval ~4.0
+// 1r2bb1r/3kpppp/3p3q/8/2Q5/P1N5/1PP2PPP/R5KR w - - 0 20
+//
+// find better than c1c3 .. white tries to save a-pawn, drops 2 pieces for rook .. fail. (e5f6, d1e1, d1d3(best))
+// 3rrn2/1pk1p1b1/1pn1bp1p/1B1pP1p1/NB1P4/5N1P/PP3PP1/2RR2K1 w - - 4 18
+//
+// don't capture (or consider capturing) on b5 ... (g2g3 best try to find quickly..)
+// r3kbbr/p3p2p/2pq1n1p/1p1pN3/3P4/P1N5/1PP1QPPP/2K1RB1R w kq - 5 14
+//
+// find something other than rf3 ? loses endgame from this position (b5b6 best?)
+// r3qbk1/1pp2rpp/4p2B/1P2P3/6Q1/pP5R/P4PPP/3R2K1 w - - 1 28
+//
+
 namespace
 {
   Clock timer;

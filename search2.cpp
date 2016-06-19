@@ -156,8 +156,8 @@ namespace
 	    stack->currmove = stack->bestmove = e.move;
 	    return e.value;
 	  }
-	else if (e.bound == BOUND_LOW && e.value >= beta && pv_node) return e.value; // commented is better for now
-	else if (e.bound == BOUND_HIGH && e.value <= alpha && pv_node) return e.value;
+	//else if (e.bound == BOUND_LOW && e.value >= beta && pv_node) return e.value; // commented is better for now
+	//else if (e.bound == BOUND_HIGH && e.value <= alpha && pv_node) return e.value;
       }
     
     // 2. -- mate distance pruning
@@ -367,7 +367,7 @@ namespace
 		newdepth > 10)
 	      {
 		R += 1;
-		if (quiets_searched > 4) R += 1;
+		//if (quiets_searched > 4) R += 1;
 	      }	    
 	    int LMR = newdepth - R;
 	    eval = (LMR <= 1 ? -qsearch<NONPV>(b, -alpha-1, -alpha, LMR, stack + 1, givesCheck) : -search<NONPV>(b, -alpha-1, -alpha, LMR, stack + 1));
@@ -389,7 +389,7 @@ namespace
 	    return beta;
 	  }
 
-	if (eval > alpha && pv_node)
+	if (eval > alpha) // && pv_node)
 	  {
 	    stack->bestmove = move;
 	    alpha = eval;
@@ -457,8 +457,8 @@ namespace
 	//ttstatic_value = e.static_value;
 	ttval = e.value;
 	if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta) return e.value;
-	else if (e.bound == BOUND_LOW && e.value >= beta && pv_node) return e.value; // commented is better
-	else if (e.bound == BOUND_HIGH && e.value <= alpha && pv_node ) return e.value;
+	//else if (e.bound == BOUND_LOW && e.value >= beta && pv_node) return e.value; // commented is better
+	//else if (e.bound == BOUND_HIGH && e.value <= alpha && pv_node ) return e.value;
       }
     
     // stand pat lower bound -- tried using static_eval for the stand-pat value, play was weak
@@ -488,42 +488,29 @@ namespace
 	if (move == MOVE_NONE) continue;
 	
 	// move data
-	//int piece = b.piece_on(get_from(move));
+	int piece = b.piece_on(get_from(move));
 	bool givesCheck = b.checks_king(move); // working ok
 	bool isQuiet =  b.is_quiet(move); // evasions
 
 	// prune evasions
 	bool canPrune =  (inCheck && !givesCheck && isQuiet &&
-			  move != ttm && !pv_node);// continue;
-	if (canPrune) continue;
+			  move != ttm && !pv_node);
+	//if (canPrune) continue;
 	
-	// futility pruning	       
-	/*
-	  int fv = 350;
-	  if (!givesCheck && !inCheck && 
-	  move != ttm && !pv_node &&
-	  piece != PAWN && )
-	  //eval - material.material_value(b.piece_on(get_to(move)), END_GAME ) >= beta)
-	  // eval + fv >= beta)
+	// futility pruning --continue if we are winning	
+	if (!givesCheck && !inCheck && 
+	    move != ttm && !pv_node &&
+	    piece != PAWN && 	      
+	    eval + material.material_value(b.piece_on(get_to(move)), END_GAME ) >= beta &&
+	    b.see_move(move) >= 0)
 	  {
-	  printf("%d %d %d", alpha, beta, eval);
-	  b.print();
-	  eval = alpha - fv;
-	  continue;*/
-	/*
-	  int v = fv + material.material_value(b.piece_on(get_to(move)), END_GAME );	    
-	  if (v < beta)
-	  {
-	  eval = (v > fv ? v : fv);
-	  continue;
-	  }	    
-	  if (fv < beta && b.see_move(move) <= 0)
-	  {
-	  eval = (eval > beta ? eval : beta);
-	  continue;
-	  }	    
-	*/
-	//}	
+	    //printf("%d %d %d", alpha, beta, eval);
+	    //b.print();
+	    //eval = alpha - fv;
+	    //continue;	      
+	    eval += material.material_value(b.piece_on(get_to(move)), END_GAME );
+	    continue;
+	  }	
 	
 	// prune captures which have see values <= 0	  
 	if ( (!inCheck || canPrune) &&

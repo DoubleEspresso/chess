@@ -38,18 +38,19 @@ void MoveStats::update(U16& m, U16& last, Node* stack, int d, int c, U16 * quiet
       if (type == QUIET) history[c = WHITE ? BLACK : WHITE][f][t] -= pow(2, d); 
     }
   // reduce all other quiets -- do not uncomment -- see : position fen 1rb2rk1/5ppp/p2p4/2pP4/B3Q3/3P4/PqP2P1P/R4R1K w - - 2 19   
-  //if (quiets)
-  //{
-  // for (int j = 0; U16 mv = quiets[j]; ++j)
-  // {
-  //  if (m == mv) continue;
-  //  else if (mv == MOVE_NONE) break;
-  //  int f = get_from(mv);
-  //  int t = get_to(mv);
-  //  history[c][f][t] -= pow(2, d);
-  // }
-  //}
-
+  /*
+  if (quiets)
+    {
+      for (int j = 0; U16 mv = quiets[j]; ++j)
+	{
+	  if (m == mv) continue;
+	  else if (mv == MOVE_NONE) break;
+	  int f = get_from(mv);
+	  int t = get_to(mv);
+	  history[c][f][t] -= pow(2, d);
+	}
+    }
+  */
   // update the stack killers
   if (type == QUIET && m != stack->killer1) { stack->killer2 = stack->killer1; stack->killer1 = m; }
 }
@@ -158,14 +159,14 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
 	  //if (threat != MOVE_NONE && get_to(threat) == get_from(m)) { score += piece_vals[b.piece_on(from)]/2; } //threatgain/2; }
 	  
 	  // try to boost those quiet checks which are potentially dangerous
-	  if (score == (NINF - 1) && (b.checks_king(m) && b.is_dangerous(m, p))) score += 25;// piece_vals[b.piece_on(from)];
-	  
-	  // if the score is still 0, check the piece square tables and score the move based on the to-square-from-sq difference...	  
-	  if (score == (NINF - 1)) 
+	  //if (score == (NINF - 1) && (b.checks_king(m) && b.is_dangerous(m, p))) score += 25;// piece_vals[b.piece_on(from)];
+	  //if ((b.checks_king(m) && b.is_dangerous(m, p))) score += 25;// piece_vals[b.piece_on(from)];
+	  /*	  
+	  if (score <= (NINF - 1)) 
 	    {	      	      
 	      score += (square_score(c, p, b.phase(), to) - square_score(c, p, b.phase(), from));
 	    }
-	  
+	  */
 	  quiets[q_sz++].score = score;
 	  //printf("...final score = %d\n",score);
 	}
@@ -180,16 +181,12 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
   if (q_sz > 1) std::sort(quiets, quiets + q_sz, GreaterThan);
   if (c_sz > 1) std::sort(captures, captures + c_sz, GreaterThan);
   
-  // NB. really need a better system here...this is terrible, it assumes the user
-  // will use nextmove always after "load"...it's very fragile..and, on top of that, the 
-  // init routine takes a lot of time to zero the move-list arrays.
   stored_qsz = q_sz;
   stored_csz = c_sz;
   q_sz = 0;
   c_sz = 0;
   
-  // debug move ordering
-  
+  // debug move   
   //printf("---------------------------------\n");
   //b.print();
   //print_list();
@@ -245,28 +242,28 @@ bool MoveSelect::nextmove(Node& node, U16& out, bool split)
 	  out = ttmv;
 	}
       else out = MOVE_NONE;
-
       select_phase++;
       break;
+
     case PHASE_KILLER1:
       out = killers[0];
       select_phase++;
       return true;
-    case PHASE_CAPTURE:
-      // the "good" captures (scores >= 0)
-      //printf("cap phase\n");
-      if (captures[c_sz].score >= 0)
-	{
-	  //std::cout << " select:" << SanSquares[get_from(captures[c_sz].m)] + SanSquares[get_to(captures[c_sz].m)] << std::endl;
-	  out = captures[c_sz].m; c_sz++; return true;
-	}
-      else if (captures[c_sz].score < 0 && captures[c_sz].score >= NINF && captures[c_sz].m != MOVE_NONE)
-	{
-	  //std::cout << " select:" << SanSquares[get_from(captures[c_sz].m)] + SanSquares[get_to(captures[c_sz].m)] << std::endl;
-	  out = captures[c_sz].m; c_sz++; return true;
-	}
 
-      // if we get here, the previous 2 conditions failed..
+    case PHASE_CAPTURE_GOOD:
+      if (captures[c_sz].score > 0)
+	{
+	  out = captures[c_sz].m; c_sz++; return true;
+	}
+      select_phase++;
+      out = MOVE_NONE;
+      break;
+            
+    case PHASE_CAPTURE_BAD:
+      if (captures[c_sz].score <= 0 && captures[c_sz].score >= NINF && captures[c_sz].m != MOVE_NONE)
+	{
+	  out = captures[c_sz].m; c_sz++; return true;
+	}            
       select_phase++;
       out = MOVE_NONE;
       break;
@@ -275,9 +272,8 @@ bool MoveSelect::nextmove(Node& node, U16& out, bool split)
       out = killers[1];
       select_phase++;
       return true;
+
     case PHASE_QUIET:
-      //printf("quiet phase : qsz = %d\n",q_sz);
-      //std::cout << " select:" << SanSquares[get_from(quiets[q_sz].m)] + SanSquares[get_to(quiets[q_sz].m)] << std::endl;
       out = quiets[q_sz].m; q_sz++;
       if (out == MOVE_NONE)
 	{
