@@ -176,7 +176,8 @@ namespace
 	if (e.bound == BOUND_EXACT && pv_node) return e.value;
 	else if (e.bound == BOUND_LOW && pv_node) 
 	  {
-	    if (e.value >= beta && !b.in_check()) statistics.update(ttm, lastmove, stack, depth, b.whos_move(), quiets);
+	    if (e.value >= beta && !b.in_check()) 
+	      statistics.update(ttm, lastmove, stack, depth, b.whos_move(), quiets);
 	    return e.value; 
 	  }
 	else if (e.bound == BOUND_HIGH && pv_node) return e.value;
@@ -196,8 +197,6 @@ namespace
 	alpha = mated_val;
 	if (beta <= mated_val) return mated_val;
       }
-    //if (alpha >= beta) return mated_val;
-    
 
     // 3. -- static evaluation of position    
     int static_eval = (ttvalue > NINF ? ttvalue : ttstatic_value > NINF ? ttstatic_value : Eval::evaluate(b));
@@ -207,7 +206,7 @@ namespace
     if (depth <= 4 &&
 	!pv_node && ttm == MOVE_NONE &&
 	!stack->isNullSearch &&
-	static_eval + 600 <= alpha &&
+	static_eval + 650 <= alpha &&
 	!b.in_check() &&
 	!b.pawn_on_7(b.whos_move()))
       {
@@ -256,14 +255,14 @@ namespace
       }
 
     // 7. -- probcut from stockfish
-    /*
+    
     if (!pv_node && 
-	depth >= 500 && !b.in_check() &&
+	depth >= 400 && !b.in_check() &&
 	!stack->isNullSearch)
       {
 	BoardData pd;
 	MoveSelect ms; // slow initialization method
-	MoveGenerator mvs(b, LEGAL);
+	MoveGenerator mvs(b, CAPTURE);
 	U16 move; 
 	int rbeta = beta + 200;
 	int rdepth = depth - 4;
@@ -276,12 +275,11 @@ namespace
 	    b.undo_move(move);
 	    if (eval >= rbeta)
 	      {
-		//printf("..probcut prune\n");
-		return beta; // fail hard.
+		return eval; // fail soft
 	      }
 	  }
       }
-    */
+    
     
     // 7. -- internal iterative deepening
     if (ttm == MOVE_NONE &&
@@ -347,7 +345,7 @@ namespace
 	    move != stack->killer1 &&
 	    move != stack->killer2 &&
 	    !inCheck && !givesCheck && isQuiet && !pv_node &&
-	    besteval < alpha && 
+	    besteval + 650 < alpha && 
 	    besteval > NINF + stack->ply )
 	  {
 	    continue;
@@ -372,45 +370,50 @@ namespace
 	stack->currmove = move;
 	stack->givescheck = givesCheck;
 	
-	// idea : perform full window PV searches until we raise alpha, 
-	// then null window NONPV searches, unless we raise alpha again
-	if (pvMove)
+	bool fulldepthSearch = false;
+	if (!pvMove &&
+	    move != ttm && 
+	    move != stack->killer1 &&
+	    move != stack->killer2 &&
+	    newdepth >= 8)
 	  {
-	    eval = (newdepth <= 1 ? -qsearch<PV>(b, -beta, -alpha, newdepth, stack + 1, givesCheck) : -search<PV>(b, -beta, -alpha, newdepth, stack + 1));
-	  }
-	else
-	  {
-	    pvMove = false;
-	    // LMR 
 	    int R = 0;
-	    if (move != ttm &&
-		move != stack->killer1 &&
-		move != stack->killer2 &&
-		!inCheck && !givesCheck &&
+	    if (!inCheck && !givesCheck &&
 		piece != PAWN &&
-		quiets_searched > 0 &&
-		newdepth > 10)
+		isQuiet && !pv_node)
 	      {
-		R += 1;
-		if (quiets_searched > 4) R += 1;
-	      }	    
+		if (!pv_node) 
+		  {
+		    R += 1;
+		    if (besteval + 650 < alpha) R += 1;
+		  }
+	      }
+
+	    // history pruning
+	    int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];
+	    if (v <= (NINF - 1) ) R += 1;
+
 	    int LMR = newdepth - R;
 	    eval = (LMR <= 1 ? -qsearch<NONPV>(b, -alpha-1, -alpha, LMR, stack + 1, givesCheck) : -search<NONPV>(b, -alpha-1, -alpha, LMR, stack + 1));
+
+	    if (eval > alpha) fulldepthSearch = true;
 	  }
-	if (!pvMove && (eval > alpha && eval < beta))
+	else fulldepthSearch = !pvMove;
+
+	if (fulldepthSearch)
+	  {
+	    eval = (newdepth <= 1 ? -qsearch<NONPV>(b, -alpha-1, -alpha, newdepth, stack + 1, givesCheck) : -search<NONPV>(b, -alpha-1, -alpha, newdepth, stack + 1));
+	  }
+
+	
+	if (pvMove || (eval > alpha && eval < beta))
 	  {
 	    eval = (newdepth <= 1 ? -qsearch<PV>(b, -beta, -alpha, newdepth, stack + 1, givesCheck) : -search<PV>(b, -beta, -alpha, newdepth, stack + 1));
-	  }
+	  }	
 	
 	b.undo_move(move);
 	moves_searched++;
 	if (UCI_SIGNALS.stop) return DRAW;
-
-	if (isQuiet && quiets_searched < MAXDEPTH - 1)
-	  {
-	    quiets[quiets_searched++] = move;
-	    quiets[quiets_searched] = MOVE_NONE;
-	  }
 	
 	// record move scores/evals
 	if (eval > besteval)
@@ -428,6 +431,11 @@ namespace
 		  }
 		else if (eval >= beta)
 		  {
+		    if (isQuiet && quiets_searched < MAXDEPTH - 1)
+		      {
+			quiets[quiets_searched++] = move;
+			quiets[quiets_searched] = MOVE_NONE;
+		      }
 		    break;
 		  }		
 	      }
@@ -441,7 +449,7 @@ namespace
       }
     */
     if (besteval >= beta && !b.in_check()) statistics.update(move, lastmove, stack, depth, b.whos_move(), quiets);
-
+    
     // ttable updates
     Bound ttb = BOUND_NONE;
     if (pv_node && bestmove != MOVE_NONE) ttb = BOUND_EXACT;// && besteval < beta && besteval > alpha) ttb = BOUND_EXACT;
@@ -536,10 +544,6 @@ namespace
 	    besteval + material.material_value(b.piece_on(get_to(move)), END_GAME ) >= beta &&
 	    b.see_move(move) >= 0)
 	  {
-	    //printf("%d %d %d", alpha, beta, eval);
-	    //b.print();
-	    //eval = alpha - fv;
-	    //continue;	      
 	    eval += material.material_value(b.piece_on(get_to(move)), END_GAME );
 	    continue;
 	  }	
