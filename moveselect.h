@@ -13,6 +13,7 @@ struct Node;
 struct MoveStats
 {
   int history[2][SQUARES][SQUARES];
+  U16 countermoves[SQUARES][SQUARES];
   U16 killers[2];
   U16 refutation;
   void update(U16& m, U16& last, Node* stack, int d, int c, U16* quiets);
@@ -29,7 +30,11 @@ struct MoveStats
       for (int i = 0; i < SQUARES; ++i)
 	for (int j = 0; j < SQUARES; ++j)
 	  history[c][i][j] = NINF - 1;
-    
+
+    for (int s1 =0; s1 < SQUARES; ++s1)
+      for (int s2 =0; s2 < SQUARES; ++s2)
+	countermoves[s1][s2] = MOVE_NONE;
+
     memset(killers, 0, 2 * sizeof(U16));
     refutation = MOVE_NONE;
   }

@@ -27,7 +27,10 @@ void MoveStats::update(U16& m, U16& last, Node* stack, int d, int c, U16 * quiet
   int f = get_from(m);
   int t = get_to(m);
   int type = int((m & 0xf000) >> 12);
-  if (type == QUIET) history[c][f][t] += pow(2, d);
+  if (type == QUIET) 
+    {
+      history[c][f][t] += pow(2, d);
+    }
 
   // if we get here, eval >= beta, so last move is most likely a blunder, reduce the history score of it
   if (last != MOVE_NONE)
@@ -35,10 +38,13 @@ void MoveStats::update(U16& m, U16& last, Node* stack, int d, int c, U16 * quiet
       int f = get_from(last);
       int t = get_to(last);
       int type = int((last & 0xf000) >> 12);
-      if (type == QUIET) history[c = WHITE ? BLACK : WHITE][f][t] -= pow(2, d); 
+      if (type == QUIET) 
+	{
+	  history[c = WHITE ? BLACK : WHITE][f][t] -= pow(2, d); 
+	  countermoves[f][t] = m;
+	}
     }
-  // reduce all other quiets -- do not uncomment -- see : position fen 1rb2rk1/5ppp/p2p4/2pP4/B3Q3/3P4/PqP2P1P/R4R1K w - - 2 19   
-  /*
+  
   if (quiets)
     {
       for (int j = 0; U16 mv = quiets[j]; ++j)
@@ -50,7 +56,7 @@ void MoveStats::update(U16& m, U16& last, Node* stack, int d, int c, U16 * quiet
 	  history[c][f][t] -= pow(2, d);
 	}
     }
-  */
+  
   // update the stack killers
   if (type == QUIET && m != stack->killer1) { stack->killer2 = stack->killer1; stack->killer1 = m; }
 }
@@ -126,10 +132,8 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
 	    }
 	  
 	  score = piece_vals[b.piece_on(to)] - piece_vals[b.piece_on(from)];
-	  //score = b.see_move(m);
 	  if (score <= 0) score = b.see_move(m);
-	  //if (score == 0 && b.checks_king(m) && b.is_dangerous(m, p)) score += 25;// piece_vals[b.piece_on(from)];
-	  if (b.checks_king(m) && b.is_dangerous(m, p)) score += 25;// piece_vals[b.piece_on(from)];
+	  //if (b.checks_king(m) && b.is_dangerous(m, p)) score += 25;// piece_vals[b.piece_on(from)];
 	  
 	  // the threat move from null-refutation, bonus if we capture the threatening piece
 	  // was only used if score == 0
@@ -143,31 +147,18 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
 	  quiets[q_sz].m = m;
 	  int score = statistics->score(m, b.whos_move());
 	  //printf("...initial score = %d ", score);
-
-	  // gives bonus for evading being captured
-	  /*
-	  if (b.attackers_of(from) & U64(last_to) )//&& get_to(threat) == get_from(m))//(b.attackers_of(from) & U64(get_to(threat))))//(last_to == from)
-	    {
-	      int diff = (piece_vals[b.piece_on(from)] - piece_vals[b.piece_on(last_to)]); // piece is now on "to" square of lastmove
-	      b.print();
-	      printf("..lastmove = %s, this move = %s, diff = %d, piece_on(last_to) = %d\n", UCI::move_to_string(lastmove).c_str(), UCI::move_to_string(m).c_str(), -diff, b.piece_on(last_to));
-	      score += (-diff);//(diff < 0 ? -piece_vals[b.piece_on(from)] : piece_vals[b.piece_on(from)]);
-	    }
-	  */
-
-	  // bonus for avoiding the capture from the threat move (from null search)
-	  //if (threat != MOVE_NONE && get_to(threat) == get_from(m)) { score += piece_vals[b.piece_on(from)]/2; } //threatgain/2; }
+	 	
+	  if (lastmove != MOVE_NONE && 
+	      m == statistics->countermoves[get_from(lastmove)][get_to(lastmove)]) score += 25; // countermove bonus ... ?
 	  
-	  // try to boost those quiet checks which are potentially dangerous
-	  //if (score == (NINF - 1) && (b.checks_king(m) && b.is_dangerous(m, p))) score += 25;// piece_vals[b.piece_on(from)];
-	  //if ((b.checks_king(m) && b.is_dangerous(m, p))) score += 25;// piece_vals[b.piece_on(from)];
-	  /*	  
+	  //if (b.checks_king(m) && b.is_dangerous(m, p)) score += 25;// piece_vals[b.piece_on(from)];
+	  
 	  if (score <= (NINF - 1)) 
 	    {	      	      
 	      score += (square_score(c, p, b.phase(), to) - square_score(c, p, b.phase(), from));
 	    }
-	  */
-	  quiets[q_sz++].score = score;
+	  
+	  quiets[q_sz].score = score; q_sz++;
 	  //printf("...final score = %d\n",score);
 	}
       else if (m == tt_mv && m != MOVE_NONE)

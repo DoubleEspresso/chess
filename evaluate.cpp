@@ -91,7 +91,7 @@ int piece_vals_eg[5] = { PawnValueEG, KnightValueEG, BishopValueEG, RookValueEG,
 // should find rd5 as black, rh5 threat
 // 3rr1k1/ppp1bppp/2p5/2P5/3P1Q2/4B1Pq/PP3P1P/2R2RK1 b - - 2 19
 // 
-// find nd5 here as white, followed by strong k attack
+// find nd5 (qa4) here as white, followed by strong k attack
 // 1r2bbnr/3kpppp/3p1q2/8/2Q5/P1N1B3/1PP2PPP/R4K1R w - - 0 18
 //
 // find qa4+ here as white
@@ -259,7 +259,7 @@ namespace
   // rook specific	 
   //int doubled_rook_bonus[2] = { 10,16 };
   //int open_file_bonus[2] = { 3, 6 };// { 10, 16 };
-  //int rank7_bonus[2] = { 10,16 };
+  //int rank7_bonus[2] = { 4, 8 };
 
 
   int eval(Board& b);
@@ -383,7 +383,7 @@ namespace
     // 5. development -- connected rooks, knights/bishops off back rank
 
     // evaluate space
-    score += (eval_space<WHITE>(b, ei) - eval_space<BLACK>(b, ei));
+    //score += (eval_space<WHITE>(b, ei) - eval_space<BLACK>(b, ei));
 
     // evaluate center control
     score += (eval_center<WHITE>(b, ei) - eval_center<BLACK>(b, ei));
@@ -401,20 +401,6 @@ namespace
 
     return b.whos_move() == WHITE ? score : -score;
   }
-
-  // dbg material eval
-  /*  int eval_material(Board& b, EvalInfo& ei)
-  {
-    int base = 0;
-    int phase = b.phase();
-
-    int * piece_diffs = b.piece_deltas();
-    for (int pt = 0; pt < PIECES - 1; ++pt) base += (phase == MIDDLE_GAME ? piece_vals_mg[pt] : piece_vals_eg[pt]) * piece_diffs[pt]; // already symmetical
-
-    // material adjustments here.
-
-    return base;
-    }*/
 
   // piece square tables range from (-10,10) for each piece, if each piece
   // is at its "best" square we could have an adjustment ~160 ...  best to trace this score
@@ -629,7 +615,7 @@ namespace
 
 	// does the position favor a bishop? -- does allow a "bad" bishop to get a bonus somtimes, look
 	// at white bishop here (8/8/1pp4b/8/3Pk3/4P3/1B1K4/8), it gets the bonus below, and shouldn't.
-	if (center_nb <= 2 ) score += score += (ei.phase == MIDDLE_GAME ? 4 : 6);
+	if (center_nb <= 2 ) score += (ei.phase == MIDDLE_GAME ? 4 : 6);
 
 	// color penalties -- too few targets -- in endgame, should not penalize for attacking any nb of pawns!
 	if (light_bishop && (enemy_wsq_pawns <= 2))  score -= (ei.phase == MIDDLE_GAME ? 2 : 4);
@@ -680,6 +666,7 @@ namespace
 
     // pinned info/ attacker info
     U64 enemy_pawns = (c == WHITE ? ei.black_pawns : ei.white_pawns);
+    U64 our_pawns = (c == WHITE ? ei.white_pawns : ei.black_pawns);
     U64 enemy_knights = (c == WHITE ? b.get_pieces(BLACK, KNIGHT) : b.get_pieces(WHITE, KNIGHT));
     U64 enemy_bishops = (c == WHITE ? b.get_pieces(BLACK, BISHOP) : b.get_pieces(WHITE, BISHOP));
     U64 pawns = (ei.white_pawns | ei.black_pawns);
@@ -722,10 +709,12 @@ namespace
 
 	// open file bonus for the rook
 	U64 file_closed = ColBB[COL(from)] & pawns;
-	if (!file_closed) score += 1;//int(open_file_bonus[ei.phase]); 
+	if (!file_closed) score += 1; //int(open_file_bonus[ei.phase]); 
 
+	U64 file_semi_closed =  ColBB[COL(from)] & our_pawns;
+	if (!file_semi_closed) score += 1; //int(open_file_bonus[ei.phase])/2;
 
-	if (SquareBB[from] & rank7) score += 1;//int(rank7_bonus[ei.phase]); 
+	if (SquareBB[from] & rank7) score += 1; //int(rank7_bonus[ei.phase]); 
 
 
 	U64 king_threats = mvs & KingSafetyBB[them][(them == BLACK ? ei.black_ks : ei.white_ks)];
@@ -1142,11 +1131,12 @@ namespace
     U64 bigCenter = CenterMaskBB;
 
     U64 pawns = (c == WHITE ? ei.white_pawns : ei.black_pawns);
+    
     U64 knights = (c == WHITE ? b.get_pieces(WHITE, KNIGHT) : b.get_pieces(BLACK, KNIGHT));
     U64 bishops = (c == WHITE ? b.get_pieces(WHITE, BISHOP) : b.get_pieces(BLACK, BISHOP));
     U64 queens = (c == WHITE ? b.get_pieces(WHITE, QUEEN) : b.get_pieces(BLACK, QUEEN));
     U64 rooks = (c == WHITE ? b.get_pieces(WHITE, ROOK) : b.get_pieces(BLACK, ROOK));
-
+    
     U64 attackers_of_big_center = 0ULL;
     while (bigCenter)
       {
@@ -1162,35 +1152,35 @@ namespace
 	U64 pawn_bm = pawns & attackers_of_big_center;
 	if (pawn_bm) score += count(pawn_bm) * center_weights[ei.phase][PAWN];
       }
-
+    
     // knight weight
     if (knights)
       {
 	U64 knight_bm = knights & attackers_of_big_center;
-    	if (knight_bm) score += count(knight_bm) *center_weights[ei.phase][KNIGHT];
+    	if (knight_bm) score += count(knight_bm);// *center_weights[ei.phase][KNIGHT];
       }
     
     //// bishop weight
     if (bishops)
       {
 	U64 bish_bm = bishops & attackers_of_big_center;
-    	if (bish_bm) score += count(bish_bm) *center_weights[ei.phase][BISHOP];
+    	if (bish_bm) score += count(bish_bm);// *center_weights[ei.phase][BISHOP];
       }
     
     //// rook weight
     if (rooks)
       {
 	U64 rook_bm = rooks & attackers_of_big_center;
-    	score += count(rook_bm) *center_weights[ei.phase][ROOK];
+    	score += count(rook_bm);// *center_weights[ei.phase][ROOK];
       }
     
     // queen weight
     if (queens)
       {
     	U64 queen_bm = queens & attackers_of_big_center;
-    	score += count(queen_bm) * center_weights[ei.phase][QUEEN];
+    	score += count(queen_bm);// * center_weights[ei.phase][QUEEN];
       }
-
+    
     // give a small bonus for having pawns in the center (?)
     // this can help opening play avoid odd opening moves
     U64 small_center_pawns = pawns & CenterMaskBB;
