@@ -10,12 +10,18 @@
 #include "material.h"
 #include "hashtable.h"
 #include "threads.h"
+#include "opts.h"
 
 void parse_args(int argc, char ** argv);
 
 int main(int argc, char ** argv)
 {
   Info::BuildInfo::greeting();
+
+  if (!opts.load())
+    {
+      printf("..failed to load ini file [hedwig.ini]\n");      
+    }
   
   if (!Globals::init())
     {
