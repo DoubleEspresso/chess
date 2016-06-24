@@ -109,7 +109,11 @@ int piece_vals_eg[5] = { PawnValueEG, KnightValueEG, BishopValueEG, RookValueEG,
 // find something other than rf3 ? loses endgame from this position (b5b6 best?)
 // r3qbk1/1pp2rpp/4p2B/1P2P3/6Q1/pP5R/P4PPP/3R2K1 w - - 1 28
 //
-
+// find qd1 here? qf3 loses pretty quickly (qg5 followed by attack at c2)
+// r1bqkb1r/ppp2p1p/2n3p1/3np1NQ/2B5/8/PPPP1PPP/RNB1K2R w KQkq - 0 7
+// 
+// find c6 here..stop trading queens in attacking positions..
+// r2k1b1r/ppp2Q1p/6p1/3Bp1q1/3n4/5PP1/PPbP3P/RNB1K2R b - - 1 13
 namespace
 {
   Clock timer;
@@ -167,7 +171,6 @@ namespace
   };
 
   // losing control of the center is roughly 1 pawn worth in material ..
-
   int center_weights[2][5] =
     {
       // pawn, knight, bishop, rook, queen
@@ -202,24 +205,6 @@ namespace
 	{ 1, 1, 1, 2, 3, 11 },    // queen attcks eg
       }
     };
-  //{
-  //	{
-  //		// pawn, knight, bishop, rook, queen, king
-  //		{ 2, 16, 25, 35, 60, 90 },  // pawn attcks mg
-  //		{ 4,  8, 16, 30, 60, 90 },  // knight attcks mg
-  //		{ 4, 8, 16, 30, 60, 90 },   // bishop attcks mg
-  //		{ 2, 3, 5, 15, 60, 90 },    // rook attcks mg
-  //		{ 2, 2, 3, 15, 60, 100 },    // queen attcks mg
-  //	},
-  //	{
-  //		{ 4, 18, 27, 37, 63, 96 },  // pawn attcks eg
-  //		{ 6,  8, 16, 40, 64, 96 },  // knight attcks eg
-  //		{ 6, 8, 16, 40, 64, 96 },   // bishop attcks eg
-  //		{ 6, 5, 8, 20, 64, 96 },    // rook attcks eg
-  //		{ 6, 5, 8, 20, 64, 106 },    // queen attcks eg
-  //	}
-  //};
-
   /*
   int mobility_weights[2][6] =
     {
@@ -338,8 +323,10 @@ namespace
     ei.w_pinned = b.pinned(WHITE);
     ei.b_pinned = b.pinned(BLACK);
 
+
     if (ei.do_trace)
       {
+	pawnTable.debug(*ei.pe);
 	ei.s.tempo_sc[WHITE] = (ei.stm == WHITE ? ei.tempoBonus : 0);
 	ei.s.tempo_sc[BLACK] = (ei.stm == BLACK ? ei.tempoBonus : 0);
 	ei.s.material_sc = ei.me->value;
@@ -529,8 +516,8 @@ namespace
 
 
 	// evaluate the connected-ness of this piece (how many friendly pieces attack it)
-	U64 connected = b.attackers_of(from) & (c == WHITE ? ei.white_pieces : ei.black_pieces);
-	score += count(connected); //connected_weights[ei.phase][KNIGHT]
+	//U64 connected = b.attackers_of(from) & (c == WHITE ? ei.white_pieces : ei.black_pieces);
+	//score += count(connected); //connected_weights[ei.phase][KNIGHT]
       }
 
     if (ei.do_trace)
@@ -581,6 +568,7 @@ namespace
 	  U64 mobility = mvs & ei.empty;
 
 	  // remove sqs attacked by enemy pawns
+	  
 	  U64 tmp = ei.pe->attacks[them];
 	  if (tmp)
 	    {
@@ -637,8 +625,8 @@ namespace
 
 	// connected-ness of this piece (how many friendly pieces attack it)
 	// needs to be weighted by game phase (attacking pawns in endgame is good!)
-	U64 connected = b.attackers_of(from) & (c == WHITE ? ei.white_pieces : ei.black_pieces);
-	score += count(connected);// connected_weights[ei.phase][BISHOP]
+	//U64 connected = b.attackers_of(from) & (c == WHITE ? ei.white_pieces : ei.black_pieces);
+	//score += count(connected);// connected_weights[ei.phase][BISHOP]
       }
 
     // light + dark square bishop bonus
@@ -712,9 +700,9 @@ namespace
 	if (!file_closed) score += 1; //int(open_file_bonus[ei.phase]); 
 
 	U64 file_semi_closed =  ColBB[COL(from)] & our_pawns;
-	if (!file_semi_closed) score += 1; //int(open_file_bonus[ei.phase])/2;
+	if (!file_semi_closed) score += 2; //int(open_file_bonus[ei.phase])/2;
 
-	if (SquareBB[from] & rank7) score += 1; //int(rank7_bonus[ei.phase]); 
+	if (SquareBB[from] & rank7) score += 2; //int(rank7_bonus[ei.phase]); 
 
 
 	U64 king_threats = mvs & KingSafetyBB[them][(them == BLACK ? ei.black_ks : ei.white_ks)];
@@ -722,8 +710,8 @@ namespace
 
 	// evaluate the connected-ness of this piece (how many friendly pieces attack it)
 	// needs to be weighted by game phase (attacking pawns in endgame is good!)
-	U64 connected = b.attackers_of(from) & (c == WHITE ? ei.white_pieces : ei.black_pieces);
-	score += count(connected); //connected_weights[ei.phase][ROOK]
+	//U64 connected = b.attackers_of(from) & (c == WHITE ? ei.white_pieces : ei.black_pieces);
+	//score += count(connected); //connected_weights[ei.phase][ROOK]
       }
     if (ei.do_trace)
       {
@@ -794,8 +782,8 @@ namespace
 
 	// evaluate the connected-ness of this piece (how many friendly pieces attack it)
 	// needs to be weighted by game phase (attacking pawns in endgame is good!)
-	U64 connected = b.attackers_of(from) & (c == WHITE ? ei.white_pieces : ei.black_pieces);
-	score += count(connected); //connected_weights[ei.phase][QUEEN]
+	//U64 connected = b.attackers_of(from) & (c == WHITE ? ei.white_pieces : ei.black_pieces);
+	//score += count(connected); //connected_weights[ei.phase][QUEEN]
       }
 
     if (ei.do_trace)
@@ -1001,17 +989,11 @@ namespace
       (undefended_pawns & backward_pawns) |
       (undefended_pawns & isolated_pawns) |
       (undefended_pawns & passed_pawns) |
-      (undefended_pawns & center_pawns) |
-      (undefended_pawns & chain_bases);
-    //U64 pawn_targets[3] = { isolated_pawns, doubled_pawns, undefended_pawns};
-
-    //for (int j = 0; U64 target = pawn_targets[j]; ++j)
-    //{
-
-    //if (ei.do_trace) { printf("%s target\n", c == WHITE ? "white" : "black"); Array::print(target); }
+      (undefended_pawns & center_pawns) | 
+      (undefended_pawns & chain_bases); 
 
     // note: attack_weights for piece attacks pawn are all <= 4 so this adjustment
-    // should be small (in theory).
+    // should be small
     if (pawn_targets)
       while (pawn_targets)
 	{
@@ -1035,8 +1017,6 @@ namespace
 	  tmp = (attackers & rooks);
 	  if (tmp) score += count(tmp) *attack_weights[ei.phase][ROOK][PAWN];
 	}
-    //}		
-
 
     // evaluate checks to enemy king (if any)
     U64 king_attackers = b.attackers_of(enemy_ks) & b.colored_pieces(c);
@@ -1103,13 +1083,13 @@ namespace
     U64 our_passed_pawns = ei.pe->passedPawns[c];
     if (our_passed_pawns)
       {
-	score += 1;
 	while (our_passed_pawns)
 	  {
+	    score += 1;
 	    // pawns close to promotion are almost always a threat
 	    int from = pop_lsb(our_passed_pawns);
 	    U64 squares_until_promotion = SpaceInFrontBB[c][from];
-	    if (count(squares_until_promotion) <= 3) score += 1;
+	    if (count(squares_until_promotion) <= 3) score += 2;
 	  }
       }
     // pawn forks ( should be grabbed from the pawn table?)..
@@ -1253,7 +1233,7 @@ namespace
     printf("| Rooks       |\t %d \t|\t %d \t|\t %d \t|\n", ei.s.rook_sc[WHITE], ei.s.rook_sc[BLACK], ei.s.rook_sc[WHITE] - ei.s.rook_sc[BLACK]);
     printf("| Queens      |\t %d \t|\t %d \t|\t %d \t|\n", ei.s.queen_sc[WHITE], ei.s.queen_sc[BLACK], ei.s.queen_sc[WHITE] - ei.s.queen_sc[BLACK]);
     printf("| Kings       |\t %d \t|\t %d \t|\t %d \t|\n", ei.s.king_sc[WHITE], ei.s.king_sc[BLACK], ei.s.king_sc[WHITE] - ei.s.king_sc[BLACK]);
-    printf("| Space       |\t %d \t|\t %d \t|\t %d \t|\n", ei.s.space_sc[WHITE], ei.s.space_sc[BLACK], ei.s.space_sc[WHITE] - ei.s.space_sc[BLACK]);
+    //printf("| Space       |\t %d \t|\t %d \t|\t %d \t|\n", ei.s.space_sc[WHITE], ei.s.space_sc[BLACK], ei.s.space_sc[WHITE] - ei.s.space_sc[BLACK]);
     printf("| Center      |\t %d \t|\t %d \t|\t %d \t|\n", ei.s.center_sc[WHITE], ei.s.center_sc[BLACK], ei.s.center_sc[WHITE] - ei.s.center_sc[BLACK]);
     printf("| Threats     |\t %d \t|\t %d \t|\t %d \t|\n", ei.s.threat_sc[WHITE], ei.s.threat_sc[BLACK], ei.s.threat_sc[WHITE] - ei.s.threat_sc[BLACK]);
     printf("| Eval time   |\t -- \t|\t -- \t|\t %d \t|\n", ei.s.time);

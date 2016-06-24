@@ -23,7 +23,7 @@ void HashTable::clear()
 bool HashTable::init()
 {
   clusterCount = 0;
-  sz_kb = 100 * 1024; // 4mb
+  sz_kb = 200 * 1024; // 4mb
   //sz_kb = opts["HashTableKB"];
 
   if (sz_kb > 0) clusterCount = 1024 * sz_kb / sizeof(HashCluster);

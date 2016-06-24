@@ -37,7 +37,7 @@ PawnTable::~PawnTable()
 
 bool PawnTable::init()
 {
-  sz_kb = 10*1024;// opts["PawnHashKB"]; // 4mb
+  sz_kb = 100*1024;// opts["PawnHashKB"]; // 4mb
   nb_elts = 1024 * sz_kb / sizeof(PawnEntry);
   nb_elts = nearest_power_of_2(nb_elts);
   nb_elts = nb_elts <= 256 ? 256 : nb_elts;
@@ -77,24 +77,8 @@ PawnEntry * PawnTable::get(Board& b, GamePhase gp)
 {
   U64 k = b.pawn_key();
   int idx = k & (nb_elts - 1);
-  //bool isok = false;
   if (table[idx].key == k)
     {
-      // dbg
-      // did double check that no collisions occur during normal search (not very extensively, however)
-      //U64 pawns = b.get_pieces(WHITE,PAWN) | b.get_pieces(BLACK,PAWN);
-      //U64 stored_pawns = table[idx].chainPawns[WHITE] | table[idx].chainPawns[BLACK];
-      //U64 tmp = pawns & stored_pawns;
-      //if (tmp == stored_pawns) isok = true;
-      //if (!isok)
-      //{
-
-      //	printf("...hash collision in pawn table!!\n");
-      //	printf("... position pawns ... \n");
-      //	display(pawns);
-      //	printf("... stored pawns ... \n");
-      //	display(stored_pawns);
-      //}
       return &table[idx];
     }
   else
@@ -142,9 +126,9 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx)
 	  table[idx].passedPawns[c] |= SquareBB[from];
 	  base += Penalty::passedPawn[gp];
 
-	  //U64 infrontBB = SpaceInFrontBB[c][from];
-	  //int dist = count(infrontBB);
-	  //if (dist < 4) base += (gp == MIDDLE_GAME ? 2 : 4);
+	  U64 infrontBB = SpaceInFrontBB[c][from];
+	  int dist = count(infrontBB);
+	  if (dist < 4) base += (gp == MIDDLE_GAME ? 2 : 4);
 	}
 
       // eval isolated pawns		
@@ -222,12 +206,80 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx)
 	{
 	  table[idx].chainBase[c] |= SquareBB[from];  // store the base of the pawn chain
 	}
-      // compute those pawns whiceh are "hanging" 
+      // compute those pawns which are "hanging" 
       U64 defenders = b.attackers_of(from) & b.colored_pieces(c);
       if (!defenders) table[idx].undefended[c] |= SquareBB[from];
-
-
     } // end loop over sqs
 
+  
   return (int)base;
+}
+
+
+void PawnTable::debug(PawnEntry& e)
+{
+  for (int c=WHITE; c <= BLACK; ++c)
+    { 
+      std::string cs = (c == WHITE ? "white" : "black");
+      printf("..doubled pawns (%s)\n",cs.c_str());
+      display(e.doubledPawns[c]);
+    }
+
+  for (int c=WHITE; c <= BLACK; ++c)
+    {
+      std::string cs = (c == WHITE ? "white" : "black");
+      printf("..isolated pawns (%s)\n",cs.c_str());
+      display(e.isolatedPawns[c]);
+    }
+
+  for (int c=WHITE; c <= BLACK; ++c)
+    {
+      std::string cs = (c == WHITE ? "white" : "black");
+      printf(".. backward pawns (%s)\n",cs.c_str());
+      display(e.backwardPawns[c]);
+    }
+
+  for (int c=WHITE; c <= BLACK; ++c)
+    {
+      std::string cs = (c == WHITE ? "white" : "black");
+      printf("..chain pawns (%s)\n",cs.c_str());
+      display(e.chainPawns[c]);
+    }
+
+  for (int c=WHITE; c <= BLACK; ++c)
+    {
+      std::string cs = (c == WHITE ? "white" : "black");
+      printf("..passed pawns (%s)\n",cs.c_str());
+      display(e.passedPawns[c]);
+    }
+
+  for (int c=WHITE; c <= BLACK; ++c)
+    {
+      std::string cs = (c == WHITE ? "white" : "black");
+      printf("..king pawns (%s)\n",cs.c_str());
+      display(e.kingPawns[c]);
+    }
+
+  for (int c=WHITE; c <= BLACK; ++c)
+    {
+      std::string cs = (c == WHITE ? "white" : "black");
+      printf("..attacks from pawns (%s)\n",cs.c_str());
+      display(e.attacks[c]);
+    }
+
+  for (int c=WHITE; c <= BLACK; ++c)
+    {
+      std::string cs = (c == WHITE ? "white" : "black");
+      printf("..undefended pawns (%s)\n",cs.c_str());
+      display(e.undefended[c]);
+    }
+
+  for (int c=WHITE; c <= BLACK; ++c)
+    {
+      std::string cs = (c == WHITE ? "white" : "black");
+      printf("..chainbase pawns (%s)\n",cs.c_str());
+      display(e.chainBase[c]);      
+    }
+
+  printf("...final pawn eval = %d\n", e.value);
 }

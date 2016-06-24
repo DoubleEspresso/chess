@@ -6,34 +6,37 @@
 
 struct PawnEntry
 {
-	U64 key;
-	int value;
+  U64 key;
+  int value;
 
-	U64 doubledPawns[2];
-	U64 isolatedPawns[2];
-	U64 backwardPawns[2];
-	U64 chainPawns[2];
-	U64 passedPawns[2];
-	U64 kingPawns[2];
-	U64 attacks[2];
-	U64 undefended[2];
-        U64 chainBase[2];
+  U64 doubledPawns[2];
+  U64 isolatedPawns[2];
+  U64 backwardPawns[2];
+  U64 chainPawns[2];
+  U64 passedPawns[2];
+  U64 kingPawns[2];
+  U64 attacks[2];
+  U64 undefended[2];
+  U64 chainBase[2];
 };
 
 class PawnTable
 {
-public:
-	PawnTable();
-	~PawnTable();
+ private:
+  U64 nb_elts;
+  size_t sz_kb;
+  PawnEntry * table;
+  
+ public:
+  PawnTable();
+  ~PawnTable();
 
-	bool init();
-	PawnEntry * get(Board& b, GamePhase gp);
-	int eval(Board& b, Color c, GamePhase gp, int idx);
-	void clear();
-private:
-	U64 nb_elts;
-	size_t sz_kb;
-	PawnEntry * table;
+  bool init();
+  void clear();
+
+  PawnEntry * get(Board& b, GamePhase gp);
+  int eval(Board& b, Color c, GamePhase gp, int idx);  
+  void debug(PawnEntry& e);
 };
 
 extern PawnTable pawnTable;
