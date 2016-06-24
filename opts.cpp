@@ -41,7 +41,7 @@ bool Options::load()
 	  do { if (idx - 1 == line.length()) break; } while ( line[idx++] != '=' ); --idx;
 	  if (idx == 0) continue;
 	  key = line.substr(0,idx); val = line.substr(idx+1, line.length()-1);
-
+	  
 	  
 #ifdef _WIN32
 	  optionMap.insert(std::make_pair(ckey, std::atof(val.c_str())));
@@ -52,38 +52,38 @@ bool Options::load()
 	}
 	settings.close();
 	loaded = true;
-	}
-  catch(const std::exception& e) 
-    {
+    }
+    catch(const std::exception& e) 
+      {
 	  //dbg(printf("..[Options] exception : Options::load() %s\n",e.what()));
 	  loaded = false;
 	  return false;
-	}
-  return true;
-	}
+      }
+    return true;
+ }
 	  
-	  bool Options::close()
-	  {
-	  try 
-	    {
-	  std::ofstream settings("settings",  std::ofstream::trunc);
-	  if (!settings) 
-	    {
+ bool Options::close()
+ {
+   try 
+     {
+       std::ofstream settings("settings",  std::ofstream::trunc);
+       if (!settings) 
+	 {
 	  //dbg(Log::write("..[Options] Error opening settings file for writing\n"););
 	  return false;
-	}
-	  for(opts.begin(); !opts.end(); ++opts) 
-	    {
-	  std::string key(opts.first());
-	  int val = opts.second();
-	  settings << key << "\t" << val << "\n";
-	}
-	  settings.close();
-	}
-	  catch(const std::exception& e) 
-	    {
-	  printf("..[Options] exception : Options::close() %s\n", e.what());
-	  return false;
-	}
-	  return true;
-	}
+	  }
+       for(opts.begin(); !opts.end(); ++opts) 
+	 {
+	   std::string key(opts.first());
+	   int val = opts.second();
+	   settings << key << "\t" << val << "\n";
+	  }
+       settings.close();
+     }
+   catch(const std::exception& e) 
+     {
+       printf("..[Options] exception : Options::close() %s\n", e.what());
+       return false;
+     }
+   return true;
+}
