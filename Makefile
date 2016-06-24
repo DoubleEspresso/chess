@@ -15,7 +15,8 @@ THREADED =
 GIT_VERSION =
 # build info
 SRC := main.cpp threads.cpp globals.cpp magic.cpp uci.cpp move.cpp board.cpp bench.cpp material.cpp pawns.cpp evaluate.cpp search2.cpp hashtable.cpp moveselect.cpp zobrist.cpp book.cpp opts.cpp
-OBJS =$(SRCS:.cpp=.o)
+
+TUNESRC := tune.cpp
 
 # compiler
 ifeq ($(COMP),)
@@ -58,7 +59,8 @@ ifeq ($(OS),Linux )
 endif
 
 # executable
-EXE = hedwig.exe #-$(EXE_OS)-$(EXE_BITS)
+EXE = hedwig.exe
+TUNE_EXE = tune.exe
 
 # git version info
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always --tags)
@@ -66,9 +68,10 @@ USERMACROS += -DBUILD_DATE="\"$$(date)\""
 USERMACROS += -DVERSION=\"$(GIT_VERSION)\"
 
 OBJ := $(patsubst %.cpp, %.o, $(filter %.cpp,$(SRC)))
+OBJTUNE := $(patsubst %.cpp, %.o, $(filter %.cpp,$(TUNESRC)))
 
 .PHONY:all
-all: information link
+all: information link tune
 
 debug: CFLAGS += -g -ggdb
 debug: USERMACROS:=$(filter-out -DNDEBUG, $(USERMACROS))
@@ -89,6 +92,9 @@ information:
 
 link: $(OBJ)
 	$(CC) -o $(EXE) $(OBJ) $(LFLAGS)
+
+tune: $(OBJTUNE)
+	$(CC) -o $(TUNE_EXE) $(OBJTUNE) $(LFLAGS)
 
 %.o:%.cpp
 	$(CC) -c $(CFLAGS) $(USERMACROS) $< -o $@
