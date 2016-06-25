@@ -3,6 +3,7 @@
 #include "pawns.h"
 #include "globals.h"
 #include "utils.h"
+#include "opts.h"
 
 using namespace Globals;
 
@@ -23,7 +24,6 @@ namespace Penalty
 // sps we only need to store .1% of that ~454254 ~7 mb
 PawnTable::PawnTable() : table(0)
 {
-  init();
 };
 
 PawnTable::~PawnTable()
@@ -37,7 +37,7 @@ PawnTable::~PawnTable()
 
 bool PawnTable::init()
 {
-  sz_kb = 100*1024;// opts["PawnHashKB"]; // 4mb
+  sz_kb = options["pawn table size mb"] * 1024; // 4mb
   nb_elts = 1024 * sz_kb / sizeof(PawnEntry);
   nb_elts = nearest_power_of_2(nb_elts);
   nb_elts = nb_elts <= 256 ? 256 : nb_elts;

@@ -1,5 +1,6 @@
 #include <string.h>
 
+#include "opts.h"
 #include "material.h"
 #include "board.h"
 
@@ -13,10 +14,20 @@ namespace
   int piece_vals_eg[5] = { PawnValueEG, KnightValueEG, BishopValueEG, RookValueEG, QueenValueEG };
   
   // weight factors
-  //float weights_mg[4] = { 50.00, 1.50, 3.00, 0.50};
-  //float weights_eg[4] = { 100.00, 3.00, 1.15, 0.25};
-  float weights_mg[4] = { 16.00, 1.50, 3.00, 0.50 };
-  float weights_eg[4] = { 20.00, 3.00, 1.15, 0.25 };
+/*  float bpWeightMG = opts["bishop pair weight mg"];
+  float bpWeightEG = opts["bishop pair weight eg"];
+  float rrWeightMG = opts["rook redundancy weight mg"];
+  float rrWeightEG = opts["rook redundancy weight eg"];
+  float qrWeightMG = opts["queen redundancy weight mg"];
+  float qrWeightEG = opts["queen redundancy weight eg"];
+  float bishopPairWeightMG = opts["bishop pair weight mg"];
+  float bishopPairWeightEG = opts["bishop pair weight eg"];
+
+  float weights_mg[4] = { bpWeightMG, 1.50, rrWeightMG, qrWeightMG };
+  float weights_eg[4] = { bpWeightEG, 3.00, rrWeightEG, qrWeightEG };*/
+
+  float weights_mg[4] = { 16, 1.50, 3, 0.5 };
+  float weights_eg[4] = { 20, 3.00, 1.15, 0.25 };
 }
 
 MaterialTable::MaterialTable() : table_size(0), table(0) { };
@@ -38,7 +49,7 @@ int MaterialTable::material_value(int piece, int gamephase)
 
 bool MaterialTable::init()
 {
-  int sz_kb = 100*1024;//opts["MaterialHashKB"];
+  int sz_kb = options["material table size mb"] * 1024;
   nb_elts = 1024 * sz_kb / sizeof(MaterialEntry);
 
   nb_elts = nearest_power_of_2(nb_elts);

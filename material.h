@@ -35,7 +35,6 @@ class MaterialTable
   MaterialEntry * table;
 };
 
-// a global pointer to the material hash table entries
 extern MaterialTable material; 
 
 #endif

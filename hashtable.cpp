@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include "hashtable.h"
+#include "opts.h"
 
 HashTable hashTable;  
 
@@ -23,9 +24,7 @@ void HashTable::clear()
 bool HashTable::init()
 {
   clusterCount = 0;
-  sz_kb = 200 * 1024; // 4mb
-  //sz_kb = opts["HashTableKB"];
-
+  sz_kb = options["hash table size mb"] * 1024;
   if (sz_kb > 0) clusterCount = 1024 * sz_kb / sizeof(HashCluster);
 
   clusterCount = nearest_power_of_2(clusterCount);

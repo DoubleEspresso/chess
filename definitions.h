@@ -159,39 +159,4 @@ enum BenchType
     MINORS, MAJORS, PERFT, ENDGAME, TTABLE, BENCH, DIVIDE
   };
 
-
-// overload increment/decrement operators on enum types
-// see e.g. http://stackoverflow.com/questions/15051300/how-to-define-increment-decrement-etc-operator-automatically
-// for a nice example, which is followed here
-
-// TODO :: debug this (doesn't work)....
-
-
-//template< typename T> struct UnitSteppable { enum { steppable = false }; };
-//
-//// enable increment/decrement operators safely on specific enum types
-//template<> struct UnitSteppable< Color > { enum { steppable = true }; };
-//template<> struct UnitSteppable< Piece > { enum { steppable = true }; };
-//template<> struct UnitSteppable< Square > { enum { steppable = true }; };
-//template<> struct UnitSteppable< Rows > { enum { steppable = true }; };
-//template<> struct UnitSteppable< Cols > { enum { steppable = true }; };
-//template<> struct UnitSteppable< GamePhase > { enum { steppable = true }; };
-//
-//// increment operator
-//template< typename T >
-//typename std::enable_if< UnitSteppable< T >::steppable, T >::type
-//operator++(T value) 
-//{
-//	return T(value + 1);
-//}
-//
-//// decrement operator
-//template< typename T >
-//typename std::enable_if< UnitSteppableEnum< T >::unit_steppable, T >::type
-//operator--(T value)
-//{
-//	return T(value - 1);
-//}
-
-
 #endif

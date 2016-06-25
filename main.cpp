@@ -1,6 +1,7 @@
 #include <cstring>
 #include <iostream>
 
+#include "opts.h"
 #include "info.h"
 #include "bits.h"
 #include "globals.h"
@@ -9,19 +10,14 @@
 #include "uci.h"
 #include "material.h"
 #include "hashtable.h"
+#include "pawns.h"
 #include "threads.h"
-#include "opts.h"
 
 void parse_args(int argc, char ** argv);
 
 int main(int argc, char ** argv)
 {
   Info::BuildInfo::greeting();
-
-  if (!opts.load())
-    {
-      printf("..failed to load ini file [hedwig.ini]\n");      
-    }
   
   if (!Globals::init())
     {
@@ -52,13 +48,19 @@ int main(int argc, char ** argv)
       return EXIT_FAILURE;
     }
 
+  if (!pawnTable.init())
+    {
+      printf("..failed to initialize pawn table, abort!\n");
+      std::cin.get();
+      return EXIT_FAILURE;
+    }
+
   if (!hashTable.init())
     {
       printf("..failed to initialize hash table, abort!\n");
       std::cin.get();
       return EXIT_FAILURE;
     }
-
   timer_thread->init();
   Threads.init();
 
