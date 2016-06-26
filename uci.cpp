@@ -236,31 +236,17 @@ void UCI::uci_command(std::string cmd, int& GAME_OVER)
 	      else if (command == "infinite") limits.infinite = (command == "infinite" ? true : false);
 	      else if (command == "ponder") limits.ponder = atoi(command.c_str());
 	    }
-
-	  //validate
-	  //std::string limits_type[11]  = {"wtime", "btime", "winc", "binc", "movestogo", "nodes", "movetime", "mate", "depth", "infinite", "ponder"};
-	  //int limits_vals[11] = { search_limits.wtime, search_limits.btime, search_limits.winc, 
-	  //		search_limits.binc, search_limits.movestogo, search_limits.nodes, 
-	  //search_limits.movetime, search_limits.mate, search_limits.depth, 
-	  //search_limits.infinite, search_limits.ponder };
-
-	  //for (int i =0 ;i < 11; ++i)
-	  //{
-	  //	std::cout << " .. (dbg) limits type: " << limits_type[i] <<  " limits val : " << limits_vals[i] << std::endl;
-	  //}
-
+	  
 	  hashTable.clear();
 	  material.clear();
 	  pawnTable.clear();
+	  
 	  RootMoves.clear();
-
 	  timer_thread->search_limits = &limits;
 
-	  //std::memcpy(&ROOT_BOARD, &b, sizeof(Board));
 	  ROOT_BOARD = b;
-	  ROOT_DEPTH = 64;
+	  ROOT_DEPTH = (limits.depth == 0 ? 64 : limits.depth);
 	  UCI_SIGNALS.stop = false;
-	  //ttable.clear(); 
 	  Threads.start_thinking(ROOT_BOARD);
 	}
       else if (command == "position" && uci_instream >> command)

@@ -546,15 +546,29 @@ bool Board::is_dangerous(U16& m, int piece)
 }
 bool Board::is_draw(int sz)
 {
-  if (position->move50 > 99 || (!position->in_check && !sz))
+  if (position->move50 > 99 || (!position->in_check && sz <= 0))
     return true;
 
-  BoardData* state_data = position;
+  BoardData* state_data = position; int count = 0;
   for (int i = 2, e = position->move50; i <= e; i += 2)
     {
       if (state_data->previous && state_data->previous->previous) state_data = state_data->previous->previous;
       else return false;
-      if (state_data->pKey == position->pKey) return true;
+      if (state_data->pKey == position->pKey) ++count;
+      if (count >= 2) return true;
+    }
+  return false;
+}
+
+bool Board::is_repition_draw()
+{
+  BoardData* state_data = position; int count = 0;
+  for (int i = 2, e = position->move50; i <= e; i += 2)
+    {
+      if (state_data->previous && state_data->previous->previous) state_data = state_data->previous->previous;
+      else return false;
+      if (state_data->pKey == position->pKey) ++count;
+      if (count >= 2) return true;
     }
   return false;
 }

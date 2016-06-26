@@ -34,6 +34,8 @@ namespace
   int adjust_score(int bestScore, int ply);
   //void write_pv_to_tt(Board& b, U16 * pv, int depth);
   void update_pv(U16* pv, U16& move, U16* child_pv);
+  void pv_from_tt(Board& b, int d);
+  void store_pv(Board& b, U16 * pv, int depth);
   //void checkMoreTime(Board& b, Node * stack);
 };
 
@@ -81,19 +83,18 @@ namespace Search
 		pv_str += UCI::move_to_string(m) + " ";
 		if (j < 2) BestMoves[j] = m;
 		j++;
-	      }
+	      }	    
+	    //store_pv(b, (stack+2)->pv, depth);
 	    searchEvals.push_back(eval);
 	    
 	    printf("info score cp %d depth %d seldepth %d nodes %d time %d pv ",
 		   eval,
-		   depth,
+		   depth-1,
 		   j,
 		   b.get_nodes_searched(),
 		   (int)timer_thread->elapsed);
 	    std::cout << pv_str << std::endl;	    
 	  }
-	
-	//write_pv_to_tt(b, (stack+2)->pv, depth);
       }
   }
   
@@ -129,6 +130,9 @@ namespace
     stack->currmove = stack->bestmove = (stack+2)->killer1 = (stack+2)->killer2 = MOVE_NONE;
     stack->givescheck = false;
 
+    // clear pv
+    for(int j=0; stack->pv[j] != MOVE_NONE; ++j) stack->pv[j] = MOVE_NONE;
+
     // update last move info
     U16 lastmove = (stack - 1)->currmove;
     //U16 lastbest = (stack - 1)->bestmove;
@@ -152,6 +156,7 @@ namespace
 	ttm = e.move;
 	ttstatic_value = e.static_value;	
 	ttvalue = e.value;
+
 	if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta && pv_node)
 	  { 
 	    stack->currmove = stack->bestmove = e.move;
@@ -166,6 +171,7 @@ namespace
       }
     
     // 2. -- mate distance pruning
+    
     int mate_val = INF - stack->ply;
     if (mate_val < beta)
       {
@@ -179,6 +185,7 @@ namespace
 	alpha = mated_val;
 	if (beta <= mated_val) return mated_val;
       }
+    
 
     // 3. -- static evaluation of position    
     int static_eval = (ttvalue > NINF ? ttvalue : ttstatic_value > NINF ? ttstatic_value : Eval::evaluate(b));
@@ -260,10 +267,9 @@ namespace
 	  }
       }
     
-    
     // 7. -- internal iterative deepening
     if (ttm == MOVE_NONE &&
-	!stack->isNullSearch &&
+	!stack->isNullSearch && 
 	depth >= (pv_node ? 6 : 8) &&
 	!b.in_check() )
       {
@@ -290,8 +296,8 @@ namespace
     MoveSelect ms; // slow initialization method
     MoveGenerator mvs(b, PSEUDO_LEGAL);
     U16 move;
-    if (b.is_draw(mvs.size())) return DRAW;
-    
+    int pruned = 0;
+    if (ttm == MOVE_NONE) ttm = (stack-2)->pv[iter_depth-iter_depth];
     ms.load(mvs, b, ttm, statistics, stack->killer1, stack->killer2, lastmove, stack->threat, stack->threat_gain);
 
     while (ms.nextmove(*stack, move, false))
@@ -332,6 +338,7 @@ namespace
 	    static_eval + 650 < alpha && 
 	    eval > NINF + stack->ply )
 	  {
+	    ++pruned;
 	    continue;
 	  }
 	
@@ -341,9 +348,11 @@ namespace
 	    move != ttm &&
 	    move != stack->killer1 &&
 	    move != stack->killer2 &&
+	    piece != PAWN && 
 	    //eval < alpha && 
 	    b.see_move(move) <= 0) 
 	  {
+	    ++pruned;
 	    continue;
 	  }	
 		
@@ -366,16 +375,11 @@ namespace
 		piece != PAWN &&
 		isQuiet && !pv_node)
 	      {
-		if (!pv_node) 
-		  {
-		    R += 1;
-		    if (static_eval + 650 < alpha) R += 1;
-		  }
+		R += 1;
+		if (static_eval + 650 < alpha) R += 1;	
 	      }
-
-	    // history pruning
-	    int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];
-	    if (v <= (NINF - 1) ) R += 1;
+	    int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];		
+	    if ( v <= (NINF - 1) ) R += 1;
 
 	    int LMR = newdepth - R;
 	    eval = (LMR <= 1 ? -qsearch<NONPV>(b, -alpha-1, -alpha, LMR, stack + 1, givesCheck) : -search<NONPV>(b, -alpha-1, -alpha, LMR, stack + 1));
@@ -394,34 +398,7 @@ namespace
 	  {
 	    eval = (newdepth <= 1 ? -qsearch<PV>(b, -beta, -alpha, newdepth, stack + 1, givesCheck) : -search<PV>(b, -beta, -alpha, newdepth, stack + 1));
 	  }
-	/*
-	if (pvMove)
-	  {
-	    eval = (newdepth <= 1 ? -qsearch<PV>(b, -beta, -alpha, newdepth, stack + 1, givesCheck) : -search<PV>(b, -beta, -alpha, newdepth, stack + 1));
-	  }
-	else
-	  {
-	    // LMR 
-	    int R = 0;
-	    if (move != ttm &&
-		move != stack->killer1 &&
-		move != stack->killer2 &&
-		!inCheck && !givesCheck &&
-		piece != PAWN &&
-		isQuiet &&
-		newdepth > 10)
-	      {
-		R += 1;
-		if (!pv_node) R += 1;
-	      }	    
-	    int LMR = newdepth - R;
-	    eval = (LMR <= 1 ? -qsearch<NONPV>(b, -alpha-1, -alpha, LMR, stack + 1, givesCheck) : -search<NONPV>(b, -alpha-1, -alpha, LMR, stack + 1));
-	  }
-	if (!pvMove && (eval > alpha && eval < beta))
-	  {
-	    eval = (newdepth <= 1 ? -qsearch<PV>(b, -beta, -alpha, newdepth, stack + 1, givesCheck) : -search<PV>(b, -beta, -alpha, newdepth, stack + 1));
-	  }
-	*/
+
 	b.undo_move(move);
 	moves_searched++;
 	if (UCI_SIGNALS.stop) return DRAW;
@@ -448,6 +425,19 @@ namespace
 	  }       
       }
     
+    if (!moves_searched)
+      {
+	if (pruned != mvs.size() && b.is_draw(0)) 
+	  {	    
+	    return DRAW;
+	  }
+	else if (pruned != mvs.size() && b.in_check()) 
+	{
+	  return NINF + stack->ply;
+	}
+      }
+    else if (b.is_repition_draw()) return DRAW;
+
     // ttable updates
     Bound ttb = BOUND_NONE;
     if (alpha <= aorig)
@@ -514,13 +504,15 @@ namespace
     if (alpha < stand_pat && !inCheck) alpha = stand_pat;
     //if (alpha >= beta && !inCheck) return beta;
        
-    // searching only checks or captures causes it to miss obv. "forcing moves" at higher depths ..
-    MoveGenerator mvs(b,inCheck);
-    //MoveGenerator mvs(b, CAPTURE); // play is a little stronger with this one
-		
-    // mate detection
+    MoveGenerator mvs(b,inCheck); 		
     if (inCheck && mvs.size() == 0) return NINF + stack->ply;
-    
+
+    // avoid infinite back-forth checking
+    if (b.is_repition_draw()) 
+      {
+	return DRAW;
+      }
+
     MoveSelect ms;
     U16 killer = MOVE_NONE;
     ms.load(mvs, b, ttm, statistics, killer, killer, killer, killer, 0);
@@ -553,9 +545,9 @@ namespace
 	    continue;
 	  }	
 	
-	// prune captures which have see values <= 0	  
+	// prune captures which have see values <= 0	
 	if ( (!inCheck || canPrune) &&
-	     !pv_node && //move != ttm &&
+	     !pv_node && move != ttm && stand_pat < alpha &&
 	     b.see_move(move) < 0)
 	  continue;
 	
@@ -575,6 +567,7 @@ namespace
 	    alpha = eval;
 	    bestmove = move;
 	    stack->currmove = move;
+	    update_pv(stack->pv, move, (stack+1)->pv);
 	  }
       }
 
@@ -601,6 +594,39 @@ namespace
 	*pv++ = *child_pv++;
       }
     *pv = MOVE_NONE;
+  }
+
+  void pv_from_tt(Board& b, int d)
+  {
+    TableEntry e;  int j = 0;
+    std::vector<U16> moves;
+    for (j = 0; hashTable.fetch(b.pos_key(), e) && e.move != MOVE_NONE && j < d; ++j)
+      {
+	BoardData * pd = new BoardData();
+	std::cout << UCI::move_to_string(e.move) << " ";
+	b.do_move(*pd, e.move); moves.push_back(e.move);
+      }
+    std::cout << std::endl;
+    
+    while(--j >= 0) b.undo_move(moves[j]);
+  }
+
+  void store_pv(Board& b, U16 * pv, int depth)
+  {
+    TableEntry e; int j = 0;
+    for (; pv[j] != MOVE_NONE; ++j)
+      {
+	
+	U64 k = b.pos_key(); U64 data = b.data_key();
+	BoardData * pd = new BoardData();
+	
+	if (!hashTable.fetch(k, e))
+	  {
+	    hashTable.store(k, data, depth, BOUND_NONE, pv[j], DRAW, DRAW, 0);   
+	  }
+	b.do_move(*pd, pv[j]);
+      }
+    while(--j >= 0) b.undo_move(pv[j]);
   }
 
   int adjust_score(int bestScore, int ply)

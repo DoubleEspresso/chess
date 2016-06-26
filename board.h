@@ -136,6 +136,7 @@ class Board
   //bool is_mated();
   bool is_mate();
   bool is_draw(int sz);
+  bool is_repition_draw();
 
   // move properties access/types
   bool checks_king(U16& move);

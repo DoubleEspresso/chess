@@ -283,7 +283,7 @@ double ThreadTimer::estimate_max_time()
 	  // time per move ~ time / mpg * weight
 	  // weight based on game phase, less time in opening/ending, more time in middle game
 	  // give about 1/6 time to opening/ending and 2/3 time to middle game.
-	  time_per_move_ms = 4 * remainder_ms / moves_to_go * (gp == MIDDLE_GAME ? 0.6 : 0.17);
+	  time_per_move_ms = 1.5 * remainder_ms / moves_to_go * (gp == MIDDLE_GAME ? 0.6 : 0.17);
 	  //dbg
 	  //std::cout << " time-per-move from sudden_death && !exact_time " << time_per_move_ms << " ms " << std::endl;
 	}

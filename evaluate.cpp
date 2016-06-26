@@ -114,6 +114,12 @@ int piece_vals_eg[5] = { PawnValueEG, KnightValueEG, BishopValueEG, RookValueEG,
 // 
 // find c6 here..stop trading queens in attacking positions..
 // r2k1b1r/ppp2Q1p/6p1/3Bp1q1/3n4/5PP1/PPbP3P/RNB1K2R b - - 1 13
+//
+// candidate position for draw by rep (play as black see if white skips the q checks)
+// 7Q/1p6/6k1/p1P3p1/8/5qN1/8/6K1 w - - 0 54
+//
+// candidate for rep draw (play as black with nd2+ first move), get white to avoid draw and win...
+// 8/8/4NB2/1p1k1P2/2n5/1p3K2/1P6/8 b - - 15 55
 namespace
 {
   Clock timer;
@@ -558,7 +564,6 @@ namespace
 	if (SquareBB[from] & ColoredSquaresBB[WHITE]) light_bishop = true;
 	else dark_bishop = true;
 
-
 	// mobility score
 	U64 mvs = attacks<BISHOP>(mask, from);
 	{
@@ -567,8 +572,7 @@ namespace
 	  // collect the legal moves
 	  U64 mobility = mvs & ei.empty;
 
-	  // remove sqs attacked by enemy pawns
-	  
+	  // remove sqs attacked by enemy pawns	  
 	  U64 tmp = ei.pe->attacks[them];
 	  if (tmp)
 	    {
@@ -576,7 +580,7 @@ namespace
 	      U64 bm = mobility & tmp;
 	      mobility ^= bm;
 	    }
-	  score += count(mobility) / 4;
+	  score += count(mobility);
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////
@@ -586,7 +590,8 @@ namespace
 	// 3. sum attack bonus (all pieces (excluding pawns) the bishop is attacking).		
 
 	// bishop attacks weighted by game phase, and piece being attacked (pawns removed (?))
-	U64 attacks = mvs & ei.pe->undefended[c == WHITE ? BLACK : WHITE];//(c == WHITE ? ei.black_pieces : ei.white_pieces);
+	//(c == WHITE ? ei.black_pieces : ei.white_pieces);
+	U64 attacks = mvs & ei.pe->undefended[c == WHITE ? BLACK : WHITE];
 	while (attacks)
 	  {
 	    int to = pop_lsb(attacks);
@@ -630,7 +635,7 @@ namespace
       }
 
     // light + dark square bishop bonus
-    if (light_bishop && dark_bishop) score += int((ei.phase == MIDDLE_GAME ? 8 : 16));
+    if (light_bishop && dark_bishop) score += int((ei.phase == MIDDLE_GAME ? 16 : 32));
 
     if (ei.do_trace)
       {
