@@ -59,7 +59,7 @@ bool HashTable::fetch(U64 key, TableEntry& ein)
   return false;
 }
 
-void HashTable::store(U64 key, U64 data, U16 depth, Bound bound, U16 m, int score, int static_value, int iter)
+void HashTable::store(U64 key, U64 data, U16 depth, Bound bound, U16 m, int score, int static_value)
 {
   TableEntry * e, *replace;
   U16 key16 = key >> 48;
@@ -83,7 +83,6 @@ void HashTable::store(U64 key, U64 data, U16 depth, Bound bound, U16 m, int scor
       // replacement strategy for each cluster -- needs work
       if (e->depth > depth || (e->bound != BOUND_EXACT && bound == BOUND_EXACT))
 	replace = e;
-
     }
 
   replace->pkey = key16^data16;

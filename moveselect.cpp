@@ -102,10 +102,14 @@ void MoveSelect::print_list()
   
 }
 
-void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats, U16& killer1, U16& killer2, U16& lastmove, U16& threat, int threatgain)
+void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats, Node * stack)
 {
   statistics = &stats;
-  
+  U16 lastmove = (stack-1)->currmove;
+  U16 killer1 = stack->killer1; U16 killer2 = stack->killer2;
+
+  if (type == QSEARCH) killer1 = killer2 = MOVE_NONE;
+
   for (; !mvs.end(); ++mvs)
     {
       U16 m = mvs.move();
@@ -114,9 +118,6 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
       int mt = int((m & 0xf000) >> 12);
       int p = b.piece_on(from);
       int c = b.whos_move();
-      
-      //int last_to = int((lastmove & 0xfc0) >> 6);
-      //int last_from = int(lastmove & 0x3f);
       
       if (m == killer1 && m != tt_mv) { killers[0] = m; continue; }
       else if (m == killer2 && m != tt_mv) { killers[1] = m; continue; }

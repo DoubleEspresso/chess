@@ -45,7 +45,7 @@ enum SelectPhase { PHASE_TT, PHASE_CAPTURE_GOOD, PHASE_KILLER1, PHASE_KILLER2, P
 class MoveSelect
 {
  public:
- MoveSelect() : c_sz(0), stored_csz(0), q_sz(0), stored_qsz(0), use_tt(0), ttmv(MOVE_NONE), select_phase(PHASE_TT), statistics(0)
+ MoveSelect(SearchType t) : c_sz(0), stored_csz(0), q_sz(0), stored_qsz(0), use_tt(0), ttmv(MOVE_NONE), select_phase(PHASE_TT), statistics(0), type(t)
     {
       // slow init ..
       for (int j = 0; j<MAX_MOVES; ++j)
@@ -58,7 +58,7 @@ class MoveSelect
   
   ~MoveSelect() {};
   
-  void load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats, U16& killer1, U16& killer2, U16& lastmove, U16& threat, int threatgain);
+  void load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats, Node * stack);
   void sort(MoveList * ml, int length);
   bool nextmove(Node& node, U16& move, bool split);
   //bool threadsafe_nextmove(Board& b, U16& out);
@@ -80,6 +80,7 @@ class MoveSelect
   MoveList quiets[MAX_MOVES];
   U16 killers[2];
   MoveStats * statistics;
+  SearchType type;
 };
 
 #endif

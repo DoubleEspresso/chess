@@ -221,7 +221,6 @@ namespace
 	return beta; // fail hard
       }
 	
-
     // 6. -- null move search    
     if (!pv_node &&
 	depth >= 2 &&
@@ -244,16 +243,16 @@ namespace
 
     // 7. -- probcut from stockfish
     if (!pv_node && 
-	depth >= 400 && !b.in_check() &&
+	depth >= 4 && !b.in_check() &&
 	!stack->isNullSearch)
       {
 	BoardData pd;
-	MoveSelect ms; // slow initialization method
+	MoveSelect ms(PROBCUT); // slow initialization method
 	MoveGenerator mvs(b, CAPTURE);
 	U16 move; 
 	int rbeta = beta + 200;
 	int rdepth = depth - 4;
-	ms.load(mvs, b, ttm, statistics, stack->killer1, stack->killer2, lastmove, stack->threat, stack->threat_gain);
+	ms.load(mvs, b, ttm, statistics, stack);
 	while (ms.nextmove(*stack, move, false))
 	  {	    
 	    b.do_move(pd, move);
@@ -293,12 +292,12 @@ namespace
 
     // 6. -- moves search
     BoardData pd;
-    MoveSelect ms; // slow initialization method
+    MoveSelect ms(MAIN); // slow initialization method
     MoveGenerator mvs(b, PSEUDO_LEGAL);
     U16 move;
     int pruned = 0;
     if (ttm == MOVE_NONE) ttm = (stack-2)->pv[iter_depth-iter_depth];
-    ms.load(mvs, b, ttm, statistics, stack->killer1, stack->killer2, lastmove, stack->threat, stack->threat_gain);
+    ms.load(mvs, b, ttm, statistics, stack);
 
     while (ms.nextmove(*stack, move, false))
       {
@@ -412,7 +411,7 @@ namespace
 		quiets[quiets_searched] = MOVE_NONE;
 	      }
 	    statistics.update(move, lastmove, stack, depth, b.whos_move(), quiets);
-	    hashTable.store(key, data, depth, BOUND_LOW, move, adjust_score(beta, stack->ply), static_eval, iter_depth);
+	    hashTable.store(key, data, depth, BOUND_LOW, move, adjust_score(beta, stack->ply), static_eval);
 	    return beta;
 	  }
 
@@ -451,7 +450,7 @@ namespace
       }
     else ttb = BOUND_EXACT;
     
-    if (ttb != BOUND_NONE) hashTable.store(key, data, depth, ttb, bestmove, adjust_score(alpha, stack->ply), static_eval, iter_depth);
+    if (ttb != BOUND_NONE) hashTable.store(key, data, depth, ttb, bestmove, adjust_score(alpha, stack->ply), static_eval);
 
     return alpha;
   } // end search
@@ -513,9 +512,8 @@ namespace
 	return DRAW;
       }
 
-    MoveSelect ms;
-    U16 killer = MOVE_NONE;
-    ms.load(mvs, b, ttm, statistics, killer, killer, killer, killer, 0);
+    MoveSelect ms(QSEARCH);
+    ms.load(mvs, b, ttm, statistics, stack);
     U16 move;
     Node dummy;
 
@@ -559,7 +557,7 @@ namespace
 	
 	if (eval >= beta)
 	  {
-	    hashTable.store(key, data, depth, BOUND_LOW, move, adjust_score(beta, stack->ply), stand_pat, iter_depth);
+	    hashTable.store(key, data, depth, BOUND_LOW, move, adjust_score(beta, stack->ply), stand_pat);
 	    return beta;
 	  }
 	if (eval > alpha)
@@ -583,7 +581,7 @@ namespace
       }
     else ttb = BOUND_EXACT;
     
-    if (ttb != BOUND_NONE) hashTable.store(key, data, depth, ttb, bestmove, adjust_score(alpha, stack->ply), stand_pat, iter_depth);   
+    if (ttb != BOUND_NONE) hashTable.store(key, data, depth, ttb, bestmove, adjust_score(alpha, stack->ply), stand_pat);   
     return alpha;
   }
 
@@ -622,7 +620,7 @@ namespace
 	
 	if (!hashTable.fetch(k, e))
 	  {
-	    hashTable.store(k, data, depth, BOUND_NONE, pv[j], DRAW, DRAW, 0);   
+	    hashTable.store(k, data, depth, BOUND_NONE, pv[j], DRAW, DRAW);   
 	  }
 	b.do_move(*pd, pv[j]);
       }

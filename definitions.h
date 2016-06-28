@@ -68,6 +68,11 @@ enum MoveType
     CHECK, CASTLE, CASTLE_KS = 9, CASTLE_QS = 10, PSEUDO_LEGAL = 17, LEGAL, CAPTURE_CHECKS
   };
 
+enum SearchType
+  {
+    PROBCUT, MAIN, QSEARCH
+  };
+
 enum MaterialValue
   {
     PawnValueMG = 100, 
