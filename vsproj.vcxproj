@@ -158,11 +158,12 @@
     <ClCompile Include="evaluate.cpp" />
     <ClCompile Include="globals.cpp" />
     <ClCompile Include="hashtable.cpp" />
-    <ClCompile Include="hedwig.cpp" />
     <ClCompile Include="magic.cpp" />
+    <ClCompile Include="main.cpp" />
     <ClCompile Include="material.cpp" />
     <ClCompile Include="move.cpp" />
     <ClCompile Include="moveselect.cpp" />
+    <ClCompile Include="opts.cpp" />
     <ClCompile Include="pawns.cpp" />
     <ClCompile Include="search2.cpp" />
     <ClCompile Include="threads.cpp" />
@@ -183,6 +184,7 @@
     <ClInclude Include="material.h" />
     <ClInclude Include="move.h" />
     <ClInclude Include="moveselect.h" />
+    <ClInclude Include="opts.h" />
     <ClInclude Include="pawns.h" />
     <ClInclude Include="platform.h" />
     <ClInclude Include="random.h" />

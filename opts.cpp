@@ -44,7 +44,7 @@ bool Options::load()
       key = line.substr(0,idx); val = line.substr(idx+1, line.length()-1);      
       
 #ifdef _WIN32
-      optionMap.insert(std::pair(key, std::atof(val.c_str())));
+      optionMap.insert(std::pair<std::string, int>(key, std::atof(val.c_str())));
 #else
       optionMap.insert(std::pair<std::string, int>(key, std::stof(val)));
 #endif
