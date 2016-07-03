@@ -78,11 +78,11 @@ class MoveGenerator
     }
   
   // this c'tor is meant for calls from qsearch only!!
- MoveGenerator(Board& b, bool inCheck) : it(0), last(0)
+ MoveGenerator(Board& b, int depth, bool inCheck) : it(0), last(0)
     {
       if (inCheck) generate_qsearch_mvs(b);
-      //else generate_qsearch_caps_checks(b); 
-      generate(b, CAPTURE);
+      else if (depth >=0) generate_qsearch_caps_checks(b);
+      else generate(b, CAPTURE);
     }
   ~MoveGenerator() { };
   

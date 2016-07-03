@@ -116,8 +116,8 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
       int from = int(m & 0x3f);
       int to = int((m & 0xfc0) >> 6);
       int mt = int((m & 0xf000) >> 12);
-      int p = b.piece_on(from);
-      int c = b.whos_move();
+      //int p = b.piece_on(from);
+      //int c = b.whos_move();
       
       if (m == killer1 && m != tt_mv) { killers[0] = m; continue; }
       else if (m == killer2 && m != tt_mv) { killers[1] = m; continue; }
@@ -133,7 +133,7 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
 	    }
 	  
 	  score = piece_vals[b.piece_on(to)] - piece_vals[b.piece_on(from)];
-	  if (score <= 0) score = b.see_move(m);
+	  //if (score <= 0) score = b.see_move(m);
 	  //if (b.checks_king(m) && b.is_dangerous(m, p)) score += 25;// piece_vals[b.piece_on(from)];
 	  
 	  // the threat move from null-refutation, bonus if we capture the threatening piece
@@ -150,14 +150,14 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
 	  //printf("...initial score = %d ", score);
 	 	
 	  if (lastmove != MOVE_NONE && 
-	      m == statistics->countermoves[get_from(lastmove)][get_to(lastmove)]) score += 25; // countermove bonus ... ?
+	      m == statistics->countermoves[get_from(lastmove)][get_to(lastmove)]) score += 125; // countermove bonus ... ?
 	  
 	  //if (b.checks_king(m) && b.is_dangerous(m, p)) score += 25;// piece_vals[b.piece_on(from)];
 	  
-	  if (score <= (NINF - 1)) 
-	    {	      	      
-	      score += (square_score(c, p, b.phase(), to) - square_score(c, p, b.phase(), from));
-	    }
+	  //if (score <= (NINF - 1)) 
+	  //{	      	      
+	      //score += (square_score(c, p, b.phase(), to) - square_score(c, p, b.phase(), from));
+	  //}
 	  
 	  quiets[q_sz].score = score; q_sz++;
 	  //printf("...final score = %d\n",score);

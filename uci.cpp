@@ -91,6 +91,7 @@ void UCI::uci_command(std::string cmd, int& GAME_OVER)
 	  //	std::cout << SanSquares[get_from(mvs.move())] << SanSquares[get_to(mvs.move())] << " ";
 	  //std::cout << "" << std::endl;
 	}
+      /*
       else if (command == "qsearch")
 	{
 	  for (MoveGenerator mvs(b, false); !mvs.end(); ++mvs)
@@ -100,6 +101,7 @@ void UCI::uci_command(std::string cmd, int& GAME_OVER)
 	    }
 	  std::cout << std::endl;
 	}
+      */
       else if (command == "pseudo_mvs")
 	{
 	  int count = 0;

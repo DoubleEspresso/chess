@@ -120,6 +120,10 @@ int piece_vals_eg[5] = { PawnValueEG, KnightValueEG, BishopValueEG, RookValueEG,
 //
 // candidate for rep draw (play as black with nd2+ first move), get white to avoid draw and win...
 // 8/8/4NB2/1p1k1P2/2n5/1p3K2/1P6/8 b - - 15 55
+//
+// find rc2 here as fast as possible
+// 1r3b1r/pNp3pp/B1k1pp2/3n1q2/3P4/7Q/PPbR1PPP/R1B3K1 w - - 13 25
+//
 namespace
 {
   Clock timer;
@@ -312,7 +316,7 @@ namespace
     EvalInfo ei;
 
     // material entry for this position
-    ei.tempoBonus = 16; // 1/3 pawn value is quite large for now.
+    ei.tempoBonus = 4; // 1/3 pawn value is quite large for now.
     ei.stm = b.whos_move();
     ei.me = material.get(b);
     ei.phase = ei.me->game_phase;
@@ -580,7 +584,7 @@ namespace
 	      U64 bm = mobility & tmp;
 	      mobility ^= bm;
 	    }
-	  score += count(mobility);
+	  score += count(mobility) / 4;
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////
@@ -635,7 +639,7 @@ namespace
       }
 
     // light + dark square bishop bonus
-    if (light_bishop && dark_bishop) score += int((ei.phase == MIDDLE_GAME ? 16 : 32));
+    if (light_bishop && dark_bishop) score += int((ei.phase == MIDDLE_GAME ? 8 : 16));
 
     if (ei.do_trace)
       {
@@ -999,6 +1003,7 @@ namespace
 
     // note: attack_weights for piece attacks pawn are all <= 4 so this adjustment
     // should be small
+    
     if (pawn_targets)
       while (pawn_targets)
 	{
@@ -1022,7 +1027,7 @@ namespace
 	  tmp = (attackers & rooks);
 	  if (tmp) score += count(tmp) *attack_weights[ei.phase][ROOK][PAWN];
 	}
-
+    
     // evaluate checks to enemy king (if any)
     U64 king_attackers = b.attackers_of(enemy_ks) & b.colored_pieces(c);
 
@@ -1090,11 +1095,11 @@ namespace
       {
 	while (our_passed_pawns)
 	  {
-	    score += 1;
+	    score += 2;
 	    // pawns close to promotion are almost always a threat
 	    int from = pop_lsb(our_passed_pawns);
 	    U64 squares_until_promotion = SpaceInFrontBB[c][from];
-	    if (count(squares_until_promotion) <= 3) score += 2;
+	    if (count(squares_until_promotion) <= 3) score += 4;
 	  }
       }
     // pawn forks ( should be grabbed from the pawn table?)..

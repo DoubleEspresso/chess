@@ -89,7 +89,7 @@ namespace Search
 	    
 	    printf("info score cp %d depth %d seldepth %d nodes %d time %d pv ",
 		   eval,
-		   depth-1,
+		   depth,
 		   j,
 		   b.get_nodes_searched(),
 		   (int)timer_thread->elapsed);
@@ -243,7 +243,7 @@ namespace
 
     // 7. -- probcut from stockfish
     if (!pv_node && 
-	depth >= 4 && !b.in_check() &&
+	depth >= 400 && !b.in_check() &&
 	!stack->isNullSearch)
       {
 	BoardData pd;
@@ -296,7 +296,7 @@ namespace
     MoveGenerator mvs(b, PSEUDO_LEGAL);
     U16 move;
     int pruned = 0;
-    if (ttm == MOVE_NONE) ttm = (stack-2)->pv[iter_depth-iter_depth];
+    //if (ttm == MOVE_NONE) ttm = (stack-2)->pv[iter_depth-iter_depth];
     ms.load(mvs, b, ttm, statistics, stack);
 
     while (ms.nextmove(*stack, move, false))
@@ -500,10 +500,16 @@ namespace
     if (ttval == NINF) stand_pat = Eval::evaluate(b);
 
     if (stand_pat >= beta && !inCheck) return beta; 
+    // delta pruning 
+    if (stand_pat < alpha - 950 && !inCheck)
+      {
+	return alpha;
+      }
     if (alpha < stand_pat && !inCheck) alpha = stand_pat;
     //if (alpha >= beta && !inCheck) return beta;
        
-    MoveGenerator mvs(b,inCheck); 		
+    MoveGenerator mvs(b, depth, inCheck); 		
+
     if (inCheck && mvs.size() == 0) return NINF + stack->ply;
 
     // avoid infinite back-forth checking
