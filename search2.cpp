@@ -157,17 +157,17 @@ namespace
 	ttstatic_value = e.static_value;	
 	ttvalue = e.value;
 
-	if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta && pv_node)
+	if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta)// && pv_node)
 	  { 
 	    stack->currmove = stack->bestmove = e.move;
 	    return e.value;
 	  }	
-	else if (e.bound == BOUND_LOW && e.value >= beta && pv_node) 
+	else if (e.bound == BOUND_LOW && e.value >= beta && !pv_node) 
 	  {
 	    statistics.update(ttm, lastmove, stack, depth, b.whos_move(), quiets);	    
 	    return e.value; 
 	  }
-	else if (e.bound == BOUND_HIGH && e.value <= alpha && pv_node) return e.value;	
+	else if (e.bound == BOUND_HIGH && e.value <= alpha && !pv_node) return e.value;	
       }
     
     // 2. -- mate distance pruning
@@ -243,7 +243,7 @@ namespace
 
     // 7. -- probcut from stockfish
     if (!pv_node && 
-	depth >= 2 && !b.in_check() &&
+	depth >= 400 && !b.in_check() &&
 	!stack->isNullSearch)
       {
 	BoardData pd;
@@ -251,7 +251,7 @@ namespace
 	MoveGenerator mvs(b, CAPTURE);
 	U16 move; 
 	int rbeta = beta + 400;
-	int rdepth = depth - 4;
+	int rdepth = depth - 2;
 	ms.load(mvs, b, ttm, statistics, stack);
 	while (ms.nextmove(*stack, move, false))
 	  {	    
@@ -489,9 +489,9 @@ namespace
 	ttm = e.move;
 	//ttstatic_value = e.static_value;
 	ttval = e.value;
-	if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta && pv_node) return e.value;	
-	else if (e.bound == BOUND_LOW && e.value >= beta && pv_node) return e.value; // commented is better
-	else if (e.bound == BOUND_HIGH && e.value <= alpha && pv_node) return e.value;
+	if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta) return e.value; // && pv_node) return e.value;	
+	else if (e.bound == BOUND_LOW && e.value >= beta && !pv_node) return e.value; // commented is better
+	else if (e.bound == BOUND_HIGH && e.value <= alpha && !pv_node) return e.value;
 	
       }
     
