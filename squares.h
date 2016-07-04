@@ -4,19 +4,14 @@
 
 #include "definitions.h"
 
-//------------------------------------------
-// 1. The maximum score ~ 10
-// 2. needs tuning 
-//------------------------------------------
 
 #define S(x,y) pick_table_score(x,y)
 
 namespace {
 
-  int gp;
   inline int pick_table_score(int x, int y)
   {
-    return (gp == MIDDLE_GAME ? x : y);
+    return (x + 100 * y);
   }
 
   static const int square_scores[6][SQUARES] =
@@ -98,8 +93,10 @@ namespace {
 	int row = 7 - ROW(square);
 	square = 8 * row + col;
       }
-    gp = phase;
-    return square_scores[p][square];
+    int ss = square_scores[p][square];
+	int eg = ss / 100;
+	int mg = ss - 100 * eg;
+    return (phase == MIDDLE_GAME ? mg : eg); 
   }
 
   // non-templated version (drops the const color and piece requirements)
@@ -111,8 +108,10 @@ inline int square_score(int c, int p, int phase, int square)
 	int row = 7 - ROW(square);
 	square = 8 * row + col;
       }
-    gp = phase;
-    return square_scores[p][square];
+	int ss = square_scores[p][square];	
+	int eg = ss / 100;
+	int mg = ss - 100 * eg;
+    return (phase == MIDDLE_GAME ? mg : eg);
   }
 
 

@@ -450,23 +450,13 @@ MoveList* MoveGenerator::generate(Board& b, MoveType mt)
 	  int to = ((list[i].m & 0xfc0) >> 6);
 	  int mt = ((list[i].m & 0xf000) >> 12);
 	  int legal = 1;
-	  //printf("..mv->%s%s",SanSquares[frm].c_str(),SanSquares[to].c_str());
 	  if (mt == EP || frm == ks || SquareBB[frm] & pinned)
 	    {
-	      //if (mt == EP ) 
-	      //{
-	      //  printf("..mv -> %s%s\n",SanSquares[frm].c_str(),SanSquares[to].c_str());
-	      //  printf("..%d\n",is_legal_ep(frm,to,ks,ec,b));
-	      //}
-
 	      if (mt == EP && !is_legal_ep(frm, to, ks, ec, b)) legal = 0;
 	      else if (frm == ks && !is_legal_km(ks, to, ec, b, mt)) legal = 0;
 	      else if ((SquareBB[frm] & pinned) && !aligned(ks, frm, to)) legal = 0;
-	      //(legal == 0 ? printf("; illegal mv") : printf("; ..legal mv"));
 	    }
 	  (legal == 1 ? legal_i[iter++] = i : last--);
-	  //printf("; iter = %d, i = %d, last = %d\n",iter, i , last);
-	  //printf("\n");
 	}
     }
   return list;
@@ -526,9 +516,8 @@ MoveList* MoveGenerator::generate_qsearch_caps_checks(Board& b)
 	  else if (frm == ks && !is_legal_km(ks, to, ec, b, type)) legal = 0;
 	  else if ((SquareBB[frm] & pinned) && !aligned(ks, frm, to)) legal = 0;
 	  
-	  // qsearch filters
-	  //if (legal == 1 && b.checks_king(list[i].m)) legal = 1; // not working
-	  if (legal == 1 && type == CAPTURE) legal = 1;
+	  //filters
+	  if (legal == 1 && (type == CAPTURE || b.gives_check(list[i].m) )) legal = 1;
 	  else legal = 0;
 
 	  (legal == 1 ? legal_i[iter++] = i : last--);

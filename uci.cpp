@@ -60,48 +60,34 @@ void UCI::uci_command(std::string cmd, int& GAME_OVER)
 	      if (b.is_legal(m)) count++;
 	      size++;
 	    }	
-	  //std::cout << "\n " << count << " of " << size << " are legal\n";
 	  std::cout << (b.whos_move() == WHITE ? "\nwhite " : "\nblack ") << "to move" << std::endl;
 	  std::cout << "castle state white : (" << (b.can_castle(W_KS) ? "k.side" : "") << (b.can_castle(W_QS) ? " q.side" : "") << ")"
 		    << " black : (" << (b.can_castle(B_KS) ? "k.side" : "") << (b.can_castle(B_QS) ? " q.side" : "") << ")" << std::endl;
-	  //std::cout << "en passant square : " << SanSquares[b.get_ep_sq()] << std::endl;
 	  std::cout << "Zobrist key: " << b.pos_key() << std::endl;
 	  std::cout << "Evaluation: " << Eval::evaluate(b) << std::endl;
-
 	}
-      else if (command == "table")
-	{
-	  //int w_sc = square_score<WHITE, PAWN>(MIDDLE_GAME, E2);
-	  //int b_sc = square_score<BLACK, PAWN>(MIDDLE_GAME, E7);
-	  //printf("..dbg sqs score = w_%d, b_%d\n", w_sc, b_sc);
-	}
-      else if (command == "bits")
-	{
-	  //U64 tmp = b.all_pieces();
-	  //Array::print(tmp);
-	}
-      else if (command == "legal_mvs")
-	{
 
 
-	}
       else if (command == "caps" || command == "captures")
 	{
-	  //for (MoveGenerator mvs(b, CAPTURE); !mvs.end(); ++mvs)
-	  //	std::cout << SanSquares[get_from(mvs.move())] << SanSquares[get_to(mvs.move())] << " ";
-	  //std::cout << "" << std::endl;
+	  for (MoveGenerator mvs(b, CAPTURE); !mvs.end(); ++mvs)
+	  {
+		U16 m = mvs.move();
+		std::cout << move_to_string(m) << " ";
+	  }
+	  std::cout << "" << std::endl;
 	}
-      /*
-      else if (command == "qsearch")
+      else if (command == "checks")
 	{
-	  for (MoveGenerator mvs(b, false); !mvs.end(); ++mvs)
-	    {
-	      U16 m = mvs.move();
-	      std::cout << move_to_string(m);
-	    }
-	  std::cout << std::endl;
+		MoveGenerator mvs;
+		mvs.generate_qsearch_caps_checks(b);
+	  for (; !mvs.end(); ++mvs)
+	  {
+		U16 m = mvs.move();
+		std::cout << move_to_string(m) << " ";
+	  }
+	  std::cout << "" << std::endl;
 	}
-      */
       else if (command == "pseudo_mvs")
 	{
 	  int count = 0;

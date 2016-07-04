@@ -67,6 +67,9 @@ inline bool operator >(const MoveList& x, const MoveList& y)
 class MoveGenerator
 {
  public:
+ MoveGenerator() : it(0), last(0)
+    {
+    }
  MoveGenerator(Board &b) : it(0), last(0)
     {
       generate(b, LEGAL);
@@ -80,7 +83,7 @@ class MoveGenerator
   // this c'tor is meant for calls from qsearch only!!
  MoveGenerator(Board& b, int depth, bool inCheck) : it(0), last(0)
     {
-      if (inCheck) generate_qsearch_mvs(b);
+      if (inCheck) generate_qsearch_mvs(b); // evasions
       else if (depth >=0) generate_qsearch_caps_checks(b);
       else generate(b, CAPTURE);
     }

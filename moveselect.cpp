@@ -116,8 +116,8 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
       int from = int(m & 0x3f);
       int to = int((m & 0xfc0) >> 6);
       int mt = int((m & 0xf000) >> 12);
-      //int p = b.piece_on(from);
-      //int c = b.whos_move();
+      int p = b.piece_on(from);
+      int c = b.whos_move();
       
       if (m == killer1 && m != tt_mv) { killers[0] = m; continue; }
       else if (m == killer2 && m != tt_mv) { killers[1] = m; continue; }
@@ -145,10 +145,10 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
       else if ((mt == QUIET || mt == CASTLE_KS ||
 		mt == CASTLE_QS || mt == PROMOTION || mt == EVASION) && m != tt_mv)
 	{
+	  //int pto = get_to((stack-1)->currmove);
 	  quiets[q_sz].m = m;
 	  int score = statistics->score(m, b.whos_move());
-	  //printf("...initial score = %d ", score);
-	 	
+	  	
 	  if (lastmove != MOVE_NONE && 
 	      m == statistics->countermoves[get_from(lastmove)][get_to(lastmove)]) score += 125; // countermove bonus ... ?
 	  
@@ -156,11 +156,10 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
 	  
 	  //if (score <= (NINF - 1)) 
 	  //{	      	      
-	      //score += (square_score(c, p, b.phase(), to) - square_score(c, p, b.phase(), from));
+	  //    score += (square_score(c, p, b.phase(), to) - square_score(c, p, b.phase(), from));
 	  //}
 	  
 	  quiets[q_sz].score = score; q_sz++;
-	  //printf("...final score = %d\n",score);
 	}
       else if (m == tt_mv && m != MOVE_NONE)
 	{
@@ -190,9 +189,7 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
 // move list..
 void MoveSelect::sort(MoveList * ml, int length)
 {
-
   std::sort(ml, ml + length, GreaterThan);
-
 }
 
 bool MoveSelect::nextmove(Node& node, U16& out, bool split)

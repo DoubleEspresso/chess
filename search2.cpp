@@ -243,14 +243,14 @@ namespace
 
     // 7. -- probcut from stockfish
     if (!pv_node && 
-	depth >= 400 && !b.in_check() &&
+	depth >= 2 && !b.in_check() &&
 	!stack->isNullSearch)
       {
 	BoardData pd;
 	MoveSelect ms(PROBCUT); // slow initialization method
 	MoveGenerator mvs(b, CAPTURE);
 	U16 move; 
-	int rbeta = beta + 200;
+	int rbeta = beta + 400;
 	int rdepth = depth - 4;
 	ms.load(mvs, b, ttm, statistics, stack);
 	while (ms.nextmove(*stack, move, false))
@@ -306,7 +306,7 @@ namespace
 
 	// piece and move data
 	int piece = b.piece_on(get_from(move));
-	bool givesCheck = b.checks_king(move);
+	bool givesCheck = b.checks_king(move);//b.checks_king(move);
 	bool inCheck = b.in_check();
 	bool isQuiet = b.is_quiet(move);
 	bool pvMove = (moves_searched == 0 && pv_node);

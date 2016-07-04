@@ -491,13 +491,17 @@ int Board::phase()
   return (tot_cnt >= 6 ? MIDDLE_GAME : END_GAME);
 }
 
-// WARNING :: only call this after a "do-move" call!
 bool Board::gives_check(U16& move)
 {
   int to = get_to(move);
-  //assert(to < 64);
+  int from = get_from(move);
+  int p = piece_on(from);
+  U64 m = all_pieces();
   U64 to_bm = SquareBB[to];
-  U64 attackers = attackers_of(king_square());
+  m ^= (SquareBB[from] | SquareBB[to]);
+  pieces[position->stm][p] ^= (SquareBB[from] | SquareBB[to]);
+  U64 attackers = attackers_of(king_square(position->stm == WHITE ? BLACK : WHITE), m);
+  pieces[position->stm][p] ^= (SquareBB[to] | SquareBB[from]);
   return to_bm & attackers;
 }
 
