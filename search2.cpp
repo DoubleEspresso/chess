@@ -157,17 +157,17 @@ namespace
 	ttstatic_value = e.static_value;	
 	ttvalue = e.value;
 
-	if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta)// && pv_node)
+	if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta && pv_node)
 	  { 
 	    stack->currmove = stack->bestmove = e.move;
 	    return e.value;
 	  }	
-	else if (e.bound == BOUND_LOW && e.value >= beta && !pv_node) 
+	else if (e.bound == BOUND_LOW && e.value >= beta && pv_node) 
 	  {
 	    statistics.update(ttm, lastmove, stack, depth, b.whos_move(), quiets);	    
 	    return e.value; 
 	  }
-	else if (e.bound == BOUND_HIGH && e.value <= alpha && !pv_node) return e.value;	
+	else if (e.bound == BOUND_HIGH && e.value <= alpha && pv_node) return e.value;	
       }
     
     // 2. -- mate distance pruning
@@ -296,7 +296,7 @@ namespace
     MoveGenerator mvs(b, PSEUDO_LEGAL);
     U16 move;
     int pruned = 0;
-    //if (ttm == MOVE_NONE) ttm = (stack-2)->pv[iter_depth-iter_depth];
+    if (ttm == MOVE_NONE) ttm = (stack-2)->pv[iter_depth-iter_depth];
     ms.load(mvs, b, ttm, statistics, stack);
 
     while (ms.nextmove(*stack, move, false))
@@ -379,6 +379,8 @@ namespace
 	      }
 	    int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];		
 	    if ( v <= (NINF - 1) ) R += 1;
+
+	    //if (!pv_node && isQuiet && move != statistics.countermoves[get_from(move)][get_to(move)]) R += 1;
 
 	    int LMR = newdepth - R;
 	    eval = (LMR <= 1 ? -qsearch<NONPV>(b, -alpha-1, -alpha, LMR, stack + 1, givesCheck) : -search<NONPV>(b, -alpha-1, -alpha, LMR, stack + 1));
@@ -489,9 +491,9 @@ namespace
 	ttm = e.move;
 	//ttstatic_value = e.static_value;
 	ttval = e.value;
-	if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta) return e.value; // && pv_node) return e.value;	
-	else if (e.bound == BOUND_LOW && e.value >= beta && !pv_node) return e.value; // commented is better
-	else if (e.bound == BOUND_HIGH && e.value <= alpha && !pv_node) return e.value;
+	if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta && pv_node) return e.value;	
+	else if (e.bound == BOUND_LOW && e.value >= beta && pv_node) return e.value; // commented is better
+	else if (e.bound == BOUND_HIGH && e.value <= alpha && pv_node) return e.value;
 	
       }
     
@@ -500,11 +502,11 @@ namespace
     if (ttval == NINF) stand_pat = Eval::evaluate(b);
 
     if (stand_pat >= beta && !inCheck) return beta; 
-    // delta pruning 
+    // delta pruning         
     if (stand_pat < alpha - 950 && !inCheck)
       {
 	return alpha;
-      }
+      }        
     if (alpha < stand_pat && !inCheck) alpha = stand_pat;
     //if (alpha >= beta && !inCheck) return beta;
        
@@ -539,6 +541,7 @@ namespace
 	//if (canPrune) continue;
 	
 	// futility pruning --continue if we are winning	
+	
 	if (!givesCheck && !inCheck && 
 	    move != ttm && !pv_node &&
 	    piece != PAWN && 	      
@@ -550,7 +553,7 @@ namespace
 	  }	
 	
 	// prune captures which have see values <= 0	
-	if ( (!inCheck || canPrune) &&
+	if ( (!inCheck) && // || canPrune) &&
 	     !pv_node && move != ttm && stand_pat < alpha &&
 	     b.see_move(move) < 0)
 	  continue;

@@ -44,7 +44,7 @@ void MoveStats::update(U16& m, U16& last, Node* stack, int d, int c, U16 * quiet
 	  countermoves[f][t] = m;
 	}
     }
-  
+
   if (quiets)
     {
       for (int j = 0; U16 mv = quiets[j]; ++j)
@@ -56,7 +56,7 @@ void MoveStats::update(U16& m, U16& last, Node* stack, int d, int c, U16 * quiet
 	  history[c][f][t] -= pow(2, d);
 	}
     }
-  
+
   // update the stack killers
   if (type == QUIET && m != stack->killer1) { stack->killer2 = stack->killer1; stack->killer1 = m; }
 }
@@ -133,8 +133,8 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
 	    }
 	  
 	  score = piece_vals[b.piece_on(to)] - piece_vals[b.piece_on(from)];
-	  //if (score <= 0) score = b.see_move(m);
-	  //if (b.checks_king(m) && b.is_dangerous(m, p)) score += 25;// piece_vals[b.piece_on(from)];
+	  if (score <= 0) score = b.see_move(m);
+	  //if (b.gives_check(m) && b.is_dangerous(m, p)) score += 25;// piece_vals[b.piece_on(from)];
 	  
 	  // the threat move from null-refutation, bonus if we capture the threatening piece
 	  // was only used if score == 0
@@ -150,14 +150,14 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
 	  int score = statistics->score(m, b.whos_move());
 	  	
 	  if (lastmove != MOVE_NONE && 
-	      m == statistics->countermoves[get_from(lastmove)][get_to(lastmove)]) score += 125; // countermove bonus ... ?
+	      m == statistics->countermoves[get_from(lastmove)][get_to(lastmove)]) score += 25; // countermove bonus ... ?
 	  
-	  //if (b.checks_king(m) && b.is_dangerous(m, p)) score += 25;// piece_vals[b.piece_on(from)];
+	  //if (b.gives_check(m) && b.is_dangerous(m, p)) score += 25;// piece_vals[b.piece_on(from)];
 	  
-	  //if (score <= (NINF - 1)) 
+	  // if (score <= (NINF - 1)) 
 	  //{	      	      
-	  //    score += (square_score(c, p, b.phase(), to) - square_score(c, p, b.phase(), from));
-	  //}
+	  //  score += (square_score(c, p, b.phase(), to) - square_score(c, p, b.phase(), from));
+	  // }
 	  
 	  quiets[q_sz].score = score; q_sz++;
 	}

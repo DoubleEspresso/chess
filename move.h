@@ -84,7 +84,8 @@ class MoveGenerator
  MoveGenerator(Board& b, int depth, bool inCheck) : it(0), last(0)
     {
       if (inCheck) generate_qsearch_mvs(b); // evasions
-      //else if (depth >=0) generate_qsearch_caps_checks(b);
+      else if (depth >=0) generate_qsearch_caps_checks(b);
+      //else generate_qsearch_caps_checks(b);
       else generate(b, CAPTURE);
     }
   ~MoveGenerator() { };

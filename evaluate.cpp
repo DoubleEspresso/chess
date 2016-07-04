@@ -36,7 +36,7 @@ int piece_vals_eg[5] = { PawnValueEG, KnightValueEG, BishopValueEG, RookValueEG,
 // common qgd position (white takes pawn and loses game)
 // rnbqkb1r/pp2pppp/8/2pp4/3PnB2/2N2N2/PPP1PPPP/R2QKB1R w KQkq - 2 5 
 //
-// white should not play qd3 (like in game) pawn forks --> lost piece are common bugs
+// white should not play qd3 (best e2e4) (like in game) pawn forks --> lost piece are common bugs
 // rnbqkb1r/pp2p1pp/5p2/2Pp4/5B2/2P2N2/P1P1PPPP/R2QKB1R w KQkq - 0 7 
 //
 // bd6 here as black? -- should always be avoided..
@@ -123,6 +123,9 @@ int piece_vals_eg[5] = { PawnValueEG, KnightValueEG, BishopValueEG, RookValueEG,
 //
 // find rc2 here as fast as possible
 // 1r3b1r/pNp3pp/B1k1pp2/3n1q2/3P4/7Q/PPbR1PPP/R1B3K1 w - - 13 25
+//
+// avoid taking the pawn Na6 .. trapped knight .. Nb3 best
+// 2kr1b1r/2p2pp1/p1p1p3/2N1Pb1p/3B2n1/8/PPP1NPPP/R1K4R w - - 0 17
 //
 namespace
 {
