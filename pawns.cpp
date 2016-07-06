@@ -128,7 +128,7 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx)
 
 	  U64 infrontBB = SpaceInFrontBB[c][from];
 	  int dist = count(infrontBB);
-	  if (dist < 4) base += (gp == MIDDLE_GAME ? 2 : 4);
+	  if (dist < 4) base += (gp == MIDDLE_GAME ? 8 : 16);
 	}
 
       // eval isolated pawns		
