@@ -2,6 +2,8 @@
 #include "utils.h"
 #include "bits.h"
 
+#include <cmath>
+
 namespace Globals
 {
 
@@ -30,7 +32,9 @@ namespace Globals
   U64 ColsInFrontBB[COLORS][SQUARES];          // all square between current square and queening square
   U64 ColoredSquaresBB[COLORS];					 // squares of a specific color
   U64 CenterMaskBB;
-
+  U64 kSidePawnStormBB;
+  U64 qSidePawnStormBB;
+  int SearchReductions[2][2][MAXDEPTH][MAXDEPTH]; // search reduction table (same as in stockfish)
 
   // the main initialization routine, which loads all the 
   // bitboard data listed in the globals namespace, these 
@@ -47,9 +51,43 @@ namespace Globals
     ColoredSquaresBB[WHITE] = 0ULL;
     ColoredSquaresBB[BLACK] = 0ULL;
 
+    // fill search reduction array
+    // index assignment [pv_node][improving][depth][move count]
+    for (int sd = 0; sd < MAXDEPTH; ++sd)
+      {
+	for (int mc = 0; mc < MAXDEPTH; ++mc)
+	  {
+	    // pv nodes
+	    double pvr = log(double(sd+1)) * log(double(mc+1)) / 3.0;
+	    double non_pvr = 0.25 + log(double(sd+1)) * log(double(mc+1)) / 2.0;
+
+	    SearchReductions[1][0][sd][mc] = int(pvr >= 1.0 ? pvr + 0.5 : 0);
+	    SearchReductions[1][1][sd][mc] = int(non_pvr >= 1.0 ? non_pvr + 0.5 : 0);
+
+	    // non-pv nodes
+	    SearchReductions[0][0][sd][mc] = SearchReductions[1][0][sd][mc];
+	    SearchReductions[0][1][sd][mc] = SearchReductions[0][1][sd][mc];
+	    
+	    if (SearchReductions[0][0][sd][mc] > 1) 
+	      SearchReductions[0][0][sd][mc] += 1;
+	    
+	    //printf("..sd[pv][improving][%d][%d]=%d\n",sd, mc, SearchReductions[1][1][sd][mc]);
+	  }
+      }
+
     // the center mask (smaller center - just 4 squares)
     CenterMaskBB = (SquareBB[D4] | SquareBB[D5] | SquareBB[E4] | SquareBB[E5]);
+    BigCenterBB = CenterMaskBB | (SquareBB[C4] | SquareBB[C5] | SquareBB[E3] | SquareBB[D3] |
+				  SquareBB[D6] | SquareBB[E6] | SquareBB[F4] | SquareBB[F5]);
 
+    // pawn storm detection on k/q side
+    kSidePawnStormBB = SquareBB[F6] | SquareBB[F5] | SquareBB[F4] | SquareBB[F3] |
+      SquareBB[G6] | SquareBB[G5] | SquareBB[G4] | SquareBB[G3] |
+      SquareBB[H6] | SquareBB[H5] | SquareBB[H4] | SquareBB[H3];
+    qSidePawnStormBB = SquareBB[C6] | SquareBB[C5] | SquareBB[C4] | SquareBB[C3] |
+      SquareBB[B6] | SquareBB[B5] | SquareBB[B4] | SquareBB[B3] |
+      SquareBB[A6] | SquareBB[A5] | SquareBB[A4] | SquareBB[A3];
+    
     // fill the rows/cols bitboards
     for (int r = 0; r < 8; ++r)
       {

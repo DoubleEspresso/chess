@@ -36,7 +36,10 @@ namespace Globals
 	extern U64 ColsInFrontBB[COLORS][SQUARES];          // all square between current square and queening square
 	extern U64 ColoredSquaresBB[COLORS];
 	extern U64 CenterMaskBB;
-
+	extern U64 kSidePawnStormBB;
+	extern U64 qSidePawnStormBB;
+	extern int SearchReductions[2][2][MAXDEPTH][MAXDEPTH]; // search reduction table (same as in stockfish)
+	
 	bool init();
 	U64 PseudoAttacksBB(int piece, int square);
 }

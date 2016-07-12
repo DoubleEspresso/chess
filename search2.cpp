@@ -36,11 +36,12 @@ namespace
   void update_pv(U16* pv, U16& move, U16* child_pv);
   void pv_from_tt(Board& b, int d);
   void store_pv(Board& b, U16 * pv, int depth);
-  //void checkMoreTime(Board& b, Node * stack);
+  void checkMoreTime(Board& b, Node * stack);
 };
 
 namespace Search
 {
+
   void run(Board& b, int dpth)
   {
     // init search params
@@ -66,7 +67,6 @@ namespace Search
     // the main iterative deepening loop
     for (int depth = 1; depth <= dpth; depth += 1)
       {
-
 	if (UCI_SIGNALS.stop) break;
 	//else if (UCI_SIGNALS.timesUp) checkMoreTime(b, stack + 2);
 	statistics.init(); // move ordering of quiet moves
@@ -107,6 +107,11 @@ namespace Search
 
 namespace
 {
+  int Reduction(bool pv_node, bool improving, int d, int mc)
+  {    
+    return Globals::SearchReductions[(int)pv_node][(int)improving][std::min(d, 63)][std::min(mc, 63)];
+  }
+
   template<NodeType type>
   int search(Board& b, int alpha, int beta, int depth, Node* stack)
   {
@@ -132,6 +137,9 @@ namespace
 
     // clear pv
     for(int j=0; stack->pv[j] != MOVE_NONE; ++j) stack->pv[j] = MOVE_NONE;
+
+    // reductions array specific
+    bool improving = false;
 
     // update last move info
     U16 lastmove = (stack - 1)->currmove;
@@ -170,8 +178,7 @@ namespace
 	else if (e.bound == BOUND_HIGH && e.value <= alpha && pv_node) return e.value;	
       }
     
-    // 2. -- mate distance pruning
-    
+    // 2. -- mate distance pruning    
     int mate_val = INF - stack->ply;
     if (mate_val < beta)
       {
@@ -190,6 +197,7 @@ namespace
     // 3. -- static evaluation of position    
     int static_eval = (ttvalue > NINF ? ttvalue : ttstatic_value > NINF ? ttstatic_value : Eval::evaluate(b));
 
+    
     // 4. -- drop into qsearch if we are losing
     if (depth <= 4 &&
 	!pv_node && ttm == MOVE_NONE &&
@@ -211,7 +219,7 @@ namespace
       }
 
     // 5. -- futility pruning
-    if (depth <= 5 && 
+    if (depth <= 4 && 
 	!pv_node && !b.in_check() &&
 	!stack->isNullSearch &&
 	static_eval - 200*depth >= beta && 
@@ -220,7 +228,7 @@ namespace
       {
 	return beta; // fail hard
       }
-	
+    
     // 6. -- null move search    
     if (!pv_node &&
 	depth >= 2 &&
@@ -268,8 +276,9 @@ namespace
     
     // 7. -- internal iterative deepening
     if (ttm == MOVE_NONE &&
-	!stack->isNullSearch && 
+	//!stack->isNullSearch && 
 	depth >= (pv_node ? 6 : 8) &&
+	(pv_node || eval + 250 >= beta) &&
 	!b.in_check() )
       {
 	int iid = depth - 2 - (pv_node ? 0 : depth / 4);
@@ -295,9 +304,11 @@ namespace
     MoveSelect ms(MAIN); // slow initialization method
     MoveGenerator mvs(b, PSEUDO_LEGAL);
     U16 move;
-    int pruned = 0;
+    int pruned = 0; moves_searched = 0;
     if (ttm == MOVE_NONE) ttm = (stack-2)->pv[iter_depth-iter_depth];
-    ms.load(mvs, b, ttm, statistics, stack);
+    ms.load(mvs, b, ttm, statistics, stack);   
+    improving = static_eval - (stack-2)->static_eval >= 0 || static_eval == 0 || 
+      (stack-2)->static_eval == 0;
 
     while (ms.nextmove(*stack, move, false))
       {
@@ -315,7 +326,7 @@ namespace
 	int extension = 0; int reduction = 1; // always reduce current depth by 1
 	if (inCheck) extension += 1; 
 
-	if (depth >= 8 &&
+	if (depth >= 8  &&
 	    !inCheck && !givesCheck && isQuiet &&
 	    move != ttm &&
 	    move != stack->killer1 &&
@@ -330,6 +341,7 @@ namespace
 
 	// futility pruning
 	if (newdepth <= 1 &&
+	    //moves_searched > 0 && quiets_searched > 0 &&
 	    move != ttm &&
 	    move != stack->killer1 &&
 	    move != stack->killer2 &&
@@ -349,7 +361,7 @@ namespace
 	    move != stack->killer2 &&
 	    piece != PAWN && 
 	    //eval < alpha && 
-	    b.see_move(move) <= 0) 
+	    b.see_move(move) < 0) 
 	  {
 	    ++pruned;
 	    continue;
@@ -367,21 +379,22 @@ namespace
 	    move != ttm && 
 	    move != stack->killer1 &&
 	    move != stack->killer2 &&
-	    newdepth >= 8)
+	    !givesCheck && 
+	    newdepth >= 2)//(pv_node ? 8 : 2))
 	  {
-	    int R = 0;
+	    int R = Reduction(pv_node, improving, newdepth, moves_searched);
 	    if (!inCheck && !givesCheck &&
 		piece != PAWN &&
 		isQuiet && !pv_node)
 	      {
 		R += 1;
-		if (static_eval + 650 < alpha) R += 1;	
+		//if (static_eval + 650 < alpha) R += 1;	
 	      }
 	    int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];		
 	    if ( v <= (NINF - 1) ) R += 1;
-
+	    
 	    //if (!pv_node && isQuiet && move != statistics.countermoves[get_from(move)][get_to(move)]) R += 1;
-
+	    
 	    int LMR = newdepth - R;
 	    eval = (LMR <= 1 ? -qsearch<NONPV>(b, -alpha-1, -alpha, LMR, stack + 1, givesCheck) : -search<NONPV>(b, -alpha-1, -alpha, LMR, stack + 1));
 
@@ -417,7 +430,7 @@ namespace
 	    return beta;
 	  }
 
-	if (eval > alpha) // && pv_node)
+	if (eval > alpha)
 	  {
 	    stack->bestmove = move;
 	    alpha = eval;
@@ -428,14 +441,14 @@ namespace
     
     if (!moves_searched)
       {
-	if (pruned != mvs.size() && b.is_draw(0)) 
+	if (b.in_check()) //(pruned != mvs.size() && b.in_check()) 
+	  {
+	    return NINF + stack->ply;
+	  }
+	else if (pruned != mvs.size() && b.is_draw(0)) 
 	  {	    
 	    return DRAW;
-	  }
-	else if (pruned != mvs.size() && b.in_check()) 
-	{
-	  return NINF + stack->ply;
-	}
+	  }	
       }
     else if (b.is_repition_draw()) return DRAW;
 
@@ -502,11 +515,11 @@ namespace
     if (ttval == NINF) stand_pat = Eval::evaluate(b);
 
     if (stand_pat >= beta && !inCheck) return beta; 
-    // delta pruning         
+    // delta pruning                 
     if (stand_pat < alpha - 950 && !inCheck)
       {
 	return alpha;
-      }        
+      }            
     if (alpha < stand_pat && !inCheck) alpha = stand_pat;
     //if (alpha >= beta && !inCheck) return beta;
        
@@ -516,9 +529,9 @@ namespace
 
     // avoid infinite back-forth checking
     if (b.is_repition_draw()) 
-      {
-	return DRAW;
-      }
+    {
+      return DRAW;
+    }
 
     MoveSelect ms(QSEARCH);
     ms.load(mvs, b, ttm, statistics, stack);
@@ -540,11 +553,11 @@ namespace
 			  move != ttm && !pv_node);
 	//if (canPrune) continue;
 	
-	// futility pruning --continue if we are winning	
+	// futility pruning --continue if we are winning			
 	
 	if (!givesCheck && !inCheck && 
 	    move != ttm && !pv_node &&
-	    piece != PAWN && 	      
+	    //piece != PAWN && 	      
 	    eval + material.material_value(b.piece_on(get_to(move)), END_GAME ) >= beta &&
 	    b.see_move(move) >= 0)
 	  {
@@ -553,8 +566,10 @@ namespace
 	  }	
 	
 	// prune captures which have see values <= 0	
-	if ( (!inCheck) && // || canPrune) &&
-	     !pv_node && move != ttm && stand_pat < alpha &&
+	if ( !inCheck && //|| canPrune) &&
+	     !pv_node && move != ttm && 
+	     stand_pat < alpha &&
+	     //piece != PAWN &&
 	     b.see_move(move) < 0)
 	  continue;
 	

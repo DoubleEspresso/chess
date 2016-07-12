@@ -18,6 +18,11 @@ struct PawnEntry
   U64 attacks[2];
   U64 undefended[2];
   U64 chainBase[2];
+  U64 semiOpen[2];
+  U64 pawnChainTips[2];
+  int blockedCenter;
+  int kSidePawnStorm;
+  int qSidePawnStorm;
 };
 
 class PawnTable

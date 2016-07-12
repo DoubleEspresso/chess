@@ -11,13 +11,13 @@ PawnTable pawnTable;
 
 namespace Penalty
 {
-  float doubledPawn[2] = { -4.0, -8.0 };
-  float shelterPawn[2] = { 4.0, 1.0 };
-  float isolatedPawn[2] = { -10.0,-20.0 };
-  float backwardPawn[2] = { -5.0,-1.0 };
-  float chainPawn[2] = { 4.0, 8.0 };
-  float passedPawn[2] = { 10.0, 20.0 };
-  float semiOpen[2] = { -5.0,-9.0 };
+  float doubledPawn[2] = { -1.0, -2.0 };
+  float shelterPawn[2] = { 2.0, 1.0 };
+  float isolatedPawn[2] = { -2.0,-4.0 };
+  float backwardPawn[2] = { -1.0,-2.0 };
+  float chainPawn[2] = { 1.0, 2.0 };
+  float passedPawn[2] = { 4.0, 8.0 };
+  float semiOpen[2] = { -2.0,-4.0 };
 }
 
 // sz for 16 pawns distributed among 48 sqrs. ~ 454,253,679 elts
@@ -103,6 +103,17 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx)
   table[idx].chainPawns[c] = 0ULL;
   table[idx].undefended[c] = 0ULL;
   table[idx].chainBase[c] = 0ULL;
+  table[idx].semiOpen[c] = 0ULL;
+  table[idx].pawnChainTips[c] = 0ULL;
+  table[idx].blockedCenter = 0;
+  table[idx].kSidePawnStorm = 0;
+  table[idx].qSidePawnStorm = 0;
+  
+  bool foundPawnChainTip = false;
+  int maxRowPawnSq = (c == WHITE ? 0 : 63);
+  int centerPawnsLocked = 0;
+  int nbKsidePawnStorm = 0;
+  int nbQsidePawnStorm = 0;
 
   int *sqs = b.sq_of<PAWN>(c);
   for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
@@ -112,23 +123,21 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx)
 
       // check if shelter pawn -- a double bonus (see eval in king-safety where a similar bonus is applied).
       if (PseudoAttacksBB(KING, b.sq_of<KING>(c)[1]) & SquareBB[from])
-	//if (KingSafetyBB[c][b.king_square(c)] & SquareBB[from])
 	{
 	  table[idx].kingPawns[c] |= SquareBB[from];
 	  base += Penalty::shelterPawn[gp];
 	}
 
       // eval passed pawns
-      //U64 tmp = PawnAttacksBB[c][from] & (c == WHITE ? b_pawns : w_pawns);
       U64 tmp = PassedPawnBB[c][from] & (c == WHITE ? b_pawns : w_pawns);
-      if (!tmp)
+      if (!tmp) // no enemy pawns block this pawn
 	{
 	  table[idx].passedPawns[c] |= SquareBB[from];
 	  base += Penalty::passedPawn[gp];
 
 	  U64 infrontBB = SpaceInFrontBB[c][from];
 	  int dist = count(infrontBB);
-	  if (dist < 4) base += (gp == MIDDLE_GAME ? 8 : 16);
+	  if (dist < 4) base += (gp == MIDDLE_GAME ? 4 : 16);
 	}
 
       // eval isolated pawns		
@@ -136,7 +145,6 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx)
       if (!tmp)
 	{
 	  table[idx].isolatedPawns[c] |= SquareBB[from];
-	  //int dist = (c == WHITE ? ROW8 - ROW(sq) : ROW(sq) - ROW1);
 	  base += Penalty::isolatedPawn[gp];
 	}
 
@@ -149,19 +157,19 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx)
 	       ROW(sq1) < ROW(from) && ROW(sq2) < ROW(from)))
 	    {
 	      table[idx].backwardPawns[c] |= SquareBB[from];
-	      U64 isopen = ColBB[COL(from)] & (w_pawns | b_pawns);
+	      U64 isopen = ColBB[COL(from)] & (w_pawns | b_pawns); // check backward pawn on open file
 	      if (count(isopen) == 1)
 		base += Penalty::backwardPawn[gp];
 	    }
 	}
 
-      // eval backward pawns with one neighbor instead of 2
+      // eval backward pawns with one neighbor instead of 2, hanging pawns
       if (count(tmp) == 1)
 	{
 	  int sq1 = pop_lsb(tmp);
 	  if ((c == WHITE ? ROW(sq1) > ROW(from) : ROW(sq1) < ROW(from)))
 	    {
-	      table[idx].backwardPawns[c] |= SquareBB[from];
+	      table[idx].backwardPawns[c] |= SquareBB[from]; 
 	      base += Penalty::backwardPawn[gp];
 	    }
 	}
@@ -182,6 +190,7 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx)
       tmp = ColBB[COL(from)] & (w_pawns | b_pawns);
       if (count(tmp) == 1)
 	{
+	  table[idx].semiOpen[c] |= SquareBB[from]; // store as potential targets
 	  // make sure its "our" pawn and not an enemy pawn on the semi-open file
 	  U64 ourpawn = ColBB[COL(from)] & (c == WHITE ? w_pawns : b_pawns);
 	  if (ourpawn)
@@ -189,28 +198,60 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx)
 	      base += Penalty::semiOpen[gp];
 	    }
 	}
-      // chain pawn bonus 
-      // 1. do not always want to discourage pawn advances that "break" connectedness, this bonus can be a drawback sometimes ... 
-      // 2. seems to "double" count..we have already penalized for "dbouled, isolated" pawns, now give bonus if not double/isolated ? ...
-      // 3. favors longer pawn chains      
-      //tmp = PAWNATKS[c][sq] & (c == WHITE ? w_pawns : b_pawns);
+      // chain pawns
       tmp = PawnAttacksBB[c == WHITE ? BLACK : WHITE][from] & (c == WHITE ? w_pawns : b_pawns);
       if (tmp)
 	{
+	  int row = ROW(from);
+	  if (c == WHITE && ROW(from) > ROW(maxRowPawnSq)) maxRowPawnSq = from;
+	  if (c == BLACK && ROW(from) < ROW(maxRowPawnSq)) maxRowPawnSq = from;
+
 	  table[idx].chainPawns[c] |= (tmp | SquareBB[from]);
 	  int nb = count(tmp) / 2;
-	  //base +=  nb * Penalty::chainPawn[gp];
+	  base +=  nb * Penalty::chainPawn[gp];
 	  if (nb > 2) base += nb * Penalty::chainPawn[gp];
 	}
-      else
+      else if (PawnAttacksBB[c][from] & (c == WHITE ? w_pawns : b_pawns))
 	{
 	  table[idx].chainBase[c] |= SquareBB[from];  // store the base of the pawn chain
 	}
+
+      // determine/store structure type
+      // 1. locked center pawns/open center
+      // 2. pawn storms
+      if (SquareBB[from] & BigCenterBB)
+	{
+	  int infront = (c == WHITE ? from + 8 : from - 8);
+	  if (b.color_on(infront) == (c == WHITE ? BLACK : WHITE) && b.piece_on(infront) == PAWN)
+	    {
+	      ++centerPawnsLocked;
+	    }
+	}
+      if (SquareBB[from] & kSidePawnStormBB)
+	{
+	  ++nbKsidePawnStorm;
+	}
+      if (SquareBB[from] & qSidePawnStormBB)
+	{
+	  ++nbQsidePawnStorm;
+	}
+
+      
       // compute those pawns which are "hanging" 
       U64 defenders = b.attackers_of(from) & b.colored_pieces(c);
       if (!defenders) table[idx].undefended[c] |= SquareBB[from];
     } // end loop over sqs
 
+	  
+  if ((ROW(maxRowPawnSq) > 1 && c == WHITE) || ROW(maxRowPawnSq) < 6 && c == BLACK)
+    {
+      table[idx].pawnChainTips[c] |= SquareBB[maxRowPawnSq];
+    }
+
+  // set position type data
+  if (centerPawnsLocked >= 2) table[idx].blockedCenter = 1;  
+  if (nbKsidePawnStorm >= 3) table[idx].kSidePawnStorm = 1;
+  if (nbQsidePawnStorm >= 3) table[idx].qSidePawnStorm = 1;
   
   return (int)base;
 }
