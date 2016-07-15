@@ -109,7 +109,7 @@ namespace
 {
   int Reduction(bool pv_node, bool improving, int d, int mc)
   {    
-    return Globals::SearchReductions[(int)pv_node][(int)improving][std::min(d, 63)][std::min(mc, 63)];
+    return Globals::SearchReductions[(int)pv_node][(int)improving][min(d, 63)][min(mc, 63)];
   }
 
   template<NodeType type>
@@ -162,7 +162,7 @@ namespace
     if (hashTable.fetch(key, e) && e.depth >= depth)
       {
 	ttm = e.move;
-	ttstatic_value = e.static_value;	
+	//ttstatic_value = e.static_value;	
 	ttvalue = e.value;
 
 	if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta && pv_node)
@@ -195,7 +195,8 @@ namespace
     
 
     // 3. -- static evaluation of position    
-    int static_eval = (ttvalue > NINF ? ttvalue : ttstatic_value > NINF ? ttstatic_value : Eval::evaluate(b));
+	int static_eval = (ttvalue > NINF ? ttvalue : Eval::evaluate(b));
+    //int static_eval = (ttvalue > NINF ? ttvalue : ttstatic_value > NINF ? ttstatic_value : Eval::evaluate(b));
 
     
     // 4. -- drop into qsearch if we are losing
@@ -305,7 +306,7 @@ namespace
     MoveGenerator mvs(b, PSEUDO_LEGAL);
     U16 move;
     int pruned = 0; moves_searched = 0;
-    if (ttm == MOVE_NONE) ttm = (stack-2)->pv[iter_depth-iter_depth];
+    //if (ttm == MOVE_NONE) ttm = (stack-2)->pv[iter_depth-depth];
     ms.load(mvs, b, ttm, statistics, stack);   
     improving = static_eval - (stack-2)->static_eval >= 0 || static_eval == 0 || 
       (stack-2)->static_eval == 0;
@@ -380,7 +381,7 @@ namespace
 	    move != stack->killer1 &&
 	    move != stack->killer2 &&
 	    !givesCheck && 
-	    newdepth >= 2)//(pv_node ? 8 : 2))
+	    newdepth >= (pv_node ? 4 : 2))
 	  {
 	    int R = Reduction(pv_node, improving, newdepth, moves_searched);
 	    if (!inCheck && !givesCheck &&
@@ -509,10 +510,8 @@ namespace
 	else if (e.bound == BOUND_HIGH && e.value <= alpha && pv_node) return e.value;
 	
       }
-    
     // stand pat lower bound -- tried using static_eval for the stand-pat value, play was weak
-    int stand_pat = (ttval = NINF ? Eval::evaluate(b) : ttval);
-    if (ttval == NINF) stand_pat = Eval::evaluate(b);
+    int stand_pat = (ttval == NINF ? Eval::evaluate(b) : ttval);
 
     if (stand_pat >= beta && !inCheck) return beta; 
     // delta pruning                 

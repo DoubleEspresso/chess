@@ -97,7 +97,7 @@ int piece_vals_eg[5] = { PawnValueEG, KnightValueEG, BishopValueEG, RookValueEG,
 // find qa4+ here as white
 // 1r2bb1r/3kpppp/3p1q1n/8/2Q5/P1N1B3/1PP2PPP/R5KR w - - 2 19
 //
-// find nd5 here (winning) stockfish eval ~4.0
+// find qa4 here (winning) stockfish eval ~1.3
 // 1r2bb1r/3kpppp/3p3q/8/2Q5/P1N5/1PP2PPP/R5KR w - - 0 20
 //
 // find better than c1c3 .. white tries to save a-pawn, drops 2 pieces for rook .. fail. (e5f6, d1e1, d1d3(best))
@@ -778,16 +778,16 @@ namespace
 	{
 	  if (SquareBB[from] & pinned) score -= ei.tempoBonus;
 
-	  U64 mobility = mvs & ei.empty;
-	  U64 tmp = ei.pe->attacks[them];
-	  if (tmp)
-	    {
-	      if (tmp & SquareBB[from]) score -= ei.tempoBonus;
-	      U64 bm = mobility & tmp;
-	      mobility ^= bm;
-	    }
+	  //U64 mobility = mvs & ei.empty;
+	  //U64 tmp = ei.pe->attacks[them];
+	  //if (tmp)
+	  //  {
+	  //    if (tmp & SquareBB[from]) score -= ei.tempoBonus;
+	  //    U64 bm = mobility & tmp;
+	  //    mobility ^= bm;
+	  //  }
 
-	  if (mobility) score += count(mobility) / 8; // helps to avoid queen traps
+	  //if (mobility) score += count(mobility) / 8; // helps to avoid queen traps
 	}
 	// penalize the queen if attacked by a knight, bishop or pawn
 	U64 attackers = b.attackers_of(from) & (enemy_pawns | enemy_knights | enemy_bishops | enemy_rooks);
