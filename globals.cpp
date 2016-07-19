@@ -119,7 +119,8 @@ namespace Globals
       {
 	// the colored squares bitboard, black squares
 	// exist on even rows, and even squares, all other squares are white
-	if (((ROW(s) % 2) == (s % 2)) && ((s % 2) ==  0)) ColoredSquaresBB[BLACK] |= SquareBB[s];
+	if ( (ROW(s) % 2 == 0) && (s % 2 ==  0)) ColoredSquaresBB[BLACK] |= SquareBB[s];
+	else if ( (ROW(s)%2) != 0 && (s % 2 != 0)) ColoredSquaresBB[BLACK] |= SquareBB[s];
 	else ColoredSquaresBB[WHITE] |= SquareBB[s];
 
 	// load the pawn attack bitmaps here

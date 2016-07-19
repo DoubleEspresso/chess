@@ -109,7 +109,7 @@ namespace
 {
   int Reduction(bool pv_node, bool improving, int d, int mc)
   {    
-    return Globals::SearchReductions[(int)pv_node][(int)improving][min(d, 63)][min(mc, 63)];
+    return Globals::SearchReductions[(int)pv_node][(int)improving][std::min(d, 63)][std::min(mc, 63)];
   }
 
   template<NodeType type>
@@ -252,7 +252,7 @@ namespace
 
     // 7. -- probcut from stockfish
     if (!pv_node && 
-	depth >= 400 && !b.in_check() &&
+	depth >= 4 && !b.in_check() &&
 	!stack->isNullSearch)
       {
 	BoardData pd;
@@ -381,7 +381,7 @@ namespace
 	    move != stack->killer1 &&
 	    move != stack->killer2 &&
 	    !givesCheck && 
-	    newdepth >= (pv_node ? 4 : 2))
+	    newdepth >= 8) //(pv_node ? 4 : 2))
 	  {
 	    int R = Reduction(pv_node, improving, newdepth, moves_searched);
 	    if (!inCheck && !givesCheck &&

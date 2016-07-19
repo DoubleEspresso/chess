@@ -150,7 +150,7 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
 	  int score = statistics->score(m, b.whos_move());
 	  	
 	  if (lastmove != MOVE_NONE && 
-	      m == statistics->countermoves[get_from(lastmove)][get_to(lastmove)]) score += 25; // countermove bonus ... ?
+	      m == statistics->countermoves[get_from(lastmove)][get_to(lastmove)]) score += 10; // countermove bonus ... ?
 	  
 	  //if (b.gives_check(m) && b.is_dangerous(m, p)) score += 125;// piece_vals[b.piece_on(from)];
 	  
