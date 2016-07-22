@@ -150,7 +150,7 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
 	  int score = statistics->score(m, b.whos_move());
 	  	
 	  if (lastmove != MOVE_NONE && 
-	      m == statistics->countermoves[get_from(lastmove)][get_to(lastmove)]) score += 10; // countermove bonus ... ?
+	      m == statistics->countermoves[get_from(lastmove)][get_to(lastmove)]) score += 25; // countermove bonus ... ?
 	  
 	  //if (b.gives_check(m) && b.is_dangerous(m, p)) score += 125;// piece_vals[b.piece_on(from)];
 	  
@@ -240,7 +240,7 @@ bool MoveSelect::nextmove(Node& node, U16& out, bool split)
       return true;
 
     case PHASE_CAPTURE_GOOD:
-      if (captures[c_sz].score > 0)
+      if (captures[c_sz].score >= 0)
 	{
 	  out = captures[c_sz].m; c_sz++; return true;
 	}
@@ -249,7 +249,7 @@ bool MoveSelect::nextmove(Node& node, U16& out, bool split)
       break;
             
     case PHASE_CAPTURE_BAD:
-      if (captures[c_sz].score <= 0 && captures[c_sz].score >= NINF && captures[c_sz].m != MOVE_NONE)
+      if (captures[c_sz].score < 0 && captures[c_sz].score >= NINF && captures[c_sz].m != MOVE_NONE)
 	{
 	  out = captures[c_sz].m; c_sz++; return true;
 	}            

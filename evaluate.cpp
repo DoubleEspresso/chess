@@ -521,14 +521,14 @@ namespace
 	U64 blockade = (c == WHITE ? (ei.pe->backwardPawns[BLACK] >> NORTH) : (ei.pe->backwardPawns[WHITE] << NORTH));
 	blockade |= (c == WHITE ? (ei.pe->isolatedPawns[BLACK] >> NORTH) : (ei.pe->isolatedPawns[WHITE] << NORTH));
 	blockade &= mobility;
-	if (blockade) score += count(blockade);
+	if (blockade) score += 1;//count(blockade);
 	//if (SquareBB[from] & blockade) score += 2;
 
 	// outpost bonus
 	if ((c == WHITE ? ROW(from) >= ROW3 : ROW(from) <= ROW6))
 	  {
-	    //U64 outpost = (mobility | SquareBB[from]) & (c == WHITE ? ei.pe->attacks[WHITE] : ei.pe->attacks[BLACK]) & blockade;
-	    score += 1;//count(outpost);
+	    U64 outpost = (mobility | SquareBB[from]) & (c == WHITE ? ei.pe->attacks[WHITE] : ei.pe->attacks[BLACK]) & blockade;
+	    if (outpost) score += 1;//count(outpost);
 	  }
 	// evaluate threats to king 
 	U64 king_threats = PseudoAttacksBB(KNIGHT, from) & KingSafetyBB[them][(them == BLACK ? ei.black_ks : ei.white_ks)];
@@ -536,7 +536,7 @@ namespace
 
 	// evaluate the connected-ness of this piece (how many friendly pieces attack it)
 	//U64 connected = b.attackers_of(from) & (c == WHITE ? ei.white_pieces : ei.black_pieces);
-	//score += count(connected); //connected_weights[ei.phase][KNIGHT]
+	//if (connected) score += 1; //connected_weights[ei.phase][KNIGHT]
       }
 
     if (ei.do_trace)
@@ -644,7 +644,7 @@ namespace
 	// connected-ness of this piece (how many friendly pieces attack it)
 	// needs to be weighted by game phase (attacking pawns in endgame is good!)
 	//U64 connected = b.attackers_of(from) & (c == WHITE ? ei.white_pieces : ei.black_pieces);
-	//score += count(connected);// connected_weights[ei.phase][BISHOP]
+	//if (connected) score += 1;//count(connected);// connected_weights[ei.phase][BISHOP]
       }
 
     // light + dark square bishop bonus
@@ -729,7 +729,7 @@ namespace
 	// evaluate the connected-ness of this piece (how many friendly pieces attack it)
 	// needs to be weighted by game phase (attacking pawns in endgame is good!)
 	//U64 connected = b.attackers_of(from) & (c == WHITE ? ei.white_pieces : ei.black_pieces);
-	//score += count(connected); //connected_weights[ei.phase][ROOK]
+	//if (connected) score += 1;//count(connected); //connected_weights[ei.phase][ROOK]
       }
     if (ei.do_trace)
       {
@@ -801,7 +801,7 @@ namespace
 	// evaluate the connected-ness of this piece (how many friendly pieces attack it)
 	// needs to be weighted by game phase (attacking pawns in endgame is good!)
 	//U64 connected = b.attackers_of(from) & (c == WHITE ? ei.white_pieces : ei.black_pieces);
-	//score += count(connected); //connected_weights[ei.phase][QUEEN]
+	//if (connected) score += 1;//count(connected); //connected_weights[ei.phase][QUEEN]
       }
 
     if (ei.do_trace)
@@ -884,8 +884,8 @@ namespace
     if (piece_cover) score += 1;//count(piece_cover);
 
     // penalize heavily if no piece cover and middle game
-    if (!piece_cover && ei.phase == MIDDLE_GAME) score -= 20;
-    //printf("..%d - mobility + pawn cover + piece cover = %d\n", c, score);
+    //if (!piece_cover && ei.phase == MIDDLE_GAME) score -= 20;
+	//printf("..%d - mobility + pawn cover + piece cover = %d\n", c, score);
     
     // check if castled (not perfect) -- favors "faster" castling not necessarily "safer" castling
     // better to give bonuses for rook-connectedness and pawn/piece cover so it discovers safe castle 
