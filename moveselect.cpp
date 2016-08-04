@@ -240,7 +240,7 @@ bool MoveSelect::nextmove(Node& node, U16& out, bool split)
       return true;
 
     case PHASE_CAPTURE_GOOD:
-      if (captures[c_sz].score >= 0)
+      if (captures[c_sz].score > 0)
 	{
 	  out = captures[c_sz].m; c_sz++; return true;
 	}
@@ -249,7 +249,7 @@ bool MoveSelect::nextmove(Node& node, U16& out, bool split)
       break;
             
     case PHASE_CAPTURE_BAD:
-      if (captures[c_sz].score < 0 && captures[c_sz].score >= NINF && captures[c_sz].m != MOVE_NONE)
+      if (captures[c_sz].score <= 0 && captures[c_sz].score >= NINF && captures[c_sz].m != MOVE_NONE)
 	{
 	  out = captures[c_sz].m; c_sz++; return true;
 	}            

@@ -125,7 +125,7 @@ MaterialEntry * MaterialTable::get(Board& b)
       float corr = 0.0;
 
       // 1. encourage keeping bishop pair
-      corr += w1 * piece_diffs[BISHOP];
+      //corr += w1 * piece_diffs[BISHOP];
 
       //// 2. encourage to trade when up material, in endgame, there are fewer pieces by default and
       //// we don't necessarily want to trade there
@@ -135,8 +135,8 @@ MaterialEntry * MaterialTable::get(Board& b)
       //}
 
       // 3. rook/queen redundant penalties according GM Larry Kaufman's "principle of the redundancy of major pieces"
-      corr -= w3 * (piece_count_w[ROOK] - piece_count_b[ROOK]);
-      corr -= w4 * (piece_count_w[QUEEN] - piece_count_b[QUEEN]);
+      //corr -= w3 * (piece_count_w[ROOK] - piece_count_b[ROOK]);
+      //corr -= w4 * (piece_count_w[QUEEN] - piece_count_b[QUEEN]);
 		
       table[idx].value =  (int)(base + corr);
     }

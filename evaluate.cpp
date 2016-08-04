@@ -310,8 +310,8 @@ namespace
   template<Color c>
   int eval_threats(Board& b, EvalInfo& ei);
 
-  //template<Color c>
-  //int eval_development(Board& b, EvalInfo& ei);
+  template<Color c>
+  int eval_development(Board& b, EvalInfo& ei);
 
 };
 
@@ -400,6 +400,9 @@ namespace
     // evaluate threats -- tried to use this as is, encourages sacrificial moves
     // for no gain .. e.g. move knight in front of pawn attack to attack king etc.
     score += (eval_threats<WHITE>(b, ei) - eval_threats<BLACK>(b, ei));
+
+	// development in opening phase
+	if (ei.phase == MIDDLE_GAME) score += (eval_development<WHITE>(b, ei) - eval_development<BLACK>(b, ei));
 
     if (ei.do_trace)
       {
@@ -880,8 +883,8 @@ namespace
     //printf("..%d - mobility + pawn cover = %d\n", c, score);
 
     // piece cover around king
-    U64 piece_cover = KingSafetyBB[c][from] & (c == WHITE ? ei.white_pieces : ei.black_pieces);
-    if (piece_cover) score += 1;//count(piece_cover);
+    //U64 piece_cover = KingSafetyBB[c][from] & (c == WHITE ? ei.white_pieces : ei.black_pieces);
+    //if (piece_cover) score += 1;//count(piece_cover);
 
     // penalize heavily if no piece cover and middle game
     //if (!piece_cover && ei.phase == MIDDLE_GAME) score -= 20;
@@ -895,65 +898,66 @@ namespace
     //printf("..%d - mobility + pawn cover + piece cover + castle = %d\n", c, score);
 
     // update : penalize more if not castled and cannot castle
-    //if (!castled && !b.can_castle(c == WHITE ? ALL_W : ALL_B)) score -= 4*castle_weights[ei.phase] * king_exposure[ei.phase];
+    if (!castled && !b.can_castle(c == WHITE ? ALL_W : ALL_B)) score -= 4*castle_weights[ei.phase] * king_exposure[ei.phase];
 
-    // note : speedup when these diag checks are removed for certain tactical test positions, but
-    // play is weaker (places king in danger much sooner during game).
+		// note : speedup when these diag checks are removed for certain tactical test positions, but
+		// play is weaker (places king in danger much sooner during game).
+	
     if (enemy_bishops || enemy_queens)
       {
-	U64 diags = BishopMask[from] & our_pawns & KingSafetyBB[c][from];
+	U64 diags = KingVisionBB[c][BISHOP][from] & our_pawns & KingSafetyBB[c][from];
 	if (diags) score += king_exposure[ei.phase];
-	diags = BishopMask[from] & (enemy_bishops | enemy_queens);
+	diags = KingVisionBB[c][BISHOP][from] & (enemy_bishops | enemy_queens);
 	if (diags) score -= 2; // penalty for queens/bishops looking at king
       }
     //printf("..%d - mobility + pawn cover + piece cover + bishop diag penalty = %d\n", c, score);
     if (enemy_rooks || enemy_queens)
       {
-	U64 cols = RookMask[from] & ColBB[COL(from)] & our_pawns;// & KingSafetyBB[c][from];
+	U64 cols = KingVisionBB[c][ROOK][from] & ColBB[COL(from)] & our_pawns;// & KingSafetyBB[c][from];
 	if (cols) score += king_exposure[ei.phase];
 	if (!cols && ei.phase == MIDDLE_GAME) score -= 2 * king_exposure[ei.phase];
 	//printf("   ..%d - p1 = %d\n", c, score);
 
 	// are enemy rooks/queens looking at the king
-	cols = RookMask[from] & (enemy_rooks | enemy_queens);
+	cols = KingVisionBB[c][ROOK][from] & (enemy_rooks | enemy_queens);
 	if (cols) score -= 2;
 	//printf("   ..%d - p2 = %d\n", c, score);
 
 	// are there semi-open enemy files pointed at the king
-	cols = RookMask[from] & ColBB[COL(from)] & their_pawns;
+	cols = KingVisionBB[c][ROOK][from] & ColBB[COL(from)] & their_pawns;
 	if (!cols) score -= 2 * king_exposure[ei.phase];
 	//printf("   ..%d - p3 = %d\n", c, score);
 
 	// similar for the right-column
-	U64 colsRight = COL(from + 1) <= COL8 ? (RookMask[from + 1] & ColBB[COL(from + 1)] & their_pawns) : 1ULL;
+	U64 colsRight = COL(from + 1) <= COL8 ? (KingVisionBB[c][ROOK][from+1] & ColBB[COL(from + 1)] & their_pawns) : 1ULL;
 	if (!colsRight) score -= 2 * king_exposure[ei.phase];
 	//printf("   ..%d - p4 = %d\n", c, score);
 
-	colsRight = COL(from + 1) <= COL8 ? (RookMask[from + 1] & ColBB[COL(from + 1)] & (enemy_rooks | enemy_queens)) : 0ULL;
+	colsRight = COL(from + 1) <= COL8 ? (KingVisionBB[c][ROOK][from+1] & ColBB[COL(from + 1)] & (enemy_rooks | enemy_queens)) : 0ULL;
 	if (colsRight) score -= 2;
 	//printf("   ..%d - p5 = %d\n", c, score);
 
-	U64 colsRightRight = COL(from + 2) <= COL8 ? (RookMask[from + 2] & ColBB[COL(from + 2)] & their_pawns) : 1ULL;
+	U64 colsRightRight = COL(from + 2) <= COL8 ? (KingVisionBB[c][ROOK][from+2] & ColBB[COL(from + 2)] & their_pawns) : 1ULL;
 	if (!colsRightRight) score -= 2 *king_exposure[ei.phase];
 	//printf("   ..%d - p6 = %d\n", c, score);
 
-	colsRightRight = COL(from + 2) <= COL8 ? (RookMask[from + 2] & ColBB[COL(from + 2)] & (enemy_rooks | enemy_queens)) : 0ULL;
+	colsRightRight = COL(from + 2) <= COL8 ? (KingVisionBB[c][ROOK][from+2] & ColBB[COL(from + 2)] & (enemy_rooks | enemy_queens)) : 0ULL;
 	if (colsRightRight) score -= 2;
 	//printf("   ..%d - p7 = %d\n", c, score); 
 
-	U64 colsLeft = COL(from - 1) >= COL1 ? (RookMask[from - 1] & ColBB[COL(from - 1)] & their_pawns) : 1ULL;
+	U64 colsLeft = COL(from - 1) >= COL1 ? (KingVisionBB[c][ROOK][from-1] & ColBB[COL(from - 1)] & their_pawns) : 1ULL;
 	if (!colsLeft) score -= 2*king_exposure[ei.phase];
 	//printf("   ..%d - p8 = %d\n", c, score);
 
-	colsLeft = COL(from - 1) >= COL1 ? (RookMask[from - 1] & ColBB[COL(from - 1)] & (enemy_rooks | enemy_queens)) : 0ULL;
+	colsLeft = COL(from - 1) >= COL1 ? (KingVisionBB[c][ROOK][from-1] & ColBB[COL(from - 1)] & (enemy_rooks | enemy_queens)) : 0ULL;
 	if (colsLeft) score -= 2;
 	//printf("   ..%d - p9 = %d\n", c, score);
 
-	U64 colsLeftLeft = COL(from - 2) >= COL1 ? (RookMask[from - 2] & ColBB[COL(from - 2)] & their_pawns) : 1ULL;
+	U64 colsLeftLeft = COL(from - 2) >= COL1 ? (KingVisionBB[c][ROOK][from-2] & ColBB[COL(from - 2)] & their_pawns) : 1ULL;
 	if (!colsLeftLeft) score -= 2*king_exposure[ei.phase];
 	//printf("   ..%d - p10 = %d\n", c, score);	
 
-	colsLeftLeft = COL(from - 2) >= COL1 ? (RookMask[from - 2] & ColBB[COL(from - 2)] & (enemy_rooks | enemy_queens)) : 0ULL;
+	colsLeftLeft = COL(from - 2) >= COL1 ? (KingVisionBB[c][ROOK][from-2] & ColBB[COL(from - 2)] & (enemy_rooks | enemy_queens)) : 0ULL;
 	if (colsLeftLeft) score -= 2;
 	//printf("   ..%d - p11 = %d\n", c, score);
       }
@@ -1126,7 +1130,7 @@ namespace
 		// evaluate skewer checks and double attacks from a check (imperfect)
 		else if (piece != PAWN)
 		  {
-		    U64 mask = (piece == BISHOP ? BishopMask[from] : piece == ROOK ? RookMask[from] : QueenMask[from]);
+		    U64 mask = (piece == BISHOP ? KingVisionBB[c][BISHOP][from] : piece == ROOK ? KingVisionBB[c][ROOK][from] : KingVisionBB[c][QUEEN][from]);
 
 		    // if we get here, piece is already checking the king .. if we find more than 1 attacked squares, we can flag
 		    // this as either a skewer or a check+attack move...either way it is still a guess, and the attacked piece could still be defended
@@ -1248,52 +1252,42 @@ namespace
     return score;
   }
 
-  ////------------------------------------------------------
-  //// evaluate development
-  ////
-  //template<Color c, bool debug>
-  //Value eval_development(Board &b, EvalInfo &ei)
-  //{
+  //------------------------------------------------------
+  // evaluate development
+  //
+  template<Color c>
+  int eval_development(Board &b, EvalInfo& ei)
+  {
 
-  //	Value score      = Value(0);
-  //	BitMap knights   = (c == WHITE ? b.get_pieces(WHITE,KNIGHT) : b.get_pieces(BLACK, KNIGHT) );
-  //	BitMap bishops   = (c == WHITE ? b.get_pieces(WHITE,BISHOP) : b.get_pieces(BLACK,BISHOP) ) ;   
-  //	BitMap queens    = (c == WHITE ? b.get_pieces(WHITE,QUEEN)  : b.get_pieces(BLACK,QUEEN));
-  //	BitMap backRank  = (c == WHITE ? board_row[ROW_1]           : board_row[ROW_8]);
-  //	BitMap pawns     = (c == WHITE ? ei.white_pawns : ei.black_pawns);
-  //	BitMap rank2mask = (c == WHITE ? (set_bit(E2) | set_bit(D2)) : (set_bit(E7) | set_bit(D7)));
-  //	//Byte   castle    = (c == WHITE ? b.get_castle_rights(WHITE) : b.get_castle_rights(BLACK) );
-  //	//byte   ks_c      = (c == WHITE ? set_bit_cr(W_KS) : set_bit_cr(B_KS));
-  //	//byte   qs_c      = (c == WHITE ? set_bit_cr(W_QS) : set_bit_cr(B_QS));
-  //	//Square ks        = (c == WHITE ? ei.white_ks : ei.black_ks)
-  //	//bool canCastle   = (castle ? true : false);
+  	int score      = 0;
+  	U64 knights   = (c == WHITE ? b.get_pieces(WHITE,KNIGHT) : b.get_pieces(BLACK, KNIGHT) );
+  	U64 bishops   = (c == WHITE ? b.get_pieces(WHITE,BISHOP) : b.get_pieces(BLACK,BISHOP) ) ;   
+  	//U64 queens    = (c == WHITE ? b.get_pieces(WHITE,QUEEN)  : b.get_pieces(BLACK,QUEEN));
+  	U64 backRank  = (c == WHITE ? RowBB[ROW1] : RowBB[ROW8]);
+  	U64 pawns     = (c == WHITE ? ei.white_pawns : ei.black_pawns);
+  	U64 rank2mask = (c == WHITE ? (SquareBB[E2] | SquareBB[D2]) : (SquareBB[E7] | SquareBB[D7]));
 
+  	// penalize undeveloped knights
+  	U64 undeveloped_knights = backRank & knights;
+	score -= ( 8*count(undeveloped_knights));
 
-  //	// penalize undeveloped knights
-  //	BitMap undeveloped_knights = backRank & knights;
-  //	score -= Value( 100*pop_count64(&undeveloped_knights));
+  	// penalize undeveloped bishops
+  	U64 undeveloped_bishops = backRank & bishops;
+  	score -= ( 4*count(undeveloped_bishops));
 
-  //	// penalize undeveloped bishops
-  //	BitMap undeveloped_bishops = backRank & bishops;
-  //	score -= Value( 60*pop_count64(&undeveloped_bishops));
+  	// penalize undeveloped queens
+  	//U64 undeveloped_queens  = backRank & queens;
+  	//score -= ( count(undeveloped_queens));
 
-  //	// penalize undeveloped queens
-  //	BitMap undeveloped_queens  = backRank & queens;
-  //	score -= Value( pop_count64(&undeveloped_queens));
+  	// penalize undeveloped center pawns
+  	U64 undeveloped_pawns = rank2mask & pawns;
+	if (count (undeveloped_pawns) == 2)
+	{
+  		score -= 2;
+	}
 
-  //	// penalize undeveloped center pawns
-  //	BitMap undeveloped_pawns = rank2mask & pawns;
-  //	score -= Value(35*pop_count64(&undeveloped_pawns));
-
-  //	// rook connectedness and castled?
-  //	// 
-  //	//if (canCastle) score -= Value(50);
-
-
-  //	return Value(score);
-
-  //	//std::cout << " c = " << (c == WHITE ? "white":"black") << " devel score = " << score << std::endl;
-  //}
+  	return score;
+  }
 
   void traceout(EvalInfo& ei)
   {

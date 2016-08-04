@@ -192,7 +192,6 @@ namespace
 	alpha = mated_val;
 	if (beta <= mated_val) return mated_val;
       }
-    
 
     // 3. -- static evaluation of position    
 	int static_eval = (ttvalue > NINF ? ttvalue : Eval::evaluate(b));
@@ -210,7 +209,7 @@ namespace
 	int ralpha = alpha - 650;
 	if (depth <= 1)
 	  {
-	    return qsearch<NONPV>(b, alpha, beta, depth, stack, false);
+	    return qsearch<NONPV>(b, alpha, beta, 0, stack, false);
 	  }
 	int v = qsearch<NONPV>(b, ralpha, ralpha + 1, depth, stack, false);
 	if (v <= ralpha)
@@ -243,7 +242,7 @@ namespace
 
 	(stack + 1)->isNullSearch = true;	
 	b.do_null_move(pd);
-	int null_eval = (depth - R <= 1 ? -qsearch<NONPV>(b, -beta, -beta + 1, depth - R, stack + 1, false) : -search<NONPV>(b, -beta, -beta + 1, depth - R, stack + 1));
+	int null_eval = (depth - R <= 1 ? -qsearch<NONPV>(b, -beta, -beta + 1, 0, stack + 1, false) : -search<NONPV>(b, -beta, -beta + 1, depth - R, stack + 1));
 	b.undo_null_move();	
 	(stack + 1)->isNullSearch = false;
 	
@@ -381,7 +380,7 @@ namespace
 	    move != stack->killer1 &&
 	    move != stack->killer2 &&
 	    !givesCheck && 
-	    newdepth >= 2) //(pv_node ? 6 : 4))
+	    newdepth >= 2) //(pv_node ? 4 : 2))
 	  {
 	    int R = Reduction(pv_node, improving, newdepth, moves_searched)/2;
 	    if (!inCheck && !givesCheck &&
@@ -389,7 +388,7 @@ namespace
 		isQuiet && !pv_node)
 	      {
 		R += 1;
-		if (static_eval + 650 < alpha) R += 1;	
+		//if (static_eval + 650 < alpha) R += 1;	
 	      }
 	    int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];		
 	    if ( v <= (NINF - 1) ) R += 1;
@@ -397,7 +396,7 @@ namespace
 	    //if (!pv_node && isQuiet && move != statistics.countermoves[get_from(move)][get_to(move)]) R += 1;
 	    
 	    int LMR = newdepth - R;
-	    eval = (LMR <= 1 ? -qsearch<NONPV>(b, -alpha-1, -alpha, LMR, stack + 1, givesCheck) : -search<NONPV>(b, -alpha-1, -alpha, LMR, stack + 1));
+	    eval = (LMR <= 1 ? -qsearch<NONPV>(b, -alpha-1, -alpha, 0, stack + 1, givesCheck) : -search<NONPV>(b, -alpha-1, -alpha, LMR, stack + 1));
 
 	    if (eval > alpha) fulldepthSearch = true;
 	  }
@@ -405,13 +404,13 @@ namespace
 
 	if (fulldepthSearch)
 	  {
-	    eval = (newdepth <= 1 ? -qsearch<NONPV>(b, -alpha-1, -alpha, newdepth, stack + 1, givesCheck) : -search<NONPV>(b, -alpha-1, -alpha, newdepth, stack + 1));
+	    eval = (newdepth <= 1 ? -qsearch<NONPV>(b, -alpha-1, -alpha, 0, stack + 1, givesCheck) : -search<NONPV>(b, -alpha-1, -alpha, newdepth, stack + 1));
 	  }
 
 	
 	if (pvMove || (eval > alpha && eval < beta))
 	  {
-	    eval = (newdepth <= 1 ? -qsearch<PV>(b, -beta, -alpha, newdepth, stack + 1, givesCheck) : -search<PV>(b, -beta, -alpha, newdepth, stack + 1));
+	    eval = (newdepth <= 1 ? -qsearch<PV>(b, -beta, -alpha, 0, stack + 1, givesCheck) : -search<PV>(b, -beta, -alpha, newdepth, stack + 1));
 	  }
 
 	b.undo_move(move);
@@ -517,7 +516,7 @@ namespace
     // delta pruning                 
     if (stand_pat < alpha - 950 && !inCheck)
       {
-	return alpha;
+	return stand_pat;//alpha;
       }            
     if (alpha < stand_pat && !inCheck) alpha = stand_pat;
     //if (alpha >= beta && !inCheck) return beta;
@@ -569,7 +568,7 @@ namespace
 	     !pv_node && move != ttm && 
 	     stand_pat < alpha &&
 	     //piece != PAWN &&
-	     b.see_move(move) < 0)
+	     b.see_move(move) <= 0)
 	  continue;
 	
 	BoardData pd;	
