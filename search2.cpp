@@ -380,16 +380,16 @@ namespace
 	    move != stack->killer1 &&
 	    move != stack->killer2 &&
 	    !givesCheck && 
-	    newdepth >= 2) //(pv_node ? 4 : 2))
+	    newdepth >= (pv_node ? 8 : 4))
 	  {
 	    int R = Reduction(pv_node, improving, newdepth, moves_searched)/2;
-	    if (!inCheck && !givesCheck &&
-		piece != PAWN &&
-		isQuiet && !pv_node)
-	      {
-		R += 1;
-		//if (static_eval + 650 < alpha) R += 1;	
-	      }
+	 //   if (!inCheck && !givesCheck &&
+		//piece != PAWN &&
+		//isQuiet && !pv_node)
+	 //     {
+		////R += 1;
+		////if (eval + 650 < alpha) R += 1;	
+	 //     }
 	    int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];		
 	    if ( v <= (NINF - 1) ) R += 1;
 	    
