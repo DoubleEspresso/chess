@@ -446,9 +446,9 @@ namespace
       score += square_score<c, QUEEN>(e.phase, from);
 
     // king sq
-    sqs = b.sq_of<KING>(c);
-    for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
-      score += square_score<c, KING>(e.phase, from);
+    //sqs = b.sq_of<KING>(c);
+    //for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
+	score += square_score<c, KING>(e.phase, (c == WHITE ? e.white_ks : e.black_ks));
 
     if (e.do_trace)
       {

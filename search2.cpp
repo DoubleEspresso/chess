@@ -380,16 +380,16 @@ namespace
 	    move != stack->killer1 &&
 	    move != stack->killer2 &&
 	    !givesCheck && 
-	    newdepth >= (pv_node ? 8 : 4))
+	    newdepth >= 4)//(pv_node ? 6 : 4))
 	  {
 	    int R = Reduction(pv_node, improving, newdepth, moves_searched)/2;
-	 //   if (!inCheck && !givesCheck &&
-		//piece != PAWN &&
-		//isQuiet && !pv_node)
-	 //     {
-		////R += 1;
-		////if (eval + 650 < alpha) R += 1;	
-	 //     }
+	    if (!inCheck && !givesCheck &&
+		piece != PAWN &&
+		isQuiet && !pv_node)
+	      {
+		  //R += 1;
+		  //if (eval + 650 < alpha) R += 1;	
+	      }
 	    int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];		
 	    if ( v <= (NINF - 1) ) R += 1;
 	    
@@ -566,7 +566,7 @@ namespace
 	// prune captures which have see values <= 0	
 	if ( !inCheck && //|| canPrune) &&
 	     !pv_node && move != ttm && 
-	     stand_pat < alpha &&
+	     //stand_pat < alpha &&
 	     //piece != PAWN &&
 	     b.see_move(move) <= 0)
 	  continue;
