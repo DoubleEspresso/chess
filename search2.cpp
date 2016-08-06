@@ -109,7 +109,7 @@ namespace
 {
   int Reduction(bool pv_node, bool improving, int d, int mc)
   {    
-    return Globals::SearchReductions[(int)pv_node][(int)improving][min(d, 63)][min(mc, 63)];
+    return Globals::SearchReductions[(int)pv_node][(int)improving][std::min(d, 63)][std::min(mc, 63)];
   }
 
   template<NodeType type>
@@ -194,7 +194,7 @@ namespace
       }
 
     // 3. -- static evaluation of position    
-	int static_eval = (ttvalue > NINF ? ttvalue : Eval::evaluate(b));
+    int static_eval = Eval::evaluate(b);//(ttvalue > NINF ? ttvalue : Eval::evaluate(b));
     //int static_eval = (ttvalue > NINF ? ttvalue : ttstatic_value > NINF ? ttstatic_value : Eval::evaluate(b));
 
     
@@ -278,7 +278,7 @@ namespace
     if (ttm == MOVE_NONE &&
 	//!stack->isNullSearch && 
 	depth >= (pv_node ? 6 : 8) &&
-	(pv_node || eval + 250 >= beta) &&
+	(pv_node || static_eval + 250 >= beta) &&
 	!b.in_check() )
       {
 	int iid = depth - 2 - (pv_node ? 0 : depth / 4);
@@ -346,7 +346,8 @@ namespace
 	    move != stack->killer1 &&
 	    move != stack->killer2 &&
 	    !inCheck && !givesCheck && isQuiet && !pv_node &&
-	    static_eval + 650 < alpha && 
+	    //static_eval + 650 < alpha && 
+	    eval + 650 < alpha &&
 	    eval > NINF + stack->ply )
 	  {
 	    ++pruned;
@@ -359,8 +360,7 @@ namespace
 	    move != ttm &&
 	    move != stack->killer1 &&
 	    move != stack->killer2 &&
-	    piece != PAWN && 
-	    //eval < alpha && 
+	    eval < alpha && 
 	    b.see_move(move) < 0) 
 	  {
 	    ++pruned;
@@ -380,16 +380,18 @@ namespace
 	    move != stack->killer1 &&
 	    move != stack->killer2 &&
 	    !givesCheck && 
-	    newdepth >= 4)//(pv_node ? 6 : 4))
+	    newdepth >= (pv_node ? 6 : 4))
 	  {
 	    int R = Reduction(pv_node, improving, newdepth, moves_searched)/2;
+	    /*
 	    if (!inCheck && !givesCheck &&
 		piece != PAWN &&
 		isQuiet && !pv_node)
 	      {
-		  //R += 1;
+		  R += 1;
 		  //if (eval + 650 < alpha) R += 1;	
 	      }
+	    */ 
 	    int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];		
 	    if ( v <= (NINF - 1) ) R += 1;
 	    
@@ -506,17 +508,17 @@ namespace
 	ttval = e.value;
 	if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta && pv_node) return e.value;	
 	else if (e.bound == BOUND_LOW && e.value >= beta && pv_node) return e.value; // commented is better
-	else if (e.bound == BOUND_HIGH && e.value <= alpha && pv_node) return e.value;
-	
+	else if (e.bound == BOUND_HIGH && e.value <= alpha && pv_node) return e.value;	
       }
+
     // stand pat lower bound -- tried using static_eval for the stand-pat value, play was weak
-    int stand_pat = (ttval == NINF ? Eval::evaluate(b) : ttval);
+    int stand_pat = Eval::evaluate(b); //(ttval == NINF ? Eval::evaluate(b) : ttval);
 
     if (stand_pat >= beta && !inCheck) return beta; 
     // delta pruning                 
     if (stand_pat < alpha - 950 && !inCheck)
       {
-	return stand_pat;//alpha;
+	return alpha;
       }            
     if (alpha < stand_pat && !inCheck) alpha = stand_pat;
     //if (alpha >= beta && !inCheck) return beta;
@@ -549,11 +551,12 @@ namespace
 	// prune evasions
 	bool canPrune =  (inCheck && !givesCheck && isQuiet &&
 			  move != ttm && !pv_node);
-	//if (canPrune) continue;
+	//if (canPrune && depth < 0) continue;
 	
 	// futility pruning --continue if we are winning			
 	
-	if (!givesCheck && !inCheck && 
+	if ((!givesCheck || givesCheck && depth < -3) && 
+	    !inCheck && 	    
 	    move != ttm && !pv_node &&
 	    //piece != PAWN && 	      
 	    eval + material.material_value(b.piece_on(get_to(move)), END_GAME ) >= beta &&
@@ -655,4 +658,3 @@ namespace
 	    bestScore <= MATED_IN_MAXPLY ? bestScore + ply : bestScore);
   }
 };
-

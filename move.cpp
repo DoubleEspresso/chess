@@ -464,8 +464,11 @@ MoveList* MoveGenerator::generate(Board& b, MoveType mt)
 
 MoveList* MoveGenerator::generate_qsearch_mvs(Board& b)
 {
-
-  generate_piece_evasions(b);
+  if0(b.in_check())
+    {
+      generate_piece_evasions(b);
+    }
+  else generate_legal_caps(b);
   
   unsigned int _sz = last;
   unsigned int iter = 0;
@@ -485,8 +488,8 @@ MoveList* MoveGenerator::generate_qsearch_mvs(Board& b)
 	  else if (frm == ks && !is_legal_km(ks, to, ec, b, type)) legal = 0;
 	  else if ((SquareBB[frm] & pinned) && !aligned(ks, frm, to)) legal = 0;
 	  
-	  // qsearch filters
-	  //if (legal == 1 && type != CAPTURE && !b.checks_king(list[i].m) && !b.in_check()) legal = 0;
+	  // qsearch filters .. remove checks!
+	  if (legal == 1 && b.gives_check(list[i].m)) legal = 0;
 	  (legal == 1 ? legal_i[iter++] = i : last--);
 	}
     }

@@ -2,6 +2,7 @@
 #ifndef HEDWIG_SQS_H
 #define HEDWIG_SQS_H
 
+#include <cmath>
 
 #include "definitions.h"
 
@@ -31,12 +32,12 @@ namespace {
       // white knights
       {
 	S(-10,-10), S(-10,-10), S(-10,-10), S(-10,-10), S(-10,-10), S(-10,-10), S(-10,-10), S(-10,-10),
-	S(-10,-10), S(0,0)    , S(0,0)    , S(4,4)   , S(4,4)    , S(0,0)    , S(0,0)    , S(-10,-10),
-	S(-10,-10), S(0,0)    , S(8,8)    , S(4,4)   , S(4,4)    , S(8,8)    , S(0,0)    , S(-10,-10),
-	S(-10,-10), S(6,6)    , S(10,15)    , S(10,15)   , S(10,15)    , S(10,15)    , S(6,6)    , S(-10,-10),
-	S(-10,-10), S(15,15)  , S(15,15)    , S(15,15)   , S(15,15)    , S(15,15)    , S(15,15)    , S(-10,-10),
-	S(-10,-10), S(20,20)  , S(20,20)  , S(20,20) , S(20,20)  , S(20,20)  , S(20,20)  , S(-10,-10),
-	S(-10,-10), S(0,0)    , S(0,0)    , S(0,0)   , S(0,0)    , S(0,0)    , S(0,0)    , S(-10,-10),
+	S(-10,-10), S(0,0)    , S(0,0)    , S(4,4)    , S(4,4)    , S(0,0)    , S(0,0)    , S(-10,-10),
+	S(-10,-10), S(0,0)    , S(8,8)    , S(4,4)    , S(4,4)    , S(8,8)    , S(0,0)    , S(-10,-10),
+	S(-10,-10), S(6,6)    , S(10,15)  , S(10,15)  , S(10,15)  , S(10,15)  , S(6,6)    , S(-10,-10),
+	S(-10,-10), S(15,15)  , S(15,15)  , S(15,15)  , S(15,15)  , S(15,15)  , S(15,15)  , S(-10,-10),
+	S(-10,-10), S(20,20)  , S(20,20)  , S(20,20)  , S(20,20)  , S(20,20)  , S(20,20)  , S(-10,-10),
+	S(-10,-10), S(0,0)    , S(0,0)    , S(0,0)    , S(0,0)    , S(0,0)    , S(0,0)    , S(-10,-10),
 	S(-10,-10), S(-10,-10), S(-10,-10), S(-10,-10), S(-10,-10), S(-10,-10), S(-10,-10), S(-10,-10)
       },
       // white bishops
@@ -85,6 +86,11 @@ namespace {
       }
     };
 
+  inline float round(float number)
+  {
+    return number < 0.0 ? std::ceil(number - 0.5) : std::floor(number + 0.5);
+  }
+
   template<Color c, Piece p>
     int square_score(int phase, int square)
   {
@@ -103,11 +109,6 @@ namespace {
 	//printf("1. c=%d, p=%d, sq=%d, phase=%d, ss=%d, eg=%d, mg=%d\n", c, p, square, phase, ss, eg, mg);
     return (phase == MIDDLE_GAME ? mg : eg); 
   }
-
-	float round(float number)
-	{
-		return number < 0.0 ? ceil(number - 0.5) : floor(number + 0.5);
-	}
 
   // non-templated version (drops the const color and piece requirements)
 inline int square_score(int c, int p, int phase, int square)

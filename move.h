@@ -85,8 +85,9 @@ class MoveGenerator
     {
       if (inCheck) generate_qsearch_mvs(b); // evasions
       else if (depth >= 0) generate_qsearch_caps_checks(b);
+      //else generate_qsearch_mvs(b); // remove checks!!
       //else generate_qsearch_caps_checks(b);
-      else generate(b, CAPTURE);
+      else generate(b, CAPTURE); 
     }
   ~MoveGenerator() { };
   
