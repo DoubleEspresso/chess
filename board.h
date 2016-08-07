@@ -65,7 +65,7 @@ class Board
 
   // position setup/related
   void from_fen(std::istringstream& is);
-  //void to_fen();
+  std::string to_fen();
   //void from_moves(std::vector<std::string> mvs);
   void clear();
   void set_piece(char& c, int s);
@@ -94,6 +94,7 @@ class Board
   inline void inc_nodes_searched(int nodes);
   inline bool has_position();
   inline int whos_move();
+  inline int half_moves();
 
   // piece access
   template<Piece> inline int * sq_of(int c);
@@ -288,6 +289,11 @@ inline U16 Board::get_castle_rights(int c)
 inline bool Board::has_position()
 {
   return position != 0;
+}
+
+inline int Board::half_moves()
+{
+	return position->hmvs;
 }
 
 extern Board ROOT_BOARD;

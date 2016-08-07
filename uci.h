@@ -18,6 +18,7 @@ namespace UCI
   void move_from_string(std::string& move);
   //void run_testing(int fixed_time, int fixed_depth);
   std::string move_to_string(U16& m);
+  U16 get_move(std::string& move);
   void analyze(Board& b);
   //std::string move_to_san(U16& m);
 };

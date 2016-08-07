@@ -25,7 +25,7 @@ int Book::piece_idx(int type, int color, int s)
   return 64 * type + 8 * r + c;
 }
 
-bool Book::compute_key(char* fen)
+bool Book::compute_key(const char* fen)
 {
   U64 piece_key = 0ULL;
   int len = strlen(fen);
@@ -64,6 +64,7 @@ bool Book::compute_key(char* fen)
   char stm = fen[offset];
   U64 stm_key = 0ULL;
   stm_key ^= (stm == 'w' ? Random64[stm_idx()] : 0ULL );
+  whos_move = (stm == 'w' ? WHITE : BLACK);
   offset+=2; // skip wspace
   if (offset >= len) return true;
 
@@ -126,8 +127,7 @@ bool Book::compute_key(char* fen)
     }
 
   e->key = piece_key ^ castle_key ^ ep_key ^ stm_key;
-  printf("..encoded position key for fen(%s) == %lx\n", fen, e->key);
-  return true;
+  //printf("..encoded position key for fen(%s) == %lu\n", fen, e->key);
 }
 
 
@@ -137,7 +137,7 @@ void Book::update_piece_key(U64& k, char& c, int s, int (&bps)[8], int (&wps)[8]
   int idx = -1;
   int piece = -1;
   int color = -1;
-  for(unsigned int j=0; j<SanPiece.length(); ++j)
+  for(int j=0; j<SanPiece.length(); ++j)
     {
       if (c == SanPiece[j])
 	{
@@ -173,5 +173,3 @@ void Book::update_piece_key(U64& k, char& c, int s, int (&bps)[8], int (&wps)[8]
   // get index for piecetype in the random array
   k ^= Random64[piece_idx(piece, color, s)];
 }
-
-

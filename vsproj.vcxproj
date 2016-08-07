@@ -166,6 +166,7 @@
     <ClCompile Include="moveselect.cpp" />
     <ClCompile Include="opts.cpp" />
     <ClCompile Include="pawns.cpp" />
+    <ClCompile Include="pgnio.cpp" />
     <ClCompile Include="search2.cpp" />
     <ClCompile Include="threads.cpp" />
     <ClCompile Include="uci.cpp" />
@@ -187,6 +188,7 @@
     <ClInclude Include="moveselect.h" />
     <ClInclude Include="opts.h" />
     <ClInclude Include="pawns.h" />
+    <ClInclude Include="pgnio.h" />
     <ClInclude Include="platform.h" />
     <ClInclude Include="random.h" />
     <ClInclude Include="search.h" />

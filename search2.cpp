@@ -11,6 +11,9 @@
 #include "move.h"
 #include "moveselect.h"
 #include "uci.h"
+#include "opts.h"
+#include "book.h"
+#include "pgnio.h"
 
 // globals
 SignalsType UCI_SIGNALS;
@@ -41,9 +44,32 @@ namespace
 
 namespace Search
 {
+  // fixme
+
 
   void run(Board& b, int dpth)
   {
+    // check opening table if using opening book
+    if(options["opening book"] && b.half_moves() <= 16 )
+	{
+		#ifdef WIN32
+  pgn_io pgn("A:\\software\\chess\\engine\\hedwig-git\\chess\\x64\\Release\\testdb.bin");
+#else
+  pgn_io pgn("/home/mjg/java-workspace-mars/ExpressChess/lib/testdb.bin");
+#endif
+		printf("...using opening book \n");
+		std::string bookmove = pgn.find(b.to_fen().c_str());
+		if (bookmove != "")
+		{
+			U16 m = UCI::get_move(bookmove);
+			if (m != MOVE_NONE)
+			{
+				 BestMoves[0] = m; BestMoves[1] = MOVE_NONE;
+				 return;
+			}
+		}
+	} else printf("..not using opening book\n");
+
     // init search params
     int alpha = NINF;
     int beta = INF;

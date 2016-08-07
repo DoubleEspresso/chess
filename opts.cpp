@@ -75,6 +75,11 @@ void Options::load_defaults()
 #define mp(x,y) optionMap.insert(std::pair<std::string, int>(x, y))
 #endif
 
+  // tablebases (opening/endgame)
+  // nb opening book locations not set in settings, assumed same dir as engine exe
+  mp("opening book", false); 
+  mp("ending book", false);
+
   // hash table params
   mp("hash table size mb", 100);
   mp("material table size mb", 100);

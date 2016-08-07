@@ -12,6 +12,7 @@
 #include "hashtable.h"
 #include "pawns.h"
 #include "threads.h"
+#include "pgnio.h"
 
 void parse_args(int argc, char ** argv);
 
@@ -80,7 +81,29 @@ void parse_args(int argc, char* argv[])
   //int testdepth = 0;
   for (int j = 0; j<argc; ++j)
     {
-      if (!strcmp(argv[j], "-test"))
+		// for creating searchable binary files from pgn games data
+      if (!strcmp(argv[j], "-pgn"))
+	{
+	  Board b;
+	  std::istringstream fen(START_FEN);
+	  b.from_fen(fen);
+	  pgn_io pgn(argv[j+1], "testdb.bin", 500);	  
+	  if (!pgn.parse(b))
+	    {
+	      printf("..ERROR: failed to parse %s correctly\n", argv[j+1]);
+	    }
+	}
+	  // debug -- find position in binary file (opening db)
+      else if (!strcmp(argv[j], "-find"))
+	{
+	  //printf("..finding %s\n", argv[j+1]);
+	  //Board b;
+	  //std::istringstream fen(argv[j+1]);
+	  //pgn_io pgn("/home/mjg/java-workspace-mars/ExpressChess/lib/testdb.bin");
+	  //pgn_io pgn("/home/mjg/java-workspace/java-workspace-mars/ExpressChess/lib/testdb.bin");
+	  //pgn.find(argv[j+1]);
+	}
+      else if (!strcmp(argv[j], "-test"))
 	{
 	  printf("..start testing\n");
 	  //std::istringstream fen("3rn2k/ppb2rpp/2ppqp2/5N2/2P1P3/1P5Q/PB3PPP/3RR1K1 w - -");

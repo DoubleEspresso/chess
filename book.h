@@ -23,6 +23,9 @@ class Book
   Book();
   ~Book();
 
+  // fen data
+  int whos_move;
+
   // offsets for access to random number array below
   int piece_idx(int type, int color, int r, int c);
   int piece_idx(int type, int color, int sq);
@@ -32,14 +35,16 @@ class Book
   
   // load from fen and keys computation
   void update_piece_key(U64& k, char& c, int s, int (&bps)[8], int (&wps)[8]);
-  bool compute_key(char * fen);
+  bool compute_key(const char * fen);
 
   // binary file search/creation
   bool search();
   bool save();
 
   // entry management
+  // entry management
   void init_entry();
+  U64 key() {return e->key;}
   
 };
 

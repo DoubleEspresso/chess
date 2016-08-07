@@ -23,9 +23,11 @@
 #ifdef _WIN32
 #define if1(x) if(x)
 #define if0(x) if(x)
+#define PACK( __Declaration__ ) __pragma( pack(push, 1) ) __Declaration__ __pragma( pack(pop) )
 #else
 #define if1(x) if(__builtin_expect(!!(x),1))
 #define if0(x) if(__builtin_expect(!!(x),0))
+#define PACK( __Declaration__ ) __Declaration__ __attribute__((__packed__))
 #endif
 
 // maximum legal moves in any chess position
@@ -106,6 +108,8 @@ enum Castles
     W_KS = 1, W_QS = 2, B_KS = 4, B_QS = 8, ALL_W = 9, ALL_B = 10, CASTLES_NONE = 0
   };
 enum GamePhase { MIDDLE_GAME, END_GAME };
+
+const std::string SanCols = "abcdefgh";
 
 const std::string SanPiece = "PNBRQKpnbrqk";
 const std::string SanSquares[64] =

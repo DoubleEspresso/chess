@@ -65,6 +65,7 @@ void UCI::uci_command(std::string cmd, int& GAME_OVER)
 		    << " black : (" << (b.can_castle(B_KS) ? "k.side" : "") << (b.can_castle(B_QS) ? " q.side" : "") << ")" << std::endl;
 	  std::cout << "Zobrist key: " << b.pos_key() << std::endl;
 	  std::cout << "Evaluation: " << Eval::evaluate(b) << std::endl;
+	  std::cout << "Fen: " << b.to_fen() << std::endl;
 	}
 
 
@@ -312,7 +313,20 @@ void UCI::load_position(std::string& pos)
     }
 }
 
+U16 UCI::get_move(std::string& move)
+{
+	  MoveGenerator mvs(b);
 
+  for (; !mvs.end(); ++mvs)
+    {
+      U16 m = mvs.move();
+      if (move_to_string(m) == move)
+	{
+	  return m;
+	}
+    }
+  return MOVE_NONE;
+}
 void UCI::move_from_string(std::string& move)
 {
   MoveGenerator mvs(b);

@@ -54,6 +54,61 @@ Board::~Board() { }
 /////////////////////////////////////////////////
 //  UCI specific routines - c'tor for new board
 /////////////////////////////////////////////////
+std::string Board::to_fen()
+{
+  std::string fen = "";
+  
+  for (int r = 7; r>=0; --r)
+    {
+      int empties = 0;
+      for (int c = 0; c < 8; ++c)
+	{
+	  int s = r * 8 + c;
+	  if (piece_on(s) == PIECE_NONE) { ++empties; continue; }
+	  
+	  if (empties > 0) 
+	    {
+	      fen += std::to_string(empties); empties = 0;
+	    }
+	  fen += SanPiece[(color_on(s) == BLACK ? piece_on(s)+6 : piece_on(s))];       
+	}
+      if (empties > 0) 
+	{
+	  fen += std::to_string(empties); 
+	}
+      if (r > 0) fen += "/";
+    }
+  
+  fen += (whos_move() == WHITE ? " w" : " b");
+  
+  // castle rights
+  std::string castleRights = "";
+  int crights = position->crights;
+  if ( (crights & W_KS) == W_KS) castleRights += "K";
+  if ( (crights & W_QS) == W_QS) castleRights += "Q";
+  if ( (crights & B_KS) == B_KS) castleRights += "k";
+  if ( (crights & B_QS) == B_QS) castleRights += "q";
+  fen += (castleRights == "" ? " -" : " " + castleRights);
+  
+  // ep-square
+  std::string epSq = "";
+  if (position->eps != 0)
+    {
+      epSq += SanCols[COL(position->eps)] + std::to_string(ROW(position->eps)+1);
+    }
+  fen += (epSq == "" ? " -" : " " + epSq);
+  
+  // move50
+  std::string mv50 = std::to_string(position->move50);
+  fen += " " + mv50;
+
+  // half-mvs
+  std::string half_mvs = std::to_string(position->hmvs);
+  fen += " " + half_mvs;
+
+  return fen;
+}
+
 void Board::from_fen(std::istringstream& is)
 {
   std::string token;
