@@ -10,7 +10,7 @@ namespace
 {
   // local arrays containing the piece values in middle/end game
   // phase
-  int piece_vals_mg[5] = { PawnValueMG, KnightValueEG, BishopValueMG, RookValueMG, QueenValueMG };
+  int piece_vals_mg[5] = { PawnValueMG, KnightValueMG, BishopValueMG, RookValueMG, QueenValueMG };
   int piece_vals_eg[5] = { PawnValueEG, KnightValueEG, BishopValueEG, RookValueEG, QueenValueEG };
   
   // weight factors

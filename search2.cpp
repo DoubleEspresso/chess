@@ -109,7 +109,7 @@ namespace
 {
   int Reduction(bool pv_node, bool improving, int d, int mc)
   {    
-    return Globals::SearchReductions[(int)pv_node][(int)improving][std::min(d, 63)][std::min(mc, 63)];
+    return Globals::SearchReductions[(int)pv_node][(int)improving][min(d, 63)][min(mc, 63)];
   }
 
   template<NodeType type>
@@ -247,12 +247,18 @@ namespace
 	(stack + 1)->isNullSearch = false;
 	
 	if(null_eval >= beta) return beta;
+	//else
+	//{
+	//	if (movetype((stack+1)->bestmove) != MOVE_NONE)//CAPTURE)
+	//		stack->threat = (stack+1)->bestmove;
+	//}
       }
 
     // 7. -- probcut from stockfish
     if (!pv_node && 
 	depth >= 400 && !b.in_check() &&
-	!stack->isNullSearch)
+	!stack->isNullSearch &&
+	movetype((stack-1)->bestmove) == CAPTURE)
       {
 	BoardData pd;
 	MoveSelect ms(PROBCUT); // slow initialization method

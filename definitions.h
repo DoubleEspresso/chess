@@ -76,16 +76,16 @@ enum SearchType
 enum MaterialValue
   {
     PawnValueMG = 100, 
-    KnightValueMG = 350, 
+    KnightValueMG = 365, 
     BishopValueMG = 380, 
     RookValueMG = 580, 
     QueenValueMG = 1090,
 
     PawnValueEG = 110,
-    KnightValueEG = 335,
+    KnightValueEG = 355,
     BishopValueEG = 385,
     RookValueEG = 595,
-    QueenValueEG = 1215
+    QueenValueEG = 1115
   };
 
 enum Square
