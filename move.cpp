@@ -402,6 +402,43 @@ inline void MoveGenerator::append(U16 m)
   list[last++].m = (m | mt << 12);
 }
 
+MoveList* MoveGenerator::generate_pseudo_legal(Board& b, MoveType mt)
+{
+  if0(b.in_check())
+    {
+      generate_piece_evasions(b);
+    }
+  else 
+    {
+      generate_pawn_moves(b, mt);
+      generate_piece_moves(b, mt);
+    }
+
+  if(mt == QUIET && !b.in_check()) generate_legal_castle_moves(b);
+
+  unsigned int _sz = last;
+  unsigned int iter = 0;
+
+  if (_sz > 0 )
+    {
+      for (unsigned int i = 0; i<_sz; ++i)
+	{
+	  int type = ((list[i].m & 0xf000) >> 12);
+	  int legal = 1;
+	  	  
+	  //filters
+	  if (type != mt) legal = 0;
+	  if (type <= PROMOTION && mt == QUIET) legal = 1;
+	  if (type <= PROMOTION_CAP && 
+	      type > PROMOTION && 
+	      mt == CAPTURE) legal = 1;
+
+	  (legal == 1 ? legal_i[iter++] = i : last--);
+	}
+    }
+  return list;
+}
+
 MoveList* MoveGenerator::generate(Board& b, MoveType mt)
 {
   if0(mt == CAPTURE)

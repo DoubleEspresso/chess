@@ -92,17 +92,25 @@ void UCI::uci_command(std::string cmd, int& GAME_OVER)
 	{
 	  int count = 0;
 	  int size = 0;
-	  for (MoveGenerator mvs(b, PSEUDO_LEGAL); !mvs.end(); ++mvs)
+	  printf(".....quiet pseudo legal moves......\n");
+	  for (MoveGenerator mvs(b, QUIET, false); !mvs.end(); ++mvs)
 	    {						
-	      //std::cout << SanSquares[get_from(mvs.move())] << SanSquares[get_to(mvs.move())] << " ";
 	      U16 m = mvs.move();
-	      std::string smv = move_to_string(m);
+	      std::string smv = move_to_string(m);	      
 	      std::cout << smv << " ";
 	      if (b.is_legal(m)) count++;
 	      size++;
 	    }
-	  //std::cout << "" << std::endl;
-	  //std::cout << " " << count << " of " << size << " are legal" << std::endl;		    
+	  printf("\n.....capture pseudo legal moves......\n");
+	  for (MoveGenerator mvs(b, CAPTURE, false); !mvs.end(); ++mvs)
+	    {
+	      U16 m = mvs.move();
+	      std::string smv = move_to_string(m);	      
+	      std::cout << smv << " ";
+	      if (b.is_legal(m)) count++;
+	      size++;
+	    }
+	  printf("\n...%d moves total, %d are legal\n", size, count);
 	}
       else if (command == "bench_pawns")
 	{
@@ -334,7 +342,7 @@ std::string UCI::move_to_string(U16& m)
       Piece pp = Piece(type);
       fromto += SanPiece[pp + 6];
     }
-  else if (type == PROMOTION_CAP)
+  else if (type <= PROMOTION_CAP && type > PROMOTION)
     {
       Piece pp = Piece(type - 4);
       fromto += SanPiece[pp + 6];

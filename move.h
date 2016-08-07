@@ -89,6 +89,12 @@ class MoveGenerator
       //else generate_qsearch_caps_checks(b);
       else generate(b, CAPTURE); 
     }
+ MoveGenerator(Board& b, MoveType mt, bool legal) : it(0), last(0)
+    {
+      if (legal) generate(b, mt);
+      else generate_pseudo_legal(b, mt);
+    }
+
   ~MoveGenerator() { };
   
   inline U64 move_pawns(int c, int d, U64& b);
@@ -110,6 +116,7 @@ class MoveGenerator
   MoveList * generate_legal_caps(Board& board);
   MoveList * generate_qsearch_mvs(Board& b);
   MoveList * generate_qsearch_caps_checks(Board& b);
+  MoveList * generate_pseudo_legal(Board& b, MoveType mt);
   U64 generate_candidate_checkers(Board& b);
   MoveList * generate_legal_castle_moves(Board& b);
   inline bool is_legal_ep(int from, int to, int ks, int ec, Board& b);
