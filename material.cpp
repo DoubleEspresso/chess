@@ -94,9 +94,9 @@ MaterialEntry * MaterialTable::get(Board& b)
   else
     {
       table[idx].key = k;
-      for (int pt = 0; pt<PIECES - 1; ++pt)
+      for (int pt = 1; pt<PIECES - 1; ++pt)
 	{
-	  if (pt > 0) piece_count += (piece_count_w[pt] + piece_count_b[pt]);			
+	  piece_count += (piece_count_w[pt] + piece_count_b[pt]);			
 	}
 
       // game phase

@@ -414,14 +414,14 @@ namespace
 	    !givesCheck && 
 	    newdepth >= (pv_node ? 6 : 4))
 	  {
-	    int R = Reduction(pv_node, improving, newdepth, moves_searched)/2;
+	    int R = Reduction(pv_node, improving, newdepth, moves_searched);
 	    
 	 //   if (!inCheck && !givesCheck &&
 		//piece != PAWN &&
 		//isQuiet && !pv_node)
 	 //     {
-		//  R += 1;
-		//  //if (eval + 650 < alpha) R += 1;	
+		//  //R += 1;
+		//  if (eval + 650 < alpha) R += 1;	
 	 //     }
 	     
 	    int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];		

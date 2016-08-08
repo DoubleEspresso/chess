@@ -11,10 +11,10 @@ PawnTable pawnTable;
 
 namespace Penalty
 {
-  float doubledPawn[2] = { -3.0, -8.0 };
+  float doubledPawn[2] = { -6.0, -8.0 };
   float shelterPawn[2] = { 2.0, 1.0 };
-  float isolatedPawn[2] = { -2.0,-6.0 };
-  float backwardPawn[2] = { -1.0,-2.0 };
+  float isolatedPawn[2] = { -4.0,-6.0 };
+  float backwardPawn[2] = { -2.0,-4.0 };
   float chainPawn[2] = { 2.0, 4.0 };
   float passedPawn[2] = { 4.0, 10.0 };
   float semiOpen[2] = { -3.0,-8.0 };
