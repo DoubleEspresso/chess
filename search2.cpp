@@ -388,7 +388,7 @@ namespace
 	
 	// exchange pruning at shallow depths - same thing done in qsearch...		    				
 	if (newdepth <= 1 &&
-	    !inCheck && !givesCheck && !isQuiet && //!pv_node &&
+	    !inCheck && !givesCheck && !isQuiet && // !pv_node &&
 	    move != ttm &&
 	    move != stack->killer1 &&
 	    move != stack->killer2 &&
@@ -410,20 +410,20 @@ namespace
 	if (!pvMove &&
 	    move != ttm && 
 	    move != stack->killer1 &&
-	    move != stack->killer2 &&
+	    move != stack->killer2 && 
 	    !givesCheck && 
 	    newdepth >= (pv_node ? 6 : 4))
 	  {
 	    int R = Reduction(pv_node, improving, newdepth, moves_searched)/2;
-	    /*
-	    if (!inCheck && !givesCheck &&
-		piece != PAWN &&
-		isQuiet && !pv_node)
-	      {
-		  R += 1;
-		  //if (eval + 650 < alpha) R += 1;	
-	      }
-	    */ 
+	    
+	 //   if (!inCheck && !givesCheck &&
+		//piece != PAWN &&
+		//isQuiet && !pv_node)
+	 //     {
+		//  R += 1;
+		//  //if (eval + 650 < alpha) R += 1;	
+	 //     }
+	     
 	    int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];		
 	    if ( v <= (NINF - 1) ) R += 1;
 	    

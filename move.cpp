@@ -504,8 +504,11 @@ MoveList* MoveGenerator::generate_qsearch_mvs(Board& b)
   if0(b.in_check())
     {
       generate_piece_evasions(b);
-    }
-  else generate_legal_caps(b);
+  } else generate_legal_caps(b);
+  //else {
+  //  generate_pawn_moves(b, PSEUDO_LEGAL);
+  //  generate_piece_moves(b, PSEUDO_LEGAL);
+  //}
   
   unsigned int _sz = last;
   unsigned int iter = 0;
@@ -526,7 +529,12 @@ MoveList* MoveGenerator::generate_qsearch_mvs(Board& b)
 	  else if ((SquareBB[frm] & pinned) && !aligned(ks, frm, to)) legal = 0;
 	  
 	  // qsearch filters .. remove checks!
-	  if (legal == 1 && b.gives_check(list[i].m)) legal = 0;
+	  //if (!b.in_check())
+	  //{
+	  //if (legal == 1 && (type == CAPTURE && !b.gives_check(list[i].m) )) legal = 1;
+	  //else legal = 0;
+	  //}
+	  //if (legal == 1 && (b.gives_check(list[i].m) || get_movetype(list[i].m) != CAPTURE)) legal = 0;
 	  (legal == 1 ? legal_i[iter++] = i : last--);
 	}
     }
@@ -535,8 +543,15 @@ MoveList* MoveGenerator::generate_qsearch_mvs(Board& b)
 
 MoveList* MoveGenerator::generate_qsearch_caps_checks(Board& b)
 {
-  generate_pawn_moves(b, PSEUDO_LEGAL);
-  generate_piece_moves(b, PSEUDO_LEGAL);
+	if0(b.in_check())
+	{
+		generate_piece_evasions(b);
+	} 
+	else
+	{
+	generate_pawn_moves(b, PSEUDO_LEGAL);
+	generate_piece_moves(b, PSEUDO_LEGAL);
+    }
   unsigned int _sz = last;
   unsigned int iter = 0;
 
@@ -557,9 +572,11 @@ MoveList* MoveGenerator::generate_qsearch_caps_checks(Board& b)
 	  else if ((SquareBB[frm] & pinned) && !aligned(ks, frm, to)) legal = 0;
 	  
 	  //filters
+	  if (!b.in_check())
+	  {
 	  if (legal == 1 && (type == CAPTURE || b.gives_check(list[i].m) )) legal = 1;
 	  else legal = 0;
-
+	  }
 	  (legal == 1 ? legal_i[iter++] = i : last--);
 	}
     }
