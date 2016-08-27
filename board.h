@@ -141,6 +141,7 @@ class Board
   // move properties access/types
   inline U64 checkers();
   bool is_quiet(U16& m);
+  bool is_qsearch_mv(U16 & move);
   bool is_legal(U16& move);
   bool legal_ep(int frm, int to, int ks, int ec);
   bool is_legal_km(int ks, int to, int ec);

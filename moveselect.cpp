@@ -234,7 +234,7 @@ bool MoveSelect::nextmove(Board &b, Node * stack, U16& ttm, U16& out, bool split
   switch (select_phase)
     {
     case PHASE_TT:
-      if (type == QSEARCH && !b.is_quiet(ttm)) out = ttm;
+      if (type == QSEARCH && b.is_qsearch_mv(ttm)) out = ttm;
       else if (type == MAIN) out = ttm;
       select_phase++;
       break;

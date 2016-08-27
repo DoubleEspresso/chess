@@ -520,7 +520,11 @@ bool Board::is_quiet(U16& move)
   int mt = ((move & 0xf000) >> 12);
   return (mt != EP && mt != CAPTURE && mt != PROMOTION_CAP);
 }
-
+bool Board::is_qsearch_mv(U16& move)
+{
+	int mt = ((move & 0xf000) >> 12);
+	return (mt == EP || mt == CAPTURE || mt <= PROMOTION || (mt > PROMOTION && mt <= PROMOTION_CAP));
+}
 // note: this is meant to test if a "random" move is legal given a legal position
 bool Board::is_legal(U16& move)
 {

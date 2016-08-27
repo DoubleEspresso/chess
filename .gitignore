@@ -1,5 +1,13 @@
 #visual studio related
 *.filters
+*.obj
+*.exe
+*.ilk
+*.pdb
+*.tlog
+*.idb
+*.suo
+*.log
 
 #misc
 *.tar
