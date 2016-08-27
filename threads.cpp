@@ -5,9 +5,13 @@
 #include "search.h"
 #include "uci.h"
 #include "material.h"
+#include "opts.h"
+#include "hashtable.h"
+#include "pawns.h"
 
 ThreadPool Threads;
 U16 BestMoves[2];
+U16 PonderMoves[2];
 ThreadTimer * timer_thread;
 
 
@@ -149,6 +153,22 @@ void ThreadMaster::idle_loop()
       //UCI::PrintBest(ROOT_BOARD);
       //std::cout << "bestmove " << SanSquares[get_from(BestMoves[0])] + SanSquares[get_to(BestMoves[0])] << " ponder " << SanSquares[get_from(BestMoves[1])] + SanSquares[get_to(BestMoves[1])] << std::endl;
       std::cout << "bestmove " << UCI::move_to_string(BestMoves[0]) << " ponder " << UCI::move_to_string(BestMoves[1]) << std::endl;
+      if (options["pondering"])
+	{
+	  U16 bm = BestMoves[0];
+	  U16 pm = BestMoves[1];
+	  if (bm != MOVE_NONE && pm != MOVE_NONE)
+	    {
+	      UCI_SIGNALS.stop = false;
+	      hashTable.clear();
+	      material.clear();
+	      pawnTable.clear();
+	      BoardData pd;
+	      board.do_move(pd, bm);	      
+	      board.do_move(pd, pm);
+	      Search::run(board, ROOT_DEPTH, true);
+       	    }
+	}
       searching = false;
       //timerthread->idle_loop();
       //printf("..master ends search...returning to slarp\n");

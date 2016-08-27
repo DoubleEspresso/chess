@@ -15,6 +15,7 @@
 #include "material.h"
 #include "utils.h"
 #include "globals.h"
+#include "opts.h"
 
 using namespace UCI;
 
@@ -94,7 +95,8 @@ void UCI::uci_command(std::string cmd, int& GAME_OVER)
 	  int count = 0;
 	  int size = 0;
 	  printf(".....quiet pseudo legal moves......\n");
-	  for (MoveGenerator mvs(b, QUIET, false); !mvs.end(); ++mvs)
+	  MoveGenerator mvs; mvs.generate_pseudo_legal(b, QUIET);
+	  for (; !mvs.end(); ++mvs)
 	    {						
 	      U16 m = mvs.move();
 	      std::string smv = move_to_string(m);	      
@@ -103,9 +105,10 @@ void UCI::uci_command(std::string cmd, int& GAME_OVER)
 	      size++;
 	    }
 	  printf("\n.....capture pseudo legal moves......\n");
-	  for (MoveGenerator mvs(b, CAPTURE, false); !mvs.end(); ++mvs)
+	  MoveGenerator mvs2; mvs2.generate_pseudo_legal(b, CAPTURE);
+	  for (; !mvs2.end(); ++mvs2)
 	    {
-	      U16 m = mvs.move();
+	      U16 m = mvs2.move();
 	      std::string smv = move_to_string(m);	      
 	      std::cout << smv << " ";
 	      if (b.is_legal(m)) count++;
@@ -214,6 +217,12 @@ void UCI::uci_command(std::string cmd, int& GAME_OVER)
 	}
       else if (command == "go")
 	{
+	  // in case we are pondering
+	  if (options["pondering"])
+	    {
+	      UCI_SIGNALS.stop = true;
+	      timer_thread->searching = false;
+	    }
 
 	  if (!b.has_position()) { printf("..no position loaded\n"); return; }
 	  Limits limits;
@@ -236,8 +245,7 @@ void UCI::uci_command(std::string cmd, int& GAME_OVER)
 	  
 	  hashTable.clear();
 	  material.clear();
-	  pawnTable.clear();
-	  
+	  pawnTable.clear();	  
 	  RootMoves.clear();
 	  timer_thread->search_limits = &limits;
 
@@ -315,7 +323,7 @@ void UCI::load_position(std::string& pos)
 
 U16 UCI::get_move(std::string& move)
 {
-	  MoveGenerator mvs(b);
+  MoveGenerator mvs(b);
 
   for (; !mvs.end(); ++mvs)
     {

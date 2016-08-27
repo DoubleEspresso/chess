@@ -10,6 +10,7 @@
 #include "board.h"
 
 extern U16 BestMoves[2];
+extern U16 PonderMoves[2];
 
 class ThreadPool;
 class ThreadMaster;

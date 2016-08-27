@@ -29,7 +29,8 @@ struct BoardData
 
   int king_square[2];
   U64 pinned[2];
-  U64 checkers;
+  U64 checkers; // pieces checking our king
+  //U64 dc_candidates; // discovered check pieces (candidates)
   BoardData* previous;
 };
 
@@ -134,13 +135,10 @@ class Board
   U16 get_castle_rights(int c);
 
   // game state/mate draw
-  //bool is_mated();
-  bool is_mate();
   bool is_draw(int sz);
   bool is_repition_draw();
 
   // move properties access/types
-  bool checks_king(U16& move);
   inline U64 checkers();
   bool is_quiet(U16& m);
   bool is_legal(U16& move);

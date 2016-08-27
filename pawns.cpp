@@ -11,12 +11,12 @@ PawnTable pawnTable;
 
 namespace Penalty
 {
-  float doubledPawn[2] = { -6.0, -8.0 };
-  float shelterPawn[2] = { 2.0, 1.0 };
+  float doubledPawn[2] = { -4.0, -8.0 };
+  float shelterPawn[2] = { 2.0, 3.0 };
   float isolatedPawn[2] = { -4.0,-6.0 };
   float backwardPawn[2] = { -2.0,-4.0 };
   float chainPawn[2] = { 2.0, 4.0 };
-  float passedPawn[2] = { 4.0, 10.0 };
+  float passedPawn[2] = { 6.0, 10.0 };
   float semiOpen[2] = { -3.0,-8.0 };
 }
 
@@ -137,7 +137,7 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx)
 
 	  U64 infrontBB = SpaceInFrontBB[c][from];
 	  int dist = count(infrontBB);
-	  if (dist < 4) base += (gp == MIDDLE_GAME ? 4 : 16);
+	  if (dist < 4) base += (gp == MIDDLE_GAME ? 12 : 24);
 	}
 
       // eval isolated pawns		

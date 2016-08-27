@@ -583,42 +583,42 @@ std::string pgn_io::find(const char * fen)
 	      results.push_back(r);
 	      responses.push_back(response);
 	    }
-
+	  
 	  offset += 1;
 	  ofile->seekg(offset*sizeof(db_entry));
 	  ofile->read((char*) e, sizeof(db_entry));
 	}
-
+      
       // sort top 4 moves based on best winning chances for stm
-	  std::vector<float> win_percentages;
+      std::vector<float> win_percentages;
       for (int j=0; j<responses.size(); ++j)
 	{
 	  float tot = (float) (results[j][1] + results[j][0] + results[j][2]);
-	  if (tot >= 100) win_percentages.push_back( 100.0 * (float) (stm == WHITE ? results[j][1] : results[j][2]) / tot);
-
+	  if (tot >= 400) win_percentages.push_back( 100.0 * (float) (stm == WHITE ? results[j][1] : results[j][2]) / tot);
+	  
 	  printf("..%s  %d %d %d\n", responses[j].c_str(), results[j][1], results[j][0], results[j][2]);
 	  
 	}
-	std::sort(win_percentages.begin(), win_percentages.end(), MoveSort);
-	std::vector<int>max_indices;
-	for(int j=0; j < std::min((int)win_percentages.size(),4); ++j)
+      std::sort(win_percentages.begin(), win_percentages.end(), MoveSort);
+      std::vector<int>max_indices;
+      for(int j=0; j < std::min((int)win_percentages.size(),4); ++j)
 	{
-		float p = win_percentages[j];
-		for (int i =0; i< responses.size(); ++i)
+	  float p = win_percentages[j];
+	  for (int i =0; i< responses.size(); ++i)
+	    {
+	      float rp = 100.0 * (float) (stm == WHITE ? results[i][1] : results[i][2]) / (float) (results[i][1] + results[i][0] + results[i][2]);
+	      if (p == rp)
 		{
-			float rp = 100.0 * (float) (stm == WHITE ? results[i][1] : results[i][2]) / (float) (results[i][1] + results[i][0] + results[i][2]);
-			if (p == rp)
-			{
-				max_indices.push_back(i);
-			}
+		  max_indices.push_back(i);
 		}
+	    }
 	}
-	int idx = -1; //rand()%responses.size();
-	if (max_indices.size() > 0) idx = rand()%std::min((int)win_percentages.size(),4);
-    return (idx < 0 ? "" : responses[idx]);
+      int idx = -1; //rand()%responses.size();
+      if (max_indices.size() > 0) idx = rand()%std::min((int)win_percentages.size(),4);
+      return (idx < 0 ? "" : responses[idx]);
     }
-  else printf("..nothing found\n");
-  return "";
+    else printf("..nothing found\n");
+    return "";
 }
 
 bool pgn_io::write()

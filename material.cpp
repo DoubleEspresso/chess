@@ -125,7 +125,7 @@ MaterialEntry * MaterialTable::get(Board& b)
       float corr = 0.0;
 
       // 1. encourage keeping bishop pair
-      //corr += w1 * piece_diffs[BISHOP];
+      corr += w1 * piece_diffs[BISHOP];
 
       //// 2. encourage to trade when up material, in endgame, there are fewer pieces by default and
       //// we don't necessarily want to trade there

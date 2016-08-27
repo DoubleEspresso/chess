@@ -36,44 +36,43 @@ namespace
 
 namespace Search
 {
-
-	void run(Board& b, int dpth)
-	{
-		min_split_depth = 4;// opts["MinSplitDepth"];
-		splits_per_thread = 8;// opts["MaxSplitsPerThread"];
-
-		iter_depth = 1;
-
-		// init search params
-		int alpha = NINF;
-		int beta = INF;
-		int eval = NINF;
-
-		// search info stack
-		Node stack[128 + 4];
-		std::memset(stack, 0, (128 + 4) * sizeof(Node));
-
-		// time allocation stats - used to decide if the search should be extended
-		// in critical situations
-		searchEvals.clear();
-		nb_time_allocs = 0;
-
-		// start the timer thread now
-		timer_thread->searching = true;
-		timer_thread->elapsed = 0;
-		timer_thread->sleep_condition.signal();
-
-		// main entry point for the fail-hard alpha-beta search
-		// the main iterative deepening loop
-		for (int depth = 1; depth <= dpth; depth += 1)
-		{
-			if (UCI_SIGNALS.stop) break;
-			//else if (UCI_SIGNALS.timesUp) checkMoreTime(b, stack + 2);
-
-			eval = search<ROOT>(b, alpha, beta, depth, stack + 2);
-
-			iter_depth++;
-
+  void run(Board& b, int dpth)
+  {
+    min_split_depth = 4;// opts["MinSplitDepth"];
+    splits_per_thread = 8;// opts["MaxSplitsPerThread"];
+    
+    iter_depth = 1;
+    
+    // init search params
+    int alpha = NINF;
+    int beta = INF;
+    int eval = NINF;
+    
+    // search info stack
+    Node stack[128 + 4];
+    std::memset(stack, 0, (128 + 4) * sizeof(Node));
+    
+    // time allocation stats - used to decide if the search should be extended
+    // in critical situations
+    searchEvals.clear();
+    nb_time_allocs = 0;
+    
+    // start the timer thread now
+    timer_thread->searching = true;
+    timer_thread->elapsed = 0;
+    timer_thread->sleep_condition.signal();
+    
+    // main entry point for the fail-hard alpha-beta search
+    // the main iterative deepening loop
+    for (int depth = 1; depth <= dpth; depth += 1)
+      {
+	if (UCI_SIGNALS.stop) break;
+	//else if (UCI_SIGNALS.timesUp) checkMoreTime(b, stack + 2);
+	
+	eval = search<ROOT>(b, alpha, beta, depth, stack + 2);
+	
+	iter_depth++;
+	
 			// print UCI info at the end of each search.
 			if (!UCI_SIGNALS.stop)
 			{

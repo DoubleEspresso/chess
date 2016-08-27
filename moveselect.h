@@ -6,17 +6,17 @@
 
 #include "definitions.h"
 #include "move.h"
-
-
-struct Node;
+#include "board.h"
+#include "search.h"
+//struct Node;
 
 struct MoveStats
 {
   int history[2][SQUARES][SQUARES];
   U16 countermoves[SQUARES][SQUARES];
-  U16 killers[2];
-  U16 refutation;
-  void update(U16& m, U16& last, Node* stack, int d, int c, U16* quiets);
+  //U16 killers[4];
+  //U16 refutation;
+  void update(Board& b, U16& m, U16& last, Node* stack, int d, int c, U16* quiets);
   
   int score(U16& m, int c)
   {
@@ -30,38 +30,65 @@ struct MoveStats
       for (int i = 0; i < SQUARES; ++i)
 	for (int j = 0; j < SQUARES; ++j)
 	  history[c][i][j] = NINF - 1;
-
+    
     for (int s1 =0; s1 < SQUARES; ++s1)
       for (int s2 =0; s2 < SQUARES; ++s2)
 	countermoves[s1][s2] = MOVE_NONE;
-
-    memset(killers, 0, 2 * sizeof(U16));
-    refutation = MOVE_NONE;
+    
+    //memset(killers, 0, 4 * sizeof(U16));
+    //refutation = MOVE_NONE;
   }
 };
 
-enum SelectPhase { PHASE_TT, PHASE_CAPTURE_GOOD, PHASE_KILLER1, PHASE_KILLER2, PHASE_CAPTURE_BAD, PHASE_QUIET, PHASE_END };
+enum SelectPhase { PHASE_TT, PHASE_CAPTURE_GOOD, 
+		   PHASE_KILLER1, PHASE_KILLER2, PHASE_KILLER3, PHASE_KILLER4,
+		   PHASE_CAPTURE_BAD, PHASE_QUIET, PHASE_END };
 
 class MoveSelect
 {
+  int c_sz, stored_csz;
+  int q_sz, stored_qsz;
+  int select_phase;
+  MoveList captures[MAX_MOVES];
+  MoveList quiets[MAX_MOVES];
+  //U16 killers[4];
+  MoveStats * statistics;
+  SearchType type;
+  bool givesCheck;
+
  public:
- MoveSelect(SearchType t) : c_sz(0), stored_csz(0), q_sz(0), stored_qsz(0), use_tt(0), ttmv(MOVE_NONE), select_phase(PHASE_TT), statistics(0), type(t)
-    {
-      // slow init ..
-      for (int j = 0; j<MAX_MOVES; ++j)
-	{
-	  captures[j].score = NINF - 1; captures[j].m = MOVE_NONE;
-	  quiets[j].score = NINF - 1; quiets[j].m = MOVE_NONE;
-	}
-      killers[0] = killers[1] = MOVE_NONE;
-    }
+ MoveSelect(MoveStats& stats, SearchType t) : 
+  c_sz(0), stored_csz(0), q_sz(0), 
+    stored_qsz(0), select_phase(PHASE_TT), statistics(0), type(t), givesCheck(false)
+  {   
+    // fixme...
+    for (int j = 0; j<MAX_MOVES; ++j)
+      {
+	captures[j].score = NINF - 1; captures[j].m = MOVE_NONE;
+	quiets[j].score = NINF - 1; quiets[j].m = MOVE_NONE;
+      }   
+    statistics = &stats;
+  }  
   
+ MoveSelect(MoveStats& stats, SearchType t, bool checksKing) : 
+  c_sz(0), stored_csz(0), q_sz(0), 
+    stored_qsz(0), select_phase(PHASE_TT), statistics(0), type(t), givesCheck(checksKing)
+  {   
+    // fixme...
+    for (int j = 0; j<MAX_MOVES; ++j)
+      {
+	captures[j].score = NINF - 1; captures[j].m = MOVE_NONE;
+	quiets[j].score = NINF - 1; quiets[j].m = MOVE_NONE;
+      }   
+    statistics = &stats;
+  }  
+
+
   ~MoveSelect() {};
   
-  void load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats, Node * stack);
   void sort(MoveList * ml, int length);
-  bool nextmove(Node& node, U16& move, bool split);
-  //bool threadsafe_nextmove(Board& b, U16& out);
+  bool nextmove(Board &b, Node * stack, U16& ttm, U16& out, bool split);
+
   int phase() { return select_phase; }
   // dbg
   MoveList * get_quites() { return quiets; }
@@ -69,18 +96,7 @@ class MoveSelect
   int csize() { return stored_csz; }
   MoveList * get_captures() { return captures; }
   void print_list();
-  
- private:
-  int c_sz, stored_csz;
-  int q_sz, stored_qsz;
-  bool use_tt;
-  U16 ttmv;
-  int select_phase;
-  MoveList captures[MAX_MOVES];
-  MoveList quiets[MAX_MOVES];
-  U16 killers[2];
-  MoveStats * statistics;
-  SearchType type;
+  void load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * stack, MoveType movetype);
 };
 
 #endif

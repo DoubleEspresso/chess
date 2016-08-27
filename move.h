@@ -76,8 +76,9 @@ class MoveGenerator
     }
  MoveGenerator(Board& b, MoveType mt) : it(0), last(0)
     {
-      if (mt == CAPTURE_CHECKS) generate_qsearch_caps_checks(b);
-      else generate(b, mt);
+      //if (mt == CAPTURE_CHECKS) generate_qsearch_caps_checks(b);
+      //else 
+      generate(b, mt);
     }
   
   // this c'tor is meant for calls from qsearch only!!
@@ -88,7 +89,7 @@ class MoveGenerator
       //else generate_qsearch_mvs(b); // remove checks!!
       //else generate_qsearch_caps_checks(b);
       //else generate(b, CAPTURE); 
-	  else generate_qsearch_mvs(b); // captures only (no checks)
+      else generate_qsearch_mvs(b, CAPTURE, false); // captures only (no checks)
     }
  MoveGenerator(Board& b, MoveType mt, bool legal) : it(0), last(0)
     {
@@ -113,9 +114,9 @@ class MoveGenerator
   template<MoveType> void serialize_promotion(U64 &b, Direction d);
   MoveList * generate_pawn_moves(Board &b, MoveType mt);
   MoveList * generate_piece_moves(Board &b, MoveType mt);
-  MoveList * generate_piece_evasions(Board& board);
+  MoveList * generate_piece_evasions(Board& board, MoveType mt);
   MoveList * generate_legal_caps(Board& board);
-  MoveList * generate_qsearch_mvs(Board& b);
+  MoveList * generate_qsearch_mvs(Board& b, MoveType mt, bool checksKing);
   MoveList * generate_qsearch_caps_checks(Board& b);
   MoveList * generate_pseudo_legal(Board& b, MoveType mt);
   U64 generate_candidate_checkers(Board& b);

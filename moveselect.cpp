@@ -20,13 +20,14 @@ struct {
 
 int piece_vals[5] = { PawnValueMG, KnightValueMG, BishopValueMG, RookValueMG, QueenValueMG };
 
-void MoveStats::update(U16& m, U16& last, Node* stack, int d, int c, U16 * quiets)
+void MoveStats::update(Board& b, U16& m, U16& last, Node* stack, int d, int c, U16 * quiets)
 {
   // called when eval >= beta in main search --> last move was a blunder (?)
   if (m == MOVE_NONE) return;
   int f = get_from(m);
   int t = get_to(m);
   int type = int((m & 0xf000) >> 12);
+  //bool isQuiet = b.is_quiet(m);
   if (type == QUIET) 
     {
       history[c][f][t] += pow(2, d);
@@ -38,6 +39,7 @@ void MoveStats::update(U16& m, U16& last, Node* stack, int d, int c, U16 * quiet
       int f = get_from(last);
       int t = get_to(last);
       int type = int((last & 0xf000) >> 12);
+      //bool isQuiet = b.is_quiet(last);
       if (type == QUIET) 
 	{
 	  history[c = WHITE ? BLACK : WHITE][f][t] -= pow(2, d); 
@@ -58,28 +60,36 @@ void MoveStats::update(U16& m, U16& last, Node* stack, int d, int c, U16 * quiet
     }
 
   // update the stack killers
-  if (type == QUIET && m != stack->killer1) { stack->killer2 = stack->killer1; stack->killer1 = m; }
+  if ((type == QUIET) && m != stack->killer[0]) 
+    { 
+      //stack->killer[3] = stack->killer[2]; 
+      //stack->killer[2] = stack->killer[1];
+      stack->killer[1] = stack->killer[0];
+      stack->killer[0] = m;
+    }
 }
 
 // dbg print movelist -- deprecated
 void MoveSelect::print_list()
 {
   printf("\n.....start....\n");
+  /*
   if (ttmv)
     {
       std::string s = UCI::move_to_string(ttmv);
       std::cout << "currmove " << s << " (ttmove)" << std::endl;
-    }
-  if (killers[0])
+    }  
+  if (stack->killer1)
     {
-      std::string s = UCI::move_to_string(killers[0]);
-      std::cout << "currmove " << s << " (killer-1)" << std::endl;
+      std::string s = UCI::move_to_string(stack->killer1);
+      std::cout << "currmove " << s << " (killer1)" << std::endl;
     }
-  if (killers[1])
+  if (stack->killer2)
     {
-      std::string s = UCI::move_to_string(killers[1]);
-      std::cout << "currmove " << s << " (killer-2)" << std::endl;
+      std::string s = UCI::move_to_string(stack->killer2);
+      std::cout << "currmove " << s << " (killer2)" << std::endl;
     }
+  */
   printf(".....captures....\n");
   if (captures)
     {
@@ -102,13 +112,14 @@ void MoveSelect::print_list()
   
 }
 
-void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats, Node * stack)
+void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * stack, MoveType movetype)
 {
-  statistics = &stats;
+  U16 killer1 = stack->killer[0];
+  U16 killer2 = stack->killer[1];  
+  //U16 killer3 = stack->killer[2];  
+  //U16 killer4 = stack->killer[3];  
   U16 lastmove = (stack-1)->currmove;
-  U16 killer1 = stack->killer1; U16 killer2 = stack->killer2;
-
-  if (type == QSEARCH) killer1 = killer2 = MOVE_NONE;
+  bool inCheck = b.in_check();
 
   for (; !mvs.end(); ++mvs)
     {
@@ -116,74 +127,71 @@ void MoveSelect::load(MoveGenerator& mvs, Board& b, U16 tt_mv, MoveStats& stats,
       int from = int(m & 0x3f);
       int to = int((m & 0xfc0) >> 6);
       int mt = int((m & 0xf000) >> 12);
-      int p = b.piece_on(from);
-      int c = b.whos_move();
+      //int p = b.piece_on(to);
+
+      if (m == ttm) continue;
+      if (m == killer1 || m == killer2) continue; // || m == killer3) continue; // || m == killer4) continue;
       
-      if (m == killer1 && m != tt_mv) { killers[0] = m; continue; }
-      else if (m == killer2 && m != tt_mv) { killers[1] = m; continue; }
-      else if ((mt == CAPTURE || mt == PROMOTION_CAP || mt == EP) && m != tt_mv)
+      // build capture list -- evasions include quiet moves (fyi)
+      if (movetype == CAPTURE && 
+	  (mt == CAPTURE || mt == EP || (mt <= PROMOTION_CAP && mt > PROMOTION)))
 	{
 	  captures[c_sz].m = m;
 	  int score = 0;
-	  // catch ep captures
 	  if0(mt == EP)
 	    {
 	      captures[c_sz++].score = score;
 	      continue;
 	    }
-	  
 	  score = piece_vals[b.piece_on(to)] - piece_vals[b.piece_on(from)];
-	  if (score <= 0) score = b.see_move(m);
-	  if (b.gives_check(m) && b.is_dangerous(m, p)) score += 15;// piece_vals[b.piece_on(from)];
-	  
-	  // the threat move from null-refutation, bonus if we capture the threatening piece
-	  //if (stack->threat != MOVE_NONE && (get_from(stack->threat) == to)) score += 25;
+	  // TODO :: speed this up ... ?
+	  if (score < 0 && b.is_legal(m)) score = b.see_move(m);
+
+	  // check bonus
+	  //if (b.gives_check(m) && b.is_dangerous(m, p)) score += 75;
+
+	  // promotion bonus
+	  //if (mt > PROMOTION && mt <= PROMOTION_CAP) score += piece_vals[(type-4)];
+
 	  captures[c_sz++].score = score;
-	  
 	}
-      else if ((mt == QUIET || mt == CASTLE_KS ||
-		mt == CASTLE_QS || mt == PROMOTION || mt == EVASION) && m != tt_mv)
+      else if ((mt == QUIET || mt == CASTLE_KS || mt == CASTLE_QS || mt <= PROMOTION)) // build quiet list
 	{
-	  //int pto = get_to((stack-1)->currmove);
 	  quiets[q_sz].m = m;
-	  int score = statistics->score(m, b.whos_move());
-	  	
+	  int score = statistics->score(m, b.whos_move()); 
+
+	  // countermove bonus
 	  if (lastmove != MOVE_NONE && 
-	      m == statistics->countermoves[get_from(lastmove)][get_to(lastmove)]) score += 25; // countermove bonus ... ?
+	      m == statistics->countermoves[get_from(lastmove)][get_to(lastmove)])
+	    score += 25;
 	  
-	  if (b.gives_check(m) && b.is_dangerous(m, p)) score += 15;// piece_vals[b.piece_on(from)];
-	  
-	  if (score <= (NINF - 1)) 
-	    {	      	      
-	      score += (square_score(c, p, b.phase(), to) - square_score(c, p, b.phase(), from));
-	    }
-	  
-	  quiets[q_sz].score = score; q_sz++;
-	}
-      else if (m == tt_mv && m != MOVE_NONE)
-	{
-	  use_tt = true;
-	  ttmv = tt_mv;
+	  // check bonus
+	  //if (b.gives_check(m) && b.is_dangerous(m, p)) score += 125;
+
+	  // promotion bonus
+	  //if (mt <= PROMOTION) score += piece_vals[type];	  
+
+	  quiets[q_sz++].score = score;
 	}
     }
-  
+
   // insertion sort based on score
-  if (q_sz > 1) std::sort(quiets, quiets + q_sz, GreaterThan);
-  if (c_sz > 1) std::sort(captures, captures + c_sz, GreaterThan);
-  
-  stored_qsz = q_sz;
-  stored_csz = c_sz;
-  q_sz = 0;
-  c_sz = 0;
-  
-  // debug move   
-  //printf("---------------------------------\n");
-  //b.print();
-  //print_list();
-  //printf("---------------------------------\n\n\n");  
+  stored_qsz = stored_csz = 0;
+  if (q_sz > 0 && movetype == QUIET) 
+    {
+      std::sort(quiets, quiets + q_sz, GreaterThan);
+      stored_qsz = q_sz;
+      q_sz = 0; // reset indices to 0, they index the quiet/capture arrays now     
+    }
+  else if (c_sz > 0 && movetype == CAPTURE) 
+    {
+      std::sort(captures, captures + c_sz, GreaterThan);      
+      stored_csz = c_sz;
+      c_sz = 0;
+    }
 }
 
-// note : scores are initialized to large negative numbers
+// note : scores are initialized to NINF-1
 // so we want to sort the least negative of the scores to the front of the
 // move list..
 void MoveSelect::sort(MoveList * ml, int length)
@@ -191,7 +199,7 @@ void MoveSelect::sort(MoveList * ml, int length)
   std::sort(ml, ml + length, GreaterThan);
 }
 
-bool MoveSelect::nextmove(Node& node, U16& out, bool split)
+bool MoveSelect::nextmove(Board &b, Node * stack, U16& ttm, U16& out, bool split)
 {
   if (split)
     {
@@ -199,9 +207,9 @@ bool MoveSelect::nextmove(Node& node, U16& out, bool split)
       //U16 move;
       //bool do_next = b.get_worker()->currSplitBlock->ms->nextmove(b,out,false);//node->ms->nextmove(b,out,false);
       //node.sb->split_mutex.lock();
-      bool do_next = node.sb->ms->nextmove(node, out, false);
+      //bool do_next = stack->sb->ms->nextmove(b, stack, ttm, move, false);
       //node.sb->split_mutex.unlock();
-      if (out == MOVE_NONE || !do_next) return false;
+      //if (out == MOVE_NONE || !do_next) return false;
       //else { out = move; return true; }
       // dbg 
       //std::cout << std::endl;
@@ -218,57 +226,80 @@ bool MoveSelect::nextmove(Node& node, U16& out, bool split)
       //for (int j=0; j<csz; ++j) std::cout << " " << SanSquares[get_from(tmp_caps[j].m)] + SanSquares[get_to(tmp_caps[j].m)];
       //std::cout << " thread-" << b.get_worker()->idx << " mv "<< SanSquares[get_from(out)] + SanSquares[get_to(out)] << std::endl;
       //std::cout << std::endl;
-      return do_next;
+      return false;//do_next;
     }
+  
+  out = MOVE_NONE;
   if (select_phase >= PHASE_END) return false;
   switch (select_phase)
     {
     case PHASE_TT:
-      if (use_tt)
-	{
-	  use_tt = false;
-	  out = ttmv;
-	}
-      else out = MOVE_NONE;
+      if (type == QSEARCH && !b.is_quiet(ttm)) out = ttm;
+      else if (type == MAIN) out = ttm;
       select_phase++;
       break;
 
     case PHASE_KILLER1:
-      out = killers[0];
+      if (type == MAIN) out = stack->killer[0];
+      select_phase++;
+      return true;
+
+    case PHASE_KILLER2:
+      if (type == MAIN) out = stack->killer[1];
+      select_phase++;
+      return true;
+
+    case PHASE_KILLER3:
+      //if (type == MAIN) out = stack->killer[2];
+      select_phase++;
+      return true;
+
+    case PHASE_KILLER4:
+      //if (type == MAIN) out = stack->killer[3];
       select_phase++;
       return true;
 
     case PHASE_CAPTURE_GOOD:
-      if (captures[c_sz].score > 0)
+      if (stored_csz == 0)
+	{
+	  MoveGenerator mvs; //mvs.generate_pseudo_legal(b, CAPTURE);
+	  if (type == MAIN ) mvs.generate_pseudo_legal(b, CAPTURE);
+	  else if (type == QSEARCH) mvs.generate_qsearch_mvs(b, CAPTURE, givesCheck); // only generates checks if givesCheck == true
+	  load_and_sort(mvs, b, ttm, stack, CAPTURE);
+	}
+      if (captures[c_sz].score >= 0 && captures[c_sz].m != MOVE_NONE)
 	{
 	  out = captures[c_sz].m; c_sz++; return true;
 	}
       select_phase++;
-      out = MOVE_NONE;
       break;
             
     case PHASE_CAPTURE_BAD:
-      if (captures[c_sz].score <= 0 && captures[c_sz].score >= NINF && captures[c_sz].m != MOVE_NONE)
+      if (captures[c_sz].score < 0 && captures[c_sz].m != MOVE_NONE)
 	{
 	  out = captures[c_sz].m; c_sz++; return true;
 	}            
       select_phase++;
-      out = MOVE_NONE;
       break;
-
-    case PHASE_KILLER2:
-      out = killers[1];
-      select_phase++;
-      return true;
 
     case PHASE_QUIET:
-      out = quiets[q_sz].m; q_sz++;
-      if (out == MOVE_NONE)
+      if (type == QSEARCH)
+	{	  
+	  if ( !b.in_check() ) return false; 
+	} 
+      if (stored_qsz == 0)  // if we are in check and have not found an evasion, generate moves even in qsearch
 	{
-	  select_phase++;
-	  return false;
+	  MoveGenerator mvs; mvs.generate_pseudo_legal(b, QUIET);
+	  //if (type == MAIN) mvs.generate_pseudo_legal(b, QUIET);
+	  //else if (type == QSEARCH) mvs.generate_qsearch_mvs(b, QUIET, givesCheck); // only generates checks if givesCheck == true
+	  load_and_sort(mvs, b, ttm, stack, QUIET);
 	}
-      break;
+      if (stored_qsz > 0 && quiets[q_sz].m != MOVE_NONE)
+	{
+	  out = quiets[q_sz].m; q_sz++; return true;
+	}
+      select_phase++;
+      return false;      
     }
   return true;
 }

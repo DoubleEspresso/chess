@@ -399,6 +399,10 @@ void Board::do_move(BoardData& d, U16 m)
   position->hmvs++;
   position->dKey ^= position->hmvs;
 
+  // does this move check the enemy king?
+  // useful during search/evaluation of board
+  int eks = square_of_arr[position->stm][KING][1];
+
   // side to move
   position->stm ^= 1;
   position->dKey ^= Zobrist::stm_rands(position->stm);
@@ -516,22 +520,173 @@ bool Board::is_quiet(U16& move)
   int mt = ((move & 0xf000) >> 12);
   return (mt != EP && mt != CAPTURE && mt != PROMOTION_CAP);
 }
+
+// note: this is meant to test if a "random" move is legal given a legal position
 bool Board::is_legal(U16& move)
 {
+  // note: the move is assumed to be 
+  // made by whos_move()!
+  if (move == MOVE_NONE) return false;
+
   U64 pinnd = pinned();	
   int ks = king_square();
   int ec = (whos_move() == WHITE ? BLACK : WHITE);
+  int eks = king_square(ec);
   int frm = (move & 0x3f);
   int to = ((move & 0xfc0) >> 6);
   int mt = ((move & 0xf000) >> 12);
+  int piece = piece_on(frm);
 
+  // sanity checks 
+  if (to == eks) return false;
+
+  if (color_on(frm) != whos_move() || piece == PIECE_NONE) 
+    {
+      return false;
+    }
+
+  if (color_on(to) == whos_move())
+    {
+      return false;
+    }
+
+  if ((mt == QUIET || mt == PROMOTION || mt == EP) && color_on(to) != COLOR_NONE) 
+    {
+      return false;
+    }
+  
+  if ( (mt == CAPTURE || mt == PROMOTION_CAP) && color_on(to) != ec) 
+    {
+      return false;
+    }
+  
+  if (piece == KNIGHT)
+    {
+      U64 tmp = (SquareBB[to] & PseudoAttacksBB(KNIGHT, frm));
+      if (!tmp) 
+	{
+	  return false;
+	}
+    }
+
+  if (piece == KING)
+    {
+      if (mt == CASTLE_KS || mt == CASTLE_QS) return true; // assumed legal
+      U64 tmp = (SquareBB[to] & PseudoAttacksBB(KING, frm));
+      if (!tmp) 
+	{
+	  return false;
+	}
+    }
+
+  if (piece == PAWN)
+    {
+      //int rdiff = (ROW(frm) - ROW(to));
+      int cdiff = (COL(frm) - COL(to));
+      /*
+      if (whos_move() == WHITE)
+	{
+	  if (mt == QUIET && rdiff != -1 && rdiff != -2) 
+	    {
+	      //printf("...bad pawn move, row=%d\n", rdiff);
+	      return false;
+	    }
+	}
+      else
+	{
+	  if (mt == QUIET && rdiff != 1 && rdiff != 2)
+	    {
+	      //printf("...bad pawn move, row=%d\n", rdiff);
+	      return false;
+	    }
+	}
+      */
+      if (cdiff == -1 || cdiff == 1)
+	{
+	  if ((mt == CAPTURE || mt == PROMOTION_CAP) 
+	      && mt != EP && color_on(to) == COLOR_NONE)
+	    {
+	      return false;
+	    }
+	}
+      else if (cdiff == 0 && mt == QUIET) 
+	{
+	  if (color_on(to) != COLOR_NONE)
+	    {
+	      return false;
+	    }
+	}
+    }
+
+  U64 mask = all_pieces();
+  if (piece == BISHOP)
+    {
+      U64 bmvs = attacks<BISHOP>(mask, frm);
+      U64 tmp = (SquareBB[to] & bmvs);
+      if (!tmp) 
+	{
+	  return false;
+	}
+    }
+  if (piece == ROOK)
+    {
+      U64 rmvs = attacks<ROOK>(mask, frm);
+      U64 tmp = (SquareBB[to] & rmvs);
+      if (!tmp)
+	{
+	  //printf("..bad rook move\n");
+	  return false;
+	}
+    }
+  if (piece == QUEEN)
+    {
+      U64 qmvs = attacks<BISHOP>(mask, frm) | attacks<ROOK>(mask, frm);
+      U64 tmp = (SquareBB[to] & qmvs); 
+      if (!tmp)
+	{
+	  return false;
+	}
+    }
+  
   if (mt == EP || frm == ks || SquareBB[frm]&pinnd)
     {
       if (mt == EP && !legal_ep(frm, to, ks, ec)) return false;
       else if (frm == ks && !is_legal_km(ks, to, ec)) return false;
-      else if ((SquareBB[frm]&pinnd) && !aligned(ks, frm, to)) return false;
+      else if ((SquareBB[frm] & pinnd) && !aligned(ks, frm, to)) return false;
     }
 
+  // catch quiet moves which block/capture checking piece
+  if (in_check() && frm != ks)
+    {
+      bool incheck = false;
+      U64 frm_to = (SquareBB[frm] | SquareBB[to]);
+      pieces[whos_move()][piece] ^= frm_to;
+      U64 enemies = pieces_by_color[ec];
+
+      if (mt == CAPTURE || mt == PROMOTION_CAP) // ep already handled
+	{
+	  pieces[ec][piece_on(to)] ^= SquareBB[to];
+	  enemies ^= SquareBB[to]; 
+	}
+
+      U64 mask = all_pieces() ^ SquareBB[frm];
+      if (mt != CAPTURE && mt != PROMOTION_CAP ) mask |= SquareBB[to]; 
+
+      U64 attackers = attackers_of(ks, mask) & enemies;
+
+      if (attackers) 
+	{
+	  incheck = true;
+	}
+      // undo
+      pieces[whos_move()][piece] ^= frm_to;
+      if (mt == CAPTURE || mt == PROMOTION_CAP) // ep already handled
+	{
+	  pieces[ec][piece_on(to)] ^= SquareBB[to];
+	}
+      return !incheck;      
+    }
+  
   return true;
 }
 
@@ -539,13 +694,14 @@ bool Board::is_legal(U16& move)
 int Board::phase()
 {
   int tot_cnt = 0;
-  for (int pt = 0; pt<PIECES - 1; ++pt)
+  for (int pt = 1; pt<PIECES - 1; ++pt)
     {
-      if (pt > 0) tot_cnt += number_of_arr[WHITE][pt] + number_of_arr[BLACK][pt];
+      tot_cnt += number_of_arr[WHITE][pt] + number_of_arr[BLACK][pt];
     }
   return (tot_cnt >= 6 ? MIDDLE_GAME : END_GAME);
 }
 
+// nb: assumes move is legal
 bool Board::gives_check(U16& move)
 {
   int to = get_to(move);
@@ -558,17 +714,6 @@ bool Board::gives_check(U16& move)
   U64 attackers = attackers_of(king_square(position->stm == WHITE ? BLACK : WHITE), m);
   pieces[position->stm][p] ^= (SquareBB[to] | SquareBB[from]);
   return to_bm & attackers;
-}
-
-// general routine to check if move gives check - this is slow..
-bool Board::checks_king(U16& move)
-{
-  bool incheck = false;
-  BoardData pd;
-  do_move(pd, move);
-  incheck = compute_in_check();
-  undo_move(move);
-  return incheck;
 }
 
 bool Board::legal_ep(int frm, int to, int ks, int ec)
@@ -608,37 +753,32 @@ bool Board::is_draw(int sz)
   if (position->move50 > 99 || (!position->in_check && sz <= 0))
     return true;
 
-  BoardData* state_data = position; int count = 0;
-  for (int i = 2, e = position->move50; i <= e; i += 2)
-    {
-      if (state_data->previous && state_data->previous->previous) state_data = state_data->previous->previous;
-      else return false;
-      if (state_data->pKey == position->pKey) ++count;
-      if (count >= 2) return true;
-    }
-  return false;
+  return is_repition_draw();
 }
 
 bool Board::is_repition_draw()
 {
   BoardData* state_data = position; int count = 0;
-  for (int i = 2, e = position->move50; i <= e; i += 2)
+  //printf("................start............\n");
+  for (int i = 0, e = position->hmvs; i <= e; i += 2)
     {
       if (state_data->previous && state_data->previous->previous) state_data = state_data->previous->previous;
       else return false;
-      if (state_data->pKey == position->pKey) ++count;
-      if (count >= 2) return true;
+      if (state_data->pKey == position->pKey) 
+	{
+	  ++count;
+	  //printf("..%lu = %lu, count=%d\n", state_data->pKey, position->pKey, count);
+	}
+      if (count >= 3) 
+	{
+	  //printf("................end (draw by rep)............\n");
+	  return true;
+	}
     }
+  //printf("................end............\n");
   return false;
 }
 
-bool Board::is_mate()
-{
-  if (!position->in_check) return false;
-  // we are in check, do we have legal moves?
-  MoveGenerator mvs(*this);
-  return !mvs.size();
-}
 void Board::clear()
 {
   memset(this, 0, sizeof(Board));
@@ -760,7 +900,6 @@ int Board::see(int to)
 
   // sets the from square of the smallest attacking piece
   int piece = smallest_attacker(to, whos_move(), from);
-  //std::cout << " smallest " << (whos_move() == WHITE ? "white" : "black") << " attacker of " << SanSquares[to] << " is " << SanPiece[piece] << std::endl;
 
   // return if no more attacking pieces
   if (piece >= 0)
@@ -943,6 +1082,8 @@ void Board::move_piece(int c, int p, int idx, int frm, int to)
   piece_on_arr[frm] = PIECE_NONE;
   piece_index[c][p][frm] = 0;
   piece_index[c][p][to] = idx;
+  color_on_arr[to] = c;
+  color_on_arr[frm] = COLOR_NONE;
   // zobrist keys
   position->pKey ^= (Zobrist::piece_rands(frm, c, p) | Zobrist::piece_rands(to, c, p));
 	
@@ -963,6 +1104,7 @@ void Board::remove_piece(int c, int p, int s)
   number_of_arr[c][p]--;
   piece_index[c][p][s] = 0;
   piece_on_arr[s] = PIECE_NONE;
+  color_on_arr[s] = COLOR_NONE;
   (c == WHITE ? piece_diff[p]-- : piece_diff[p]++);
   // zobrist keys
   position->pKey ^= Zobrist::piece_rands(s, c, p);
@@ -979,7 +1121,7 @@ void Board::add_piece(int c, int p, int s)
   piece_index[c][p][s] = number_of_arr[c][p];
 	
   (c == WHITE ? piece_diff[p]++ : piece_diff[p]--);
-	
+  color_on_arr[s] = c;
   // zobrist keys
   position->pKey ^= Zobrist::piece_rands(s, c, p);
   position->mKey ^= Zobrist::piece_rands(s, c, p);

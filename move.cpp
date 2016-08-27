@@ -70,7 +70,7 @@ MoveList * MoveGenerator::generate_pawn_moves(Board &b, MoveType mt)
   U64 pawns5 = pawns & rank5;
   U64 pawns2 = pawns & rank2;
 
-  // quite pawn pushes
+  // quite pawn pushes (not promotions)
   if1(mt == QUIET || mt == EVASION || mt == LEGAL || mt == PSEUDO_LEGAL)
     {
       U64 singlePushes = (stm == WHITE ? pawnsNot7 << NORTH : pawnsNot7 >> NORTH) & empty;
@@ -81,7 +81,7 @@ MoveList * MoveGenerator::generate_pawn_moves(Board &b, MoveType mt)
       if (doublePushes) serialize<QUIET>(doublePushes, back2);
     }
 
-  // pawn captures
+  // pawn captures (not promotions -- includes ep-moves)
   if (mt == CAPTURE || mt == LEGAL || mt == EVASION || mt == PSEUDO_LEGAL)
     {
       U64 not_on_right = pawnsNot7 ^ (pawnsNot7 & (stm == WHITE ? ColBB[COL8] : ColBB[COL1]));
@@ -99,7 +99,8 @@ MoveList * MoveGenerator::generate_pawn_moves(Board &b, MoveType mt)
       if (ep_right) serialize<EP>(ep_right, bleft);
       if (ep_left) serialize<EP>(ep_left, bright);
     }
-  // promotions
+
+  // promotions - quiet
   if0(mt == QUIET || mt == LEGAL || mt == PROMOTION || (mt == EVASION && pawns7) || mt == PSEUDO_LEGAL)
     {
       U64 quitePromotions = (stm == WHITE ? pawns7 << NORTH : pawns7 >> NORTH) & empty;
@@ -119,7 +120,7 @@ MoveList * MoveGenerator::generate_pawn_moves(Board &b, MoveType mt)
   return list;
 }
 
-// captures
+// piece captures
 MoveList * MoveGenerator::generate_legal_caps(Board& b)
 {
   int  stm = b.whos_move();
@@ -169,7 +170,7 @@ MoveList * MoveGenerator::generate_legal_caps(Board& b)
   return list;
 }
 
-// normal moves
+// normal moves - quiets and captures
 MoveList * MoveGenerator::generate_piece_moves(Board& b, MoveType mt)
 {
   int  stm = b.whos_move();
@@ -182,28 +183,46 @@ MoveList * MoveGenerator::generate_piece_moves(Board& b, MoveType mt)
   int *sqs = b.sq_of<KNIGHT>(stm);
   for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
     {
-      U64 quites = PseudoAttacksBB(KNIGHT, from) & empty;
-      if (quites) serialize<QUIET>(quites, from);
-      U64 attackBB = PseudoAttacksBB(KNIGHT, from) & enemies;
-      if (attackBB) serialize<CAPTURE>(attackBB, from);
+      if (mt == QUIET)
+	{
+	  U64 quites = PseudoAttacksBB(KNIGHT, from) & empty;
+	  if (quites) serialize<QUIET>(quites, from);
+	}
+      else if (mt == CAPTURE)
+	{
+	  U64 attackBB = PseudoAttacksBB(KNIGHT, from) & enemies;
+	  if (attackBB) serialize<CAPTURE>(attackBB, from);
+	}
     }
 
   // the king 
   int from = b.king_square();
-  U64 quites = PseudoAttacksBB(KING, from) & empty;
-  if (quites) serialize<QUIET>(quites, from);
-  U64 attackBB = PseudoAttacksBB(KING, from) & enemies;
-  if (attackBB) serialize<CAPTURE>(attackBB, from);
+  if(mt == QUIET)
+    {
+      U64 quites = PseudoAttacksBB(KING, from) & empty;
+      if (quites) serialize<QUIET>(quites, from);
+    }
+  else if (mt == CAPTURE)
+    {
+      U64 attackBB = PseudoAttacksBB(KING, from) & enemies;
+      if (attackBB) serialize<CAPTURE>(attackBB, from);
+    }
 
   // the bishop
   sqs = b.sq_of<BISHOP>(stm);
   for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
     {
       U64 bmvs = attacks<BISHOP>(mask, from);
-      U64 quites = bmvs & empty;
-      if (quites) serialize<QUIET>(quites, from);
-      U64 attackBB = bmvs & enemies;
-      if (attackBB) serialize<CAPTURE>(attackBB, from);
+      if (mt == QUIET)
+	{
+	  U64 quites = bmvs & empty;    
+	  if (quites) serialize<QUIET>(quites, from);
+	}
+      else if (mt == CAPTURE)
+	{
+	  U64 attackBB = bmvs & enemies;
+	  if (attackBB) serialize<CAPTURE>(attackBB, from);
+	}
     }
 
   // the rook
@@ -211,10 +230,16 @@ MoveList * MoveGenerator::generate_piece_moves(Board& b, MoveType mt)
   for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
     {
       U64 rmvs = attacks<ROOK>(mask, from);
-      U64 quites = rmvs & empty;
-      if (quites) serialize<QUIET>(quites, from);
-      U64 attackBB = rmvs & enemies;
-      if (attackBB) serialize<CAPTURE>(attackBB, from);
+      if (mt == QUIET)
+	{
+	  U64 quites = rmvs & empty;
+	  if (quites) serialize<QUIET>(quites, from);
+	}
+      else if (mt == CAPTURE)
+	{
+	  U64 attackBB = rmvs & enemies;
+	  if (attackBB) serialize<CAPTURE>(attackBB, from);
+	}
     }
 
   // the queen
@@ -222,15 +247,21 @@ MoveList * MoveGenerator::generate_piece_moves(Board& b, MoveType mt)
   for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
     {
       U64 qmvs = attacks<BISHOP>(mask, from) | attacks<ROOK>(mask, from);
-      U64 quites = qmvs & empty;
-      if (quites) serialize<QUIET>(quites, from);
-      U64 attackBB = qmvs & enemies;
-      if (attackBB) serialize<CAPTURE>(attackBB, from);
+      if (mt == QUIET)
+	{
+	  U64 quites = qmvs & empty;
+	  if (quites) serialize<QUIET>(quites, from);
+	}
+      else if (mt == CAPTURE)
+	{
+	  U64 attackBB = qmvs & enemies;
+	  if (attackBB) serialize<CAPTURE>(attackBB, from);
+	}
     }
   return list;
 }
 
-MoveList * MoveGenerator::generate_piece_evasions(Board& board)
+MoveList * MoveGenerator::generate_piece_evasions(Board& board, MoveType type)
 {
   // collect position data
   int  stm = board.whos_move();
@@ -241,12 +272,21 @@ MoveList * MoveGenerator::generate_piece_evasions(Board& board)
   int  ks = board.king_square();
   U64  target = 0ULL;
   U64  checkers = board.checkers();
-  //king
+
+  //king -- note king captures come last (they are usually dangerous/illegal)
   U64 kmvs = PseudoAttacksBB(KING, ks);
-  U64 quites = kmvs & empty;
-  U64 attackBB = kmvs & enemies;
-  if (attackBB) serialize<CAPTURE>(attackBB, ks);
-  if (quites) serialize<QUIET>(quites, ks);
+  if (type == QUIET)
+    {
+      U64 quites = kmvs & empty;
+      if (quites) serialize<QUIET>(quites, ks);
+    }
+  // king capture (inserted at the end of the list on purpose)
+  if (type == CAPTURE)
+    {
+      U64 attackBB = kmvs & enemies;
+      if (attackBB) serialize<CAPTURE>(attackBB, ks);
+    }
+
   // set the target bitmap for EVASIONS -- this is a bitmap between the king and the enemy checker
   // if more than one checker exists, only king moves will be legal.
   U64 tmp = checkers;
@@ -274,76 +314,117 @@ MoveList * MoveGenerator::generate_piece_evasions(Board& board)
     U64   pawnsNot7 = pawns ^ pawns7;         // all other pawns 
     U64   pawns5 = pawns & rank5;          // rank5 pawns for ep-moves
     U64   pawns2 = pawns & rank2;
-    U64  singlePushes = move_pawns(stm, NORTH, pawnsNot7) & target;
-    if (singlePushes) serialize<QUIET>(singlePushes, back1);
-    U64  tmp = move_pawns(stm, NORTH, pawns2) &  empty;
-    U64  doublePushes = move_pawns(stm, NORTH, tmp) & target;
-    if (doublePushes) serialize<QUIET>(doublePushes, back2);
-    U64 pawnsNoRightCol = pawnsNot7 ^ (pawnsNot7 & (stm == WHITE ? ColBB[COL8] : ColBB[COL1]));
-    U64 pawnsNoLeftCol = pawnsNot7 ^ (pawnsNot7 & (stm == WHITE ? ColBB[COL1] : ColBB[COL8]));
-    U64 capsRight = move_pawns(stm, NE, pawnsNoRightCol) & enemies;
-    U64 capsLeft = move_pawns(stm, NW, pawnsNoLeftCol) & enemies;
-    if (capsRight) serialize<CAPTURE>(capsRight, backleft);
-    if (capsLeft) serialize<CAPTURE>(capsLeft, backright);
-    // ep captures
-    U64 pawns4NoRightCol = pawns5 ^ (pawns5 & (stm == WHITE ? ColBB[COL8] : ColBB[COL1]));
-    U64 pawns4NoLeftCol = pawns5 ^ (pawns5 & (stm == WHITE ? ColBB[COL1] : ColBB[COL8]));
-    U64 epCapRight = move_pawns(stm, NE, pawns4NoRightCol) & SquareBB[eps]; // !! note danger (SQUARE_NONE = 64, squareBB[0:64], carefully convert).
-    U64 epCapLeft = move_pawns(stm, NW, pawns4NoLeftCol) & SquareBB[eps];
-    if (epCapRight) serialize<EP>(epCapRight, backleft);
-    if (epCapLeft) serialize<EP>(epCapLeft, backright);
-    // promotions    
+
+    // pawn blocks (quiet moves)
+    if (type == QUIET)
+      {
+	U64  singlePushes = move_pawns(stm, NORTH, pawnsNot7) & target;
+	if (singlePushes) serialize<QUIET>(singlePushes, back1);
+	U64  tmp = move_pawns(stm, NORTH, pawns2) &  empty;
+	U64  doublePushes = move_pawns(stm, NORTH, tmp) & target;
+	if (doublePushes) serialize<QUIET>(doublePushes, back2);
+      }
+
+    // pawn capture evasions
+    if (type == CAPTURE)
+      {
+	U64 pawnsNoRightCol = pawnsNot7 ^ (pawnsNot7 & (stm == WHITE ? ColBB[COL8] : ColBB[COL1]));
+	U64 pawnsNoLeftCol = pawnsNot7 ^ (pawnsNot7 & (stm == WHITE ? ColBB[COL1] : ColBB[COL8]));
+	U64 capsRight = move_pawns(stm, NE, pawnsNoRightCol) & enemies;
+	U64 capsLeft = move_pawns(stm, NW, pawnsNoLeftCol) & enemies;
+	if (capsRight) serialize<CAPTURE>(capsRight, backleft);
+	if (capsLeft) serialize<CAPTURE>(capsLeft, backright);
+	// ep captures
+	U64 pawns4NoRightCol = pawns5 ^ (pawns5 & (stm == WHITE ? ColBB[COL8] : ColBB[COL1]));
+	U64 pawns4NoLeftCol = pawns5 ^ (pawns5 & (stm == WHITE ? ColBB[COL1] : ColBB[COL8]));
+	U64 epCapRight = move_pawns(stm, NE, pawns4NoRightCol) & SquareBB[eps]; // !! note danger (SQUARE_NONE = 64, squareBB[0:64], carefully convert).
+	U64 epCapLeft = move_pawns(stm, NW, pawns4NoLeftCol) & SquareBB[eps];
+	if (epCapRight) serialize<EP>(epCapRight, backleft);
+	if (epCapLeft) serialize<EP>(epCapLeft, backright);
+      }
+
+    // promotions -- quiet and capture
     if0(pawns7)
     {
-      U64 quitePromotions = move_pawns(stm, NORTH, pawns7) & target;
-      if (quitePromotions) serialize_promotion<PROMOTION>(quitePromotions, back1);
+      if (type == QUIET)
+	{
+	  U64 quitePromotions = move_pawns(stm, NORTH, pawns7) & target;
+	  if (quitePromotions) serialize_promotion<PROMOTION>(quitePromotions, back1);
+	}
       // promotions - captures
-      U64 pawns7NoRightCol = pawns7 ^ (pawns7 & (stm == WHITE ? ColBB[COL8] : ColBB[COL1]));
-      U64 pawns7NoLeftCol = pawns7 ^ (pawns7 & (stm == WHITE ? ColBB[COL1] : ColBB[COL8]));
-      U64 caps7Right = move_pawns(stm, NE, pawns7NoRightCol) & enemies;
-      U64 caps7Left = move_pawns(stm, NW, pawns7NoLeftCol) & enemies;
-      if (caps7Right) serialize_promotion<PROMOTION_CAP>(caps7Right, backleft);
-      if (caps7Left) serialize_promotion<PROMOTION_CAP>(caps7Left, backright);
+      if (type == CAPTURE)
+	{
+	  U64 pawns7NoRightCol = pawns7 ^ (pawns7 & (stm == WHITE ? ColBB[COL8] : ColBB[COL1]));
+	  U64 pawns7NoLeftCol = pawns7 ^ (pawns7 & (stm == WHITE ? ColBB[COL1] : ColBB[COL8]));
+	  U64 caps7Right = move_pawns(stm, NE, pawns7NoRightCol) & enemies;
+	  U64 caps7Left = move_pawns(stm, NW, pawns7NoLeftCol) & enemies;
+	  if (caps7Right) serialize_promotion<PROMOTION_CAP>(caps7Right, backleft);
+	  if (caps7Left) serialize_promotion<PROMOTION_CAP>(caps7Left, backright);
+	}
     }
   }
   //knight
   int *sqs = board.sq_of<KNIGHT>(stm);
   for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
     {
-      U64 quites = PseudoAttacksBB(KNIGHT,from) & target;
-      if (quites) serialize<QUIET>(quites, from);
-      U64 attackBB = PseudoAttacksBB(KNIGHT, from) & enemies;
-      if (attackBB) serialize<CAPTURE>(attackBB, from);
+      if (type == QUIET)
+	{
+	  U64 quites = PseudoAttacksBB(KNIGHT,from) & target;
+	  if (quites) serialize<QUIET>(quites, from);
+	}
+      if (type == CAPTURE)
+	{
+	  U64 attackBB = PseudoAttacksBB(KNIGHT, from) & enemies;
+	  if (attackBB) serialize<CAPTURE>(attackBB, from);
+	}
     }
   // bishop
   sqs = board.sq_of<BISHOP>(stm);
   for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
     {
       U64 bmvs = attacks<BISHOP>(mask, from);
-      U64 quites = bmvs & target;
-      if (quites) serialize<QUIET>(quites, from);
-      U64 attackBB = bmvs & enemies;
-      if (attackBB) serialize<CAPTURE>(attackBB, from);
+      if (type == QUIET)
+	{
+	  U64 quites = bmvs & target;
+	  if (quites) serialize<QUIET>(quites, from);
+	}
+      if (type == CAPTURE)
+	{
+	  U64 attackBB = bmvs & enemies;
+	  if (attackBB) serialize<CAPTURE>(attackBB, from);
+	}
     }
   // rook
   sqs = board.sq_of<ROOK>(stm);
   for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
     {
       U64 rmvs = attacks<ROOK>(mask, from);
-      U64 quites = rmvs & target;
-      if (quites) serialize<QUIET>(quites, from);
-      U64 attackBB = rmvs & enemies;
-      if (attackBB) serialize<CAPTURE>(attackBB, from);
+      if (type == QUIET)
+	{
+	  U64 quites = rmvs & target;
+	  if (quites) serialize<QUIET>(quites, from);
+	}
+      if (type == CAPTURE)
+	{
+	  U64 attackBB = rmvs & enemies;
+	  if (attackBB) serialize<CAPTURE>(attackBB, from);
+	}
     }
   // queen
   sqs = board.sq_of<QUEEN>(stm);
   for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
     {
       U64 qmvs = (attacks<BISHOP>(mask, from) | attacks<ROOK>(mask, from));
-      U64 quites = qmvs & target;
-      if (quites) serialize<QUIET>(quites, from);
-      U64 attackBB = qmvs & enemies;
-      if (attackBB) serialize<CAPTURE>(attackBB, from);
+      if (type == QUIET)
+	{
+	  U64 quites = qmvs & target;
+	  if (quites) serialize<QUIET>(quites, from);
+	}
+      if (type == CAPTURE)
+	{
+	  U64 attackBB = qmvs & enemies;
+	  if (attackBB) serialize<CAPTURE>(attackBB, from);
+	}
     }
   return list;
 }
@@ -404,40 +485,36 @@ inline void MoveGenerator::append(U16 m)
 
 MoveList* MoveGenerator::generate_pseudo_legal(Board& b, MoveType mt)
 {
-  if0(b.in_check())
+  if(b.in_check())
     {
-      generate_piece_evasions(b);
+      generate_piece_evasions(b, mt);
     }
-  else 
+  else
     {
-      generate_pawn_moves(b, mt);
-      generate_piece_moves(b, mt);
-    }
-
-  if(mt == QUIET && !b.in_check()) generate_legal_castle_moves(b);
-
-  unsigned int _sz = last;
-  unsigned int iter = 0;
-
-  if (_sz > 0 )
-    {
-      for (unsigned int i = 0; i<_sz; ++i)
+      if (b.phase() == MIDDLE_GAME)
 	{
-	  int type = ((list[i].m & 0xf000) >> 12);
-	  int legal = 1;
-	  	  
-	  //filters
-	  if (type != mt) legal = 0;
-	  if (type <= PROMOTION && mt == QUIET) legal = 1;
-	  if (type <= PROMOTION_CAP && 
-	      type > PROMOTION && 
-	      mt == CAPTURE) legal = 1;
-
-	  (legal == 1 ? legal_i[iter++] = i : last--);
+	  generate_piece_moves(b, mt);
+	  if(mt == QUIET) generate_legal_castle_moves(b);
+	  generate_pawn_moves(b, mt);
+	}
+      else
+	{
+	  generate_pawn_moves(b, mt);
+	  generate_piece_moves(b, mt);
+	  if(mt == QUIET) generate_legal_castle_moves(b);
 	}
     }
+
+  // mark all moves as legal, they are checked one-by-one
+  // during the main search
+  for (int i = 0; i<last; ++i)
+    {
+      legal_i[i] = i;
+    }
+
   return list;
 }
+
 
 MoveList* MoveGenerator::generate(Board& b, MoveType mt)
 {
@@ -445,25 +522,31 @@ MoveList* MoveGenerator::generate(Board& b, MoveType mt)
     {
       if0(b.in_check())
 	{
-	  generate_piece_evasions(b);
+	  generate_piece_evasions(b, mt);
 	}
       else generate_legal_caps(b);
     }
-  else
+  else // usually reserved for LEGAL type
     {
       if0(b.in_check())
 	{
-	  generate_piece_evasions(b);
+	  generate_piece_evasions(b, QUIET);
+	  generate_piece_evasions(b, CAPTURE);
 	}
       else
 	{
-	  generate_pawn_moves(b, mt);
-	  generate_piece_moves(b, mt);
+	  // so it plays chess... :/
+	  generate_pawn_moves(b, QUIET);
+	  generate_pawn_moves(b, CAPTURE);
+	  generate_piece_moves(b, QUIET);
+	  generate_piece_moves(b, CAPTURE);
 	}
     }
   if0((mt == LEGAL || mt == CASTLE || mt == PSEUDO_LEGAL) &&
       !b.in_check()) generate_legal_castle_moves(b);
   
+  // mark all moves as legal, they are checked one-by-one
+  // during the main search
   if0 (mt == PSEUDO_LEGAL && last > 0)
     {
       // allows accessing mvs.move() in move.h
@@ -499,58 +582,61 @@ MoveList* MoveGenerator::generate(Board& b, MoveType mt)
   return list;
 }
 
-MoveList* MoveGenerator::generate_qsearch_mvs(Board& b)
+MoveList* MoveGenerator::generate_qsearch_mvs(Board& b, MoveType mt, bool checksKing)
 {
-  if0(b.in_check())
+  if( b.in_check() )
     {
-      generate_piece_evasions(b);
-  } else generate_legal_caps(b);
-  //else {
-  //  generate_pawn_moves(b, PSEUDO_LEGAL);
-  //  generate_piece_moves(b, PSEUDO_LEGAL);
-  //}
-  
-  unsigned int _sz = last;
-  unsigned int iter = 0;
-  if (_sz > 0)
+      generate_piece_evasions(b, mt);
+    } 
+  else
     {
-      U64 pinned = b.pinned();
-      int ks = b.king_square();
-      int ec = (b.whos_move() == WHITE ? BLACK : WHITE);
-      for (unsigned int i = 0; i<_sz; ++i)
+      if (b.phase() == MIDDLE_GAME)
 	{
-	  int frm = (list[i].m & 0x3f);
-	  int to = ((list[i].m & 0xfc0) >> 6);
-	  int type = ((list[i].m & 0xf000) >> 12);
-	  int legal = 1;
-	  
-	  if (type == EP && !is_legal_ep(frm, to, ks, ec, b)) legal = 0;
-	  else if (frm == ks && !is_legal_km(ks, to, ec, b, type)) legal = 0;
-	  else if ((SquareBB[frm] & pinned) && !aligned(ks, frm, to)) legal = 0;
-	  
-	  // qsearch filters .. remove checks!
-	  //if (!b.in_check())
-	  //{
-	  //if (legal == 1 && (type == CAPTURE && !b.gives_check(list[i].m) )) legal = 1;
-	  //else legal = 0;
-	  //}
-	  //if (legal == 1 && (b.gives_check(list[i].m) || get_movetype(list[i].m) != CAPTURE)) legal = 0;
-	  (legal == 1 ? legal_i[iter++] = i : last--);
+	  generate_piece_moves(b, CAPTURE);
+	  generate_pawn_moves(b, CAPTURE);
+	}
+      else
+	{
+	  generate_pawn_moves(b, CAPTURE);
+	  generate_piece_moves(b, CAPTURE);
 	}
     }
+
+  // mark all moves as legal
+  for (int i = 0; i<last; ++i)
+    {
+      legal_i[i] = i;
+    }
+
+  if (b.in_check()) return list;
+
+  // we are not in check, remove checks from the list
+  unsigned int _sz = last;
+  unsigned int iter = 0;
+  if (_sz > 0 && !checksKing)
+    {
+      for (unsigned int i = 0; i<_sz; ++i)
+	{
+	  int legal = 1;	  
+	  if (b.gives_check(list[i].m)) legal = 0;
+	  
+	  (legal == 1 ? legal_i[iter++] = i : last--);
+	}
+    } 
   return list;
 }
 
 MoveList* MoveGenerator::generate_qsearch_caps_checks(Board& b)
 {
-	if0(b.in_check())
-	{
-		generate_piece_evasions(b);
-	} 
-	else
-	{
-	generate_pawn_moves(b, PSEUDO_LEGAL);
-	generate_piece_moves(b, PSEUDO_LEGAL);
+  if0(b.in_check())
+    {
+      generate_piece_evasions(b, CAPTURE);
+      generate_piece_evasions(b, QUIET);
+    } 
+  else
+    {
+      generate_pawn_moves(b, PSEUDO_LEGAL);
+      generate_piece_moves(b, PSEUDO_LEGAL);
     }
   unsigned int _sz = last;
   unsigned int iter = 0;

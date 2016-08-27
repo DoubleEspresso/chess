@@ -147,6 +147,21 @@ int piece_vals_eg[5] = { PawnValueEG, KnightValueEG, BishopValueEG, RookValueEG,
 //
 // bxd8 best
 // 3rkb1r/pQ2ppp1/7p/B1P3P1/2qn4/7P/P4P2/3RR1K1 w k - 2 24
+//
+// recent bug (eval ~990 but down a rook)
+// position fen 1r5k/2p1qr1p/2p1N2Q/p2p2R1/3P1P1P/1P4R1/P5P1/1b4K1 w - - 1 27
+//
+// don't exchange passed pawn here!!
+// position fen 1k5r/1p2rpp1/p3p2n/P1RPP2p/4b3/R4N1P/NP3PP1/6K1 w - - 1 26
+//
+// current bug position
+// r3k1nr/2pqppbp/p1p3p1/3pPb2/3P4/2N2N2/PPP2PPP/R1BQ1RK1 w kq - 4 9
+//
+// nxp loses knight! 
+// r4r2/7p/2pk3p/p2pN3/6p1/8/1PP2P1P/4RRK1 w - - 0 25
+//
+// endgame position - queen a pawn asap!
+// position fen 8/8/P3p1k1/4P1p1/2p1R3/6P1/1K2P3/4r3 w - - 1 43
 namespace
 {
   Clock timer;
@@ -395,14 +410,14 @@ namespace
     //score += (eval_space<WHITE>(b, ei) - eval_space<BLACK>(b, ei));
 
     // evaluate center control
-    score += (eval_center<WHITE>(b, ei) - eval_center<BLACK>(b, ei));
+    //score += (eval_center<WHITE>(b, ei) - eval_center<BLACK>(b, ei));
 
     // evaluate threats -- tried to use this as is, encourages sacrificial moves
     // for no gain .. e.g. move knight in front of pawn attack to attack king etc.
-    score += (eval_threats<WHITE>(b, ei) - eval_threats<BLACK>(b, ei));
+    //score += (eval_threats<WHITE>(b, ei) - eval_threats<BLACK>(b, ei));
 
-	// development in opening phase
-	if (ei.phase == MIDDLE_GAME) score += (eval_development<WHITE>(b, ei) - eval_development<BLACK>(b, ei));
+    // development in opening phase
+    //if (ei.phase == MIDDLE_GAME) score += (eval_development<WHITE>(b, ei) - eval_development<BLACK>(b, ei));
 
     if (ei.do_trace)
       {
@@ -718,7 +733,7 @@ namespace
 
 	// open file bonus for the rook
 	U64 file_closed = ColBB[COL(from)] & pawns;
-	if (!file_closed) score += 1; //int(open_file_bonus[ei.phase]); 
+	if (!file_closed) score += 4; //int(open_file_bonus[ei.phase]); 
 
 	U64 file_semi_closed =  ColBB[COL(from)] & our_pawns;
 	if (!file_semi_closed) score += 2; //int(open_file_bonus[ei.phase])/2;
@@ -727,7 +742,7 @@ namespace
 
 
 	U64 king_threats = mvs & KingSafetyBB[them][(them == BLACK ? ei.black_ks : ei.white_ks)];
-	if (king_threats) score += 1;//threats_to_king_weights[ei.phase][ROOK];// *count(king_threats);
+	if (king_threats) score += 2;//threats_to_king_weights[ei.phase][ROOK];// *count(king_threats);
 
 	// evaluate the connected-ness of this piece (how many friendly pieces attack it)
 	// needs to be weighted by game phase (attacking pawns in endgame is good!)
@@ -786,7 +801,7 @@ namespace
 	}
 	// penalize the queen if attacked by a knight, bishop or pawn
 	U64 attackers = b.attackers_of(from) & (enemy_pawns | enemy_knights | enemy_bishops | enemy_rooks);
-	if (attackers) score -= ei.tempoBonus / 2;
+	if (attackers) score -= ei.tempoBonus;// / 2;
 
 
 	// queen attacks, weighted by game phase
@@ -878,7 +893,7 @@ namespace
       {
 	U64 pawn_cover = KingSafetyBB[c][from] & our_pawns;
 	if (pawn_cover) score += count(pawn_cover);
-	if (count(pawn_cover) < 2) score -= 4; //100;
+	if (count(pawn_cover) < 2) score -= 20;
       }
     //printf("..%d - mobility + pawn cover = %d\n", c, score);
 
@@ -900,17 +915,18 @@ namespace
     // update : penalize more if not castled and cannot castle
     if (!castled && !b.can_castle(c == WHITE ? ALL_W : ALL_B)) score -= 4*castle_weights[ei.phase] * king_exposure[ei.phase];
 
-		// note : speedup when these diag checks are removed for certain tactical test positions, but
-		// play is weaker (places king in danger much sooner during game).
-	
+    // note : speedup when these diag checks are removed for certain tactical test positions, but
+    // play is weaker (places king in danger much sooner during game).
+    
     if (enemy_bishops || enemy_queens)
       {
 	U64 diags = KingVisionBB[c][BISHOP][from] & our_pawns & KingSafetyBB[c][from];
 	if (diags) score += king_exposure[ei.phase];
 	diags = KingVisionBB[c][BISHOP][from] & (enemy_bishops | enemy_queens);
-	if (diags) score -= 2; // penalty for queens/bishops looking at king
+	if (diags) score -= 2;// * king_exposure[ei.phase]; // penalty for queens/bishops looking at king
       }
-    //printf("..%d - mobility + pawn cover + piece cover + bishop diag penalty = %d\n", c, score);
+    
+    
     if (enemy_rooks || enemy_queens)
       {
 	U64 cols = KingVisionBB[c][ROOK][from] & ColBB[COL(from)] & our_pawns;// & KingSafetyBB[c][from];
@@ -961,6 +977,7 @@ namespace
 	if (colsLeftLeft) score -= 2;
 	//printf("   ..%d - p11 = %d\n", c, score);
       }
+    
     //printf("..%d - mobility + pawn cover + piece cover + bishop diag penalty + cols penalties= %d\n", c, score);
     // idea : evaluate development and treat our "less active" pieces as dangerous to our king
     
@@ -971,6 +988,7 @@ namespace
 	int nb_undev_pieces = count(undev_pieces);
 	if (nb_undev_pieces > 2) score -= 2;// *nb_undev_pieces;
       }
+    
     //printf("..%d - mobility + pawn cover + piece cover + bishop diag penalty + cols penalties + undev pieces = %d\n", c, score);
     if (ei.do_trace)
       {
@@ -1029,6 +1047,7 @@ namespace
     U64 center_mask = (SquareBB[D4] | SquareBB[E4] | SquareBB[E5] | SquareBB[D5]);
     int enemy_ks = (c == WHITE ? ei.black_ks : ei.white_ks);
 
+    
     // collect the pawn targets
     int them = (c == WHITE ? BLACK : WHITE);
     U64 all_pawns = (c == WHITE ? b.get_pieces(BLACK, PAWN) : b.get_pieces(WHITE, PAWN));
@@ -1046,6 +1065,7 @@ namespace
     U64 center_pawns = all_pawns & center_mask;
 
     // removed passed pawns, backward pawns and king pawns which are normally defended well.
+    
     U64 pawn_targets = (undefended_pawns & doubled_pawns) |
       (undefended_pawns & backward_pawns) |
       (undefended_pawns & isolated_pawns) |
@@ -1079,7 +1099,7 @@ namespace
 	  tmp = (attackers & rooks);
 	  if (tmp) score += count(tmp);// *attack_weights[ei.phase][ROOK][PAWN];
 	}
-
+    
     /*
     U64 pawn_break_targets = chain_bases | chain_heads;
     if (pawn_break_targets)

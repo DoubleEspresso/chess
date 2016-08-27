@@ -15,6 +15,7 @@ struct TableEntry
   U16 move;
   int16 value;
   int16 static_value;
+  bool pvNode;
   U8 depth;
   U8 bound;
 };
@@ -44,7 +45,7 @@ class HashTable
   HashTable();
   ~HashTable();
   
-  void store(U64 key, U64 data, U16 depth, Bound bound, U16 m, int score, int static_value);
+  void store(U64 key, U64 data, U16 depth, Bound bound, U16 m, int score, int static_value, bool pv_node);
   TableEntry * first_entry(U64 key);
   bool fetch(U64 key, TableEntry& ein);
   bool init();	

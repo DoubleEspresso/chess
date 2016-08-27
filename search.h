@@ -47,7 +47,7 @@ struct Node
 {
   NodeType type;
   U16 currmove, bestmove;
-  U16 killer1, killer2, threat;
+  U16 killer[4];
   int ply, static_eval, threat_gain;
   bool isNullSearch;
   bool givescheck;
@@ -64,7 +64,7 @@ struct SignalsType
 namespace Search
 {
   // alpha-beta search
-  extern void run(Board& b, int dpth);
+  extern void run(Board& b, int dpth, bool pondering=false);
   extern void from_thread(Board& b, int alpha, int beta, int depth, Node& node);
 };
 

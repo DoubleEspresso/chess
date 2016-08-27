@@ -59,7 +59,7 @@ bool HashTable::fetch(U64 key, TableEntry& ein)
   return false;
 }
 
-void HashTable::store(U64 key, U64 data, U16 depth, Bound bound, U16 m, int score, int static_value)
+void HashTable::store(U64 key, U64 data, U16 depth, Bound bound, U16 m, int score, int static_value, bool pv_node)
 {
   TableEntry * e, *replace;
   U16 key16 = key >> 48;
@@ -92,5 +92,6 @@ void HashTable::store(U64 key, U64 data, U16 depth, Bound bound, U16 m, int scor
   replace->move = m;
   replace->value = (int16) score;
   replace->static_value = (int16) static_value;
+  replace->pvNode = pv_node;
 
 }
