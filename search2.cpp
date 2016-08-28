@@ -39,7 +39,6 @@ namespace
   void update_pv(U16* pv, U16& move, U16* child_pv);
   void pv_from_tt(Board& b, int eval, int d);
   void store_pv(Board& b, U16 * pv, int depth);
-  void checkMoreTime(Board& b, Node * stack);
   void print_pv_info(Board& b, int depth, int eval, U16 * pv);
 };
 
@@ -297,7 +296,7 @@ namespace
     
     // 7. -- internal iterative deepening
     if (ttm == MOVE_NONE &&
-	//!stack->isNullSearch && 
+	//!stack->isNullSearch && //!!
 	depth >= (pv_node ? 6 : 8) &&
 	(pv_node || static_eval + 250 >= beta) &&
 	!b.in_check() )
@@ -378,7 +377,7 @@ namespace
 	    ++pruned;
 	    continue;
 	  }
-	
+
 	// exchange pruning at shallow depths - same thing done in qsearch...		    				
 	if (newdepth <= 1 &&
 	    //!inCheck && !givesCheck && //!isQuiet && // !pv_node &&

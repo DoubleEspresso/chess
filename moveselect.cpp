@@ -163,7 +163,7 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 	  // countermove bonus
 	  if (lastmove != MOVE_NONE && 
 	      m == statistics->countermoves[get_from(lastmove)][get_to(lastmove)])
-	    score += 25;
+	    score += 125;
 	  
 	  // check bonus
 	  //if (b.gives_check(m) && b.is_dangerous(m, p)) score += 125;

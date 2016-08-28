@@ -773,7 +773,7 @@ bool Board::is_repition_draw()
 	  ++count;
 	  //printf("..%lu = %lu, count=%d\n", state_data->pKey, position->pKey, count);
 	}
-      if (count >= 3) 
+      if (count >= 2) 
 	{
 	  //printf("................end (draw by rep)............\n");
 	  return true;

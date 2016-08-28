@@ -167,7 +167,7 @@
     <ClCompile Include="opts.cpp" />
     <ClCompile Include="pawns.cpp" />
     <ClCompile Include="pgnio.cpp" />
-    <ClCompile Include="search2.cpp" />
+    <ClCompile Include="search3.cpp" />
     <ClCompile Include="threads.cpp" />
     <ClCompile Include="uci.cpp" />
     <ClCompile Include="zobrist.cpp" />
