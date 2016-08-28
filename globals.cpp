@@ -77,8 +77,8 @@ namespace Globals
 
     // the center mask (smaller center - just 4 squares)
     CenterMaskBB = (SquareBB[D4] | SquareBB[D5] | SquareBB[E4] | SquareBB[E5]);
-    BigCenterBB = CenterMaskBB | (SquareBB[C4] | SquareBB[C5] | SquareBB[E3] | SquareBB[D3] |
-				  SquareBB[D6] | SquareBB[E6] | SquareBB[F4] | SquareBB[F5]);
+	BigCenterBB = CenterMaskBB | (SquareBB[C4] | SquareBB[C5] | SquareBB[F4] | SquareBB[F5]);//SquareBB[E3] | SquareBB[D3] |
+				  //SquareBB[D6] | SquareBB[E6] | );
 
     // pawn storm detection on k/q side
     kSidePawnStormBB = SquareBB[F6] | SquareBB[F5] | SquareBB[F4] | SquareBB[F3] |

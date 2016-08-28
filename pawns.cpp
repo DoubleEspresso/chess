@@ -11,13 +11,13 @@ PawnTable pawnTable;
 
 namespace Penalty
 {
-  float doubledPawn[2] = { -4.0, -8.0 };
-  float shelterPawn[2] = { 2.0, 3.0 };
-  float isolatedPawn[2] = { -4.0,-6.0 };
-  float backwardPawn[2] = { -2.0,-4.0 };
+  float doubledPawn[2] = { -15.0, -20.0 };
+  float shelterPawn[2] = { 2.0, 1.0 };
+  float isolatedPawn[2] = { -15.0,-20.0 };
+  float backwardPawn[2] = { -10.0,-4.0 };
   float chainPawn[2] = { 2.0, 4.0 };
-  float passedPawn[2] = { 6.0, 10.0 };
-  float semiOpen[2] = { -3.0,-8.0 };
+  float passedPawn[2] = { 16.0, 30.0 };
+  float semiOpen[2] = { -4.0,-8.0 };
 }
 
 // sz for 16 pawns distributed among 48 sqrs. ~ 454,253,679 elts

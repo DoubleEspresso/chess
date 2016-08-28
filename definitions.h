@@ -80,13 +80,13 @@ enum MaterialValue
     PawnValueMG = 100, 
     KnightValueMG = 365, 
     BishopValueMG = 380, 
-    RookValueMG = 580, 
+    RookValueMG = 550, 
     QueenValueMG = 1090,
 
     PawnValueEG = 110,
     KnightValueEG = 355,
     BishopValueEG = 385,
-    RookValueEG = 595,
+    RookValueEG = 565,
     QueenValueEG = 1115
   };
 
