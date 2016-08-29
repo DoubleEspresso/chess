@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include "evaluate.h"
 #include "definitions.h"
 #include "squares.h"
@@ -299,6 +301,9 @@ namespace
   void traceout(EvalInfo& e);
 
   template<Color c>
+  int score_control(Board&b, EvalInfo& ei, U64& region, bool use_weight=false);
+
+  template<Color c>
   int eval_squares(Board& b, EvalInfo& ei);
 
   template<Color c>
@@ -328,6 +333,21 @@ namespace
   template<Color c>
   int eval_development(Board& b, EvalInfo& ei);
 
+  // decreasing in distance (radially symmetric), reasonable, but could
+  // use some tweaking
+  int kingSq_weight(EvalInfo& ei, int sq, int ks) 
+  {
+    float maxv = 2; 
+    if (ei.phase == END_GAME) maxv /= 2;
+    int rdiff = ROW(sq) - ROW(ks); rdiff = (rdiff < 0 ? -rdiff : rdiff);
+    int cdiff = COL(sq) - COL(ks); cdiff = (cdiff < 0 ? -cdiff : cdiff);
+    int dist = std::max(rdiff, cdiff);
+    float r = exp(-(1-dist)*(1-dist)/1.75); printf("r=%f, sq=%s, sc=%f\n",r,SanSquares[sq].c_str(), maxv*r);
+    return (int) maxv * r;
+  }
+
+  template<Color c>
+  int score_king_control(EvalInfo& ei, Board& b, U64& region, int ks);
 };
 
 ///////////////////////////////////////////////////////////////////////
@@ -407,7 +427,7 @@ namespace
     // 5. development -- connected rooks, knights/bishops off back rank
 
     // evaluate space
-	//if (ei.phase == MIDDLE_GAME) score += (eval_space<WHITE>(b, ei) - eval_space<BLACK>(b, ei));
+    //if (ei.phase == MIDDLE_GAME) score += (eval_space<WHITE>(b, ei) - eval_space<BLACK>(b, ei));
 
     // evaluate threats -- tried to use this as is, encourages sacrificial moves
     // for no gain .. e.g. move knight in front of pawn attack to attack king etc.
@@ -416,8 +436,8 @@ namespace
     // development in opening phase
     //if (ei.phase == MIDDLE_GAME) score += (eval_development<WHITE>(b, ei) - eval_development<BLACK>(b, ei));
 
-	// evaluate center control
-	if (ei.phase == MIDDLE_GAME) score += (eval_center<WHITE>(b, ei) - eval_center<BLACK>(b, ei));
+    // evaluate center control
+    if (ei.phase == MIDDLE_GAME) score += (eval_center<WHITE>(b, ei) - eval_center<BLACK>(b, ei));
 
     if (ei.do_trace)
       {
@@ -426,6 +446,95 @@ namespace
 	traceout(ei);
       }
     return b.whos_move() == WHITE ? score : -score;
+  }
+
+  // score color "c" attacks against king square ks
+  template<Color c>
+  int score_king_control(EvalInfo& ei, Board& b, U64& region, int ks)
+  {
+    int score = 0;
+    U64 pawns = (c == WHITE ? ei.white_pawns : ei.black_pawns);
+    U64 knights = (c == WHITE ? b.get_pieces(WHITE, KNIGHT) : b.get_pieces(BLACK, KNIGHT));
+    U64 bishops = (c == WHITE ? b.get_pieces(WHITE, BISHOP) : b.get_pieces(BLACK, BISHOP));
+    U64 queens = (c == WHITE ? b.get_pieces(WHITE, QUEEN) : b.get_pieces(BLACK, QUEEN));
+    U64 rooks = (c == WHITE ? b.get_pieces(WHITE, ROOK) : b.get_pieces(BLACK, ROOK));
+
+    if (region)
+      while (region)
+	{
+	  int sq = pop_lsb(region);
+	  int w = kingSq_weight(ei, sq, ks); 
+	  U64 attackers = b.attackers_of(sq) & b.colored_pieces(c);
+	  
+	  U64 tmp = (attackers & pawns);
+	  if (tmp) 
+	    {
+	      score += 6 * w; 
+	    }
+	  
+	  tmp = (attackers & knights);
+	  if (tmp) 
+	    {
+	      score += 2 * w; 
+	    }
+	  
+	  tmp = (attackers & bishops);
+	  if (tmp) 
+	    {
+	      score += 2 * w;
+	    }
+	  
+	  tmp = (attackers & queens);
+	  if (tmp) 
+	    {
+	      score += 1 * w; 
+	    }
+	  
+	  tmp = (attackers & rooks);
+	  if (tmp) 
+	    {
+	      score += 1 * w; 
+	    }
+	}
+    return score;
+  }
+
+  // general routine to score control of a region of space on the board
+  template<Color c>
+  int score_control(Board&b, EvalInfo& ei, U64& region, bool use_weight)
+  {
+    int score = 0;
+    U64 pawns = (c == WHITE ? ei.white_pawns : ei.black_pawns);
+    U64 knights = (c == WHITE ? b.get_pieces(WHITE, KNIGHT) : b.get_pieces(BLACK, KNIGHT));
+    U64 bishops = (c == WHITE ? b.get_pieces(WHITE, BISHOP) : b.get_pieces(BLACK, BISHOP));
+    U64 queens = (c == WHITE ? b.get_pieces(WHITE, QUEEN) : b.get_pieces(BLACK, QUEEN));
+    U64 rooks = (c == WHITE ? b.get_pieces(WHITE, ROOK) : b.get_pieces(BLACK, ROOK));
+
+    if (region)
+      while (region)
+	{
+	  int sq = pop_lsb(region);
+	  int w = 1; // default (no weighting)
+	  if (use_weight) w = territory_score<c>(ei.phase, sq); // ranges from 1 - 10	  
+	  U64 attackers = b.attackers_of(sq);
+
+	  U64 tmp = (attackers & pawns);
+	  if (tmp) score += 4 * w; 
+
+	  tmp = (attackers & knights);
+	  if (tmp) score += 1 * w; 
+	  
+	  tmp = (attackers & bishops);
+	  if (tmp) score += 1 * w;
+	  
+	  tmp = (attackers & queens);
+	  if (tmp) score += 1 * w; 
+	  
+	  tmp = (attackers & rooks);
+	  if (tmp) score += 1 * w; 
+
+	}
+    return score;
   }
 
   // piece square tables range from (-10,10) for each piece, if each piece
@@ -849,7 +958,6 @@ namespace
     U64 enemy_queens = (c == WHITE ? b.get_pieces(BLACK, QUEEN) : b.get_pieces(WHITE, QUEEN));
     U64 enemy_knights = (c == WHITE ? b.get_pieces(BLACK, KNIGHT) : b.get_pieces(WHITE, KNIGHT));
 
-
     // eval king safety    
     U64 mobility = PseudoAttacksBB(KING, from);// & ei.empty;
     //U64 sliders = (enemy_bishops | enemy_rooks | enemy_queens);
@@ -871,6 +979,11 @@ namespace
 	    score -= count(attackers);
 	  }
       }
+
+    // DBG new idea for king safety (computed) based on passed bitmap
+    U64 region = KingSafetyBB[c][from]; U64 region2 = KingSafetyBB[c][from];
+    int v = score_king_control<WHITE>(ei, b, region, from) - score_king_control<BLACK>(ei, b, region2, from);
+    printf("..DBG king_control(%s) = %d\n", (c == WHITE ? "white" : "black"), (c == WHITE ? v : -v));
 
     //printf("..%d - mobility = %d\n", c, score);
     // we almost never want the king in the corner during an endgame
@@ -1065,13 +1178,13 @@ namespace
 
     // removed passed pawns, backward pawns and king pawns which are normally defended well.
     
-	U64 pawn_targets = (undefended_pawns & doubled_pawns) |
-		(undefended_pawns & backward_pawns) |
-		(undefended_pawns & isolated_pawns) | (undefended_pawns & center_pawns);// | chain_heads;
-      //(undefended_pawns & passed_pawns) |
-      //(undefended_pawns & center_pawns) | 
-      //(undefended_pawns & chain_bases); 
-
+    U64 pawn_targets = (undefended_pawns & doubled_pawns) |
+      (undefended_pawns & backward_pawns) |
+      (undefended_pawns & isolated_pawns) | (undefended_pawns & center_pawns);// | chain_heads;
+    //(undefended_pawns & passed_pawns) |
+    //(undefended_pawns & center_pawns) | 
+    //(undefended_pawns & chain_bases); 
+    
     // note: attack_weights for piece attacks pawn are all <= 4 so this adjustment
     // should be small
    

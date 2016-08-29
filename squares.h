@@ -16,6 +16,18 @@ namespace {
     return (x + 100 * y);
   }
 
+  static const int territory_scores[SQUARES] = 
+    {
+      S(1,1), S(1,1), S(1,1), S(1,1), S(1,1), S(1,1), S(1,1), S(1,1),
+      S(1,1), S(1,1), S(1,1), S(1,1), S(1,1), S(1,1), S(1,1), S(1,1),
+      S(1,1), S(1,1), S(2,1), S(2,1), S(2,1), S(2,1), S(1,1), S(1,1),
+      S(1,1), S(1,1), S(8,2), S(8,4), S(8,4), S(8,2), S(1,1), S(1,1),
+      S(1,1), S(1,1), S(4,4), S(4,4), S(4,4), S(4,4), S(1,1), S(1,1),
+      S(1,1), S(1,1), S(2,4), S(2,4), S(2,4), S(2,4), S(1,1), S(1,1),
+      S(1,1), S(1,1), S(1,1), S(1,1), S(1,1), S(1,1), S(1,1), S(1,1),
+      S(1,1), S(1,1), S(1,1), S(1,1), S(1,1), S(1,1), S(1,1), S(1,1)
+    };
+
   static const int square_scores[6][SQUARES] =
     {
       // white pawns
@@ -89,6 +101,22 @@ namespace {
   inline float round(float number)
   {
     return number < 0.0 ? ceil(number - 0.5) : floor(number + 0.5);
+  }
+
+  template<Color c>
+    int territory_score(int phase, int square)
+    {
+    if (c == BLACK)
+      {
+	
+	int col = COL(square);
+	int row = 7 - ROW(square);
+	square = 8 * row + col;
+      }
+    int ss = territory_scores[square];
+    int eg = ss / 100;
+    int mg = ss - 100 * round( (float) ss / (float) 100);
+    return (phase == MIDDLE_GAME ? mg : eg); 
   }
 
   template<Color c, Piece p>
