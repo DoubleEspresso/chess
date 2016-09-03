@@ -773,7 +773,7 @@ bool Board::is_repition_draw()
 	  ++count;
 	  //printf("..%lu = %lu, count=%d\n", state_data->pKey, position->pKey, count);
 	}
-      if (count >= 2) 
+      if (count >= 1) 
 	{
 	  //printf("................end (draw by rep)............\n");
 	  return true;
@@ -990,6 +990,25 @@ void Board::print()
     }
   printf("   +---+---+---+---+---+---+---+---+\n");
   printf("     a   b   c   d   e   f   g   h\n");
+}
+
+U64 Board::pinned_to(int s)
+{
+  int fc = position->stm;
+  int ec = (fc == WHITE ? BLACK : WHITE);
+  U64 pinned = 0ULL;
+  if (piece_on_arr[s] == PIECE_NONE) return pinned;
+  U64 sliders = ((pieces[ec][BISHOP] & PseudoAttacksBB(BISHOP,s)) |
+		 (pieces[ec][ROOK] & PseudoAttacksBB(ROOK, s)) |
+		 (pieces[ec][QUEEN] & PseudoAttacksBB(QUEEN, s)));
+  if (!sliders) return pinned;
+  do
+    {
+      int sq = pop_lsb(sliders);
+      U64 tmp = (BetweenBB[sq][s] & all_pieces()) ^ (SquareBB[s] | SquareBB[sq]);
+      if (!more_than_one(tmp)) pinned |= tmp;
+    } while (sliders);
+  return pinned & colored_pieces(fc);
 }
 
 U64 Board::pinned()

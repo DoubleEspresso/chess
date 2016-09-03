@@ -122,6 +122,7 @@ class Board
   bool in_check();
   bool gives_check(U16& move);
   U64 pinned();
+  U64 pinned_to(int s);
   U64 pinned(int c);	
   inline int king_square(); // returns king square of color on the move
   inline int king_square(int c); // returns king square of either color

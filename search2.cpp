@@ -128,7 +128,7 @@ namespace
 {
 	int Reduction(bool pv_node, bool improving, int d, int mc)
 	{
-		return Globals::SearchReductions[(int)pv_node][(int)improving][min(d, 63)][min(mc, 63)];
+	  return Globals::SearchReductions[(int)pv_node][(int)improving][std::min(d, 63)][std::min(mc, 63)];
 	}
 
 	template<NodeType type>
@@ -380,19 +380,21 @@ namespace
 				continue;
 			}
 
-			// exchange pruning at shallow depths - same thing done in qsearch...		    				
+			// exchange pruning at shallow depths - same thing done in qsearch...
+			/*
 			if (newdepth <= 1 &&
-				//!inCheck && !givesCheck && //!isQuiet && // !pv_node &&
-				!pv_node &&
-				move != ttm &&
-				move != stack->killer[0] &&
-				move != stack->killer[1] &&
-				//eval < alpha && 
-				b.see_move(move) <= 0)
-			{
-				++pruned;
-				continue;
-			}
+			    //!inCheck && !givesCheck && !isQuiet && // !pv_node &&
+			    !pv_node &&
+			    move != ttm &&
+			    move != stack->killer[0] &&
+			    move != stack->killer[1] &&
+			    //eval < alpha && 
+			    b.see_move(move) < 0)
+			  {
+			    ++pruned;
+			    continue;
+			  }
+			*/
 
 			// PVS-type search within a fail-hard framework
 			b.do_move(pd, move);
@@ -427,7 +429,7 @@ namespace
 			}
 
 
-			if (pvMove || (eval > alpha && eval < beta))
+			if (pvMove || (eval > alpha))
 			{
 				eval = (newdepth <= 1 ? -qsearch<PV>(b, -beta, -alpha, 0, stack + 1, givesCheck) : -search<PV>(b, -beta, -alpha, newdepth, stack + 1));
 			}
@@ -545,11 +547,12 @@ namespace
 		//int stand_pat= (ttval == NINF ? Eval::evaluate(b) : ttval);    
 
 		if (stand_pat >= beta && !inCheck) return beta;
-		// delta pruning                 
+		// delta pruning                 		
 		if (stand_pat < alpha - 950 && !inCheck)
 		{
 			return alpha;
 		}
+		
 		if (alpha < stand_pat && !inCheck) alpha = stand_pat;
 		//if (alpha >= beta && !inCheck) return beta;
 
@@ -591,12 +594,12 @@ namespace
 			}
 
 			// prune captures which have see values <= 0	
-			if ( !inCheck && !givesCheck &&
+			if ( !inCheck && //!givesCheck &&
 				!pv_node &&
 				//move != ttm && 
 				//stand_pat < alpha &&
 				//piece != PAWN &&
-				b.see_move(move) <= 0)
+				b.see_move(move) < 0)
 			{
 				++pruned;
 				continue;

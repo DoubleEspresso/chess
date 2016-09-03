@@ -14,10 +14,10 @@ namespace Penalty
   float doubledPawn[2] = { -15.0, -20.0 };
   float shelterPawn[2] = { 2.0, 1.0 };
   float isolatedPawn[2] = { -15.0,-20.0 };
-  float backwardPawn[2] = { -10.0,-4.0 };
-  float chainPawn[2] = { 2.0, 4.0 };
-  float passedPawn[2] = { 16.0, 30.0 };
-  float semiOpen[2] = { -4.0,-8.0 };
+  float backwardPawn[2] = { -2.0,-3.0 };
+  float chainPawn[2] = { 1.0, 2.0 };
+  float passedPawn[2] = { 20.0, 30.0 };
+  float semiOpen[2] = { -6.0,-12.0 };
 }
 
 // sz for 16 pawns distributed among 48 sqrs. ~ 454,253,679 elts
@@ -70,8 +70,13 @@ void PawnTable::clear()
   1. bonus for passed pawns
   2. penalty for doubled, isolated, and backward
   3. connected - pawn chain bonus
-  4. king safety structures - shelter bonus
-  5. TODO: check this eval 5k2/3p4/2p2p2/1p1nn3/4N3/3N1P2/2P3PP/3K4
+  4. pawn island count (fewer better)
+  5. file weigthing (central pawns weighted more heavily)
+  6. rank weighting (pawns above 3rd rank weighted more heavily .. in center)
+  7. track chain base, chain tip, isolated, doubled, backward pawn bitmaps
+  8. central structures (locked vs open center, pawn storms)
+  9. king safety structures - shelter pawns bitmap (for main eval)
+  TODO: check this eval 5k2/3p4/2p2p2/1p1nn3/4N3/3N1P2/2P3PP/3K4
 */
 PawnEntry * PawnTable::get(Board& b, GamePhase gp)
 {
@@ -125,7 +130,7 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx)
       if (PseudoAttacksBB(KING, b.sq_of<KING>(c)[1]) & SquareBB[from])
 	{
 	  table[idx].kingPawns[c] |= SquareBB[from];
-	  base += Penalty::shelterPawn[gp];
+	  //base += Penalty::shelterPawn[gp];
 	}
 
       // eval passed pawns
@@ -163,7 +168,7 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx)
 	    }
 	}
 
-      // eval backward pawns with one neighbor instead of 2, hanging pawns
+      // eval backward pawns with one neighbor instead of 2, hanging pawns,a/h-file pawns
       if (count(tmp) == 1)
 	{
 	  int sq1 = pop_lsb(tmp);
@@ -207,9 +212,9 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx)
 	  if (c == BLACK && ROW(from) < ROW(maxRowPawnSq)) maxRowPawnSq = from;
 
 	  table[idx].chainPawns[c] |= (tmp | SquareBB[from]);
-	  int nb = count(tmp) / 2;
+	  int nb = count(tmp);
 	  base +=  nb * Penalty::chainPawn[gp];
-	  if (nb > 2) base += nb * Penalty::chainPawn[gp];
+	  //if (nb > 2) base += nb * Penalty::chainPawn[gp];
 	}
       else if (PawnAttacksBB[c][from] & (c == WHITE ? w_pawns : b_pawns))
 	{
@@ -320,6 +325,13 @@ void PawnTable::debug(PawnEntry& e)
       std::string cs = (c == WHITE ? "white" : "black");
       printf("..chainbase pawns (%s)\n",cs.c_str());
       display(e.chainBase[c]);      
+    }
+
+  for (int c=WHITE; c <= BLACK; ++c)
+    {
+      std::string cs = (c == WHITE ? "white" : "black");
+      printf("..chain-tip pawns (%s)\n",cs.c_str());
+      display(e.pawnChainTips[c]);      
     }
 
   printf("...final pawn eval = %d\n", e.value);

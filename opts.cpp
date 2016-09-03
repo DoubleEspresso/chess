@@ -126,6 +126,7 @@ void Options::load_defaults()
   mp("passed pawn penalty eg",20.0);
 
   // main eval params
+  mp("trace eval",0);
   mp("tempo bonus",16);
   mp("pawn attack scaling",1);
   mp("knight attack scaling",1);

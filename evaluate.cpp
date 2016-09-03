@@ -437,7 +437,7 @@ namespace
     //if (ei.phase == MIDDLE_GAME) score += (eval_development<WHITE>(b, ei) - eval_development<BLACK>(b, ei));
 
     // evaluate center control
-    if (ei.phase == MIDDLE_GAME) score += (eval_center<WHITE>(b, ei) - eval_center<BLACK>(b, ei));
+    //if (ei.phase == MIDDLE_GAME) score += (eval_center<WHITE>(b, ei) - eval_center<BLACK>(b, ei));
 
     if (ei.do_trace)
       {
@@ -980,10 +980,6 @@ namespace
 	  }
       }
 
-    // DBG new idea for king safety (computed) based on passed bitmap
-    U64 region = KingSafetyBB[c][from]; U64 region2 = KingSafetyBB[c][from];
-    int v = score_king_control<WHITE>(ei, b, region, from) - score_king_control<BLACK>(ei, b, region2, from);
-    printf("..DBG king_control(%s) = %d\n", (c == WHITE ? "white" : "black"), (c == WHITE ? v : -v));
 
     //printf("..%d - mobility = %d\n", c, score);
     // we almost never want the king in the corner during an endgame
@@ -1030,7 +1026,8 @@ namespace
 
     // note : speedup when these diag checks are removed for certain tactical test positions, but
     // play is weaker (places king in danger much sooner during game).
-    
+
+    /*
     if (enemy_bishops || enemy_queens)
       {
 	U64 diags = KingVisionBB[c][BISHOP][from] & our_pawns & KingSafetyBB[c][from];
@@ -1038,7 +1035,7 @@ namespace
 	diags = KingVisionBB[c][BISHOP][from] & (enemy_bishops | enemy_queens);
 	if (diags) score -= 2;// * king_exposure[ei.phase]; // penalty for queens/bishops looking at king
       }
-    
+    */
     
     if (enemy_rooks || enemy_queens)
       {
