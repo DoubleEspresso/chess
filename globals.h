@@ -33,7 +33,6 @@ namespace Globals
 	extern U64 KingVisionBB[COLORS][PIECES-1][SQUARES]; // pseudo attack bitboards centered at each king-square
 	extern U64 SpaceBehindBB[COLORS][SQUARES];          // all space behind a square
 	extern U64 SpaceInFrontBB[COLORS][SQUARES];         // all space in front of a square
-	extern U64 ColsInFrontBB[COLORS][SQUARES];          // all square between current square and queening square
 	extern U64 ColoredSquaresBB[COLORS];
 	extern U64 CenterMaskBB;
 	extern U64 kSidePawnStormBB;
