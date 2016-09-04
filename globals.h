@@ -15,6 +15,7 @@ namespace Globals
 	extern U64 ColBB[COLS];
 	extern U64 ColorBB[COLORS];               // colored squares (white or black)
 	extern U64 NeighborColsBB[COLS];          // returns the neighbor columns (for isolated pawns)
+	extern U64 NeighborRowsBB[ROWS];          // king safety
 	extern U64 PassedPawnBB[COLORS][SQUARES]; // in front of and each side of the pawn
 	extern U64 BetweenBB[SQUARES][SQUARES];   // bitmap of squares aligned between 2 squares, used for pins
 	extern U64 SquareBB[SQUARES+2];             // store each square as a U64 for fast access

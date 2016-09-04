@@ -64,8 +64,8 @@ namespace
 		{ S(30,35), S(40,45), S(50,55), S(60,65), S(95, 100), S(100, 110) }, //pawn
 		{ S(10,22), S(35,42), S(42,44), S(65,65), S(95, 100), S(100, 100) }, //knight
 		{ S(10,22), S(35,42), S(42,44), S(65,65), S(95, 100), S(100, 100) }, //bishop
-		{ S(10,22), S(35,42), S(32,34), S(45,50), S(90, 100), S(95, 100) }, //rook
-		{ S(10,10), S(30,33), S(30,33), S(45,45), S(50, 55), S(95, 100) }, //queen
+		{ S(10,22), S(35,42), S(32,34), S(45,50), S(95, 100), S(95, 100) }, //rook
+		{ S(10,10), S(30,33), S(30,33), S(45,45), S(40, 55), S(95, 100) }, //queen
 	};
 
 	// [pinned piece][piece pinned to]
@@ -80,22 +80,22 @@ namespace
 
 	// king pressure pawn, knight, bishop, rook, queen
 	int KingPressure[PIECES - 1] = { S(20, 20), S(45,55), S(55,65), S(75,80), S(95,100) };
+	U64 KingSafetyVision[2] = { 0ULL, 0ULL };
 
 	// positional
-	U64 SpaceMask[2] = { (RowBB[ROW3] | RowBB[ROW4] | RowBB[ROW5]) & (ColBB[COL3] | ColBB[COL4] | ColBB[COL5] | ColBB[6]) ,
-						 (RowBB[ROW6] | RowBB[ROW5] | RowBB[ROW4]) & (ColBB[COL3] | ColBB[COL4] | ColBB[COL5] | ColBB[6]) };
-	U64 CenterMask[2] = { (SquareBB[D3] | SquareBB[E3] | SquareBB[C4] | SquareBB[D4] | SquareBB[E4] | SquareBB[D5] | SquareBB[E5]) ,
-						  (SquareBB[E6] | SquareBB[D6] | SquareBB[C5] | SquareBB[D5] | SquareBB[E5] | SquareBB[D4] | SquareBB[E4]) };
+	U64 SpaceMask[2] = { 0ULL, 0ULL };  
+	U64 CenterMask[2] = { 0ULL, 0ULL }; 
 
 	int MaterialMG[5] = { PawnValueMG, KnightValueMG, BishopValueMG, RookValueMG, QueenValueMG };
 	int MaterialEG[5] = { PawnValueEG, KnightValueEG, BishopValueEG, RookValueEG, QueenValueEG };
 	int ClosedPositionBonus[2] = { 35, 45 };
 	int OpenPositionBonus[2] = { 45, 50 };
-	int BishopFriendlyPawnPenalty[2] = { -20, -35 };
+	int BishopFriendlyPawnPenalty[2] = { -30, -45 };
 	int BishopFriendlyPawnBonus[2] = { 20, 35 };
-	int BishopEnemyPawnPenalty[2] = { -20, -35 };
+	int BishopEnemyPawnPenalty[2] = { -10, -35 };
 	int BishopEnemyPawnBonus[2] = { 20, 35 };
 	int DoubleBishopBonus[2] = { 40, 60 };
+	int KingColorWeaknessBonus[2] = { 45, 65 };
 #undef S
 
 	/*main evaluation methods*/
@@ -114,6 +114,8 @@ namespace
 	template<Color c> int eval_trapped(Board& b, EvalInfo& ei);
 	template<Color c, Piece p> int eval_piece_tempo(Board&b, EvalInfo& ei, int from);
 	template<Color c> int eval_color_complexes(Board&b, EvalInfo&ei, int from, int pawnCount);
+	template<Color c> int eval_threats(Board& b, EvalInfo& ei);
+
 	/* positional/control */
 	template<Color c> int eval_space(Board& b, EvalInfo& ei);
 	template<Color c> int eval_center_pressure(Board& b, EvalInfo& ei); // pawns and minors only (?)
@@ -162,9 +164,18 @@ namespace
 		ei.pe = pawnTable.get(b, ei.phase);
 		ei.w_pinned = b.pinned(WHITE);
 		ei.b_pinned = b.pinned(BLACK);
+		
+		KingSafetyVision[WHITE] = KingVisionBB[WHITE][QUEEN][ei.white_ks] | NeighborColsBB[COL(ei.white_ks)] | NeighborRowsBB[ROW(ei.white_ks)];
+		KingSafetyVision[BLACK] = KingVisionBB[BLACK][QUEEN][ei.black_ks] | NeighborColsBB[COL(ei.black_ks)] | NeighborRowsBB[ROW(ei.black_ks)];
+		SpaceMask[WHITE] = (RowBB[ROW3] | RowBB[ROW4] | RowBB[ROW5]) & (ColBB[COL3] | ColBB[COL4] | ColBB[COL5] | ColBB[COL6]);
+		SpaceMask[BLACK] = (RowBB[ROW6] | RowBB[ROW5] | RowBB[ROW4]) & (ColBB[COL3] | ColBB[COL4] | ColBB[COL5] | ColBB[COL6]);
+		CenterMask[WHITE] = (SquareBB[D3] | SquareBB[E3] | SquareBB[C4] | SquareBB[D4] | SquareBB[E4] | SquareBB[D5] | SquareBB[E5]);
+		CenterMask[BLACK] = (SquareBB[E6] | SquareBB[D6] | SquareBB[C5] | SquareBB[D5] | SquareBB[E5] | SquareBB[D4] | SquareBB[E4]);
 
-		U64 pieceBB = b.whos_move() == WHITE ? ei.white_pieces ^ ei.white_pawns : ei.black_pieces ^ ei.black_pawns;
-		int nb_pieces = b.whos_move() == WHITE ? count(pieceBB) : count(pieceBB);
+		//U64 wpieceBB = ei.white_pieces ^ ei.white_pawns;
+		//U64 bpieceBB = ei.black_pieces ^ ei.black_pawns;
+		//U64 pieceBB = wpieceBB | bpieceBB;
+		//int nb_pieces = count(pieceBB);
 
 		int score = 0;
 		score += (ei.stm == WHITE ? ei.tempoBonus : -ei.tempoBonus);
@@ -175,25 +186,19 @@ namespace
 
 		score += (eval_space<WHITE>(b, ei) - eval_space<BLACK>(b, ei)); // central space
 
+		score += (eval_threats<WHITE>(b, ei) - eval_threats<BLACK>(b, ei)); // central space
+
 		score += ei.pe->value; 
 
-		// max_score ~ 100 for each eval component
-		// components - (attacks, square score, mobility) ~ expect 10%, 30%, 20% of pieces to achieve a score ~100
-		// max allowed positional eval ~ +/-370, rescale score by 370 / max_score
-		// this excludes passed pawns, and material, and king safety evals
-		// *is* possible to have scaling > 1 and amplify positional eval .. although this does not seem to hurt things.
+		// nb. rescaling based on nb_pieces encourages trades at all times (each trade increases the scaling)
+		//float f = 110.0 * nb_pieces *(0.1 + 0.2 + 0.3);
+		//float scaling = f == 0 ? 1 : (280.0 / f); // usually around 0.6-0.8
+		score *= 0.75;
 
-		float f = 100.0 * nb_pieces * (0.1 + 0.2 + 0.3);
-		float scaling = f == 0 ? 1 : (300.0 / f);
-
-		//if (score > 170) score = 170;
-		//if (score < -170) score = -170;
-
-		score *= scaling;
-
-		//if (abs(score) - abs(ei.me->value) >= abs(ei.me->value)) score *= 0.60;
-
+		//if (abs(score) - abs(ei.me->value) >= abs(ei.me->value)) score *= 0.65;
 		score += ei.me->value; 
+		//b.print();
+		//printf("c=%s, score=%d, scaled=%d, scaling=%.6f, (%d)\n", (b.whos_move() == WHITE ? "white" : "black"), s1, score, scaling, ei.me->value);
 		return (b.whos_move() == WHITE ? score : -score);
 	}
 
@@ -299,7 +304,7 @@ namespace
 		U64 minors = b.get_pieces(them, BISHOP) | b.get_pieces(them, KNIGHT);
 		U64 rooks = b.get_pieces(them, ROOK);
 		U64 queens = b.get_pieces(them, QUEEN);
-		if (SquareBB[from] & pattacks) score -= ei.tempoBonus;
+		if (SquareBB[from] & pattacks) score -= 2 * ei.tempoBonus;
 		if (p >= ROOK)
 		{
 			U64 attackers = b.attackers_of(from);
@@ -313,34 +318,53 @@ namespace
 	int eval_color_complexes(Board&b, EvalInfo&ei, int from, int pawnCount)
 	{
 		int score = 0;
-		bool light_bishop = false;
-		bool dark_bishop = false;
+		bool light_bishop = SquareBB[from] & ColoredSquaresBB[WHITE];
+		bool dark_bishop = SquareBB[from] & ColoredSquaresBB[BLACK];
+		
 		int them = c == WHITE ? BLACK : WHITE;
+		bool enemy_dark_bishop = (b.get_pieces(BLACK, BISHOP) & ColoredSquaresBB[BLACK]);
+		bool enemy_white_bishop = (b.get_pieces(WHITE, BISHOP) & ColoredSquaresBB[WHITE]);
+		int ks = (c == WHITE ? ei.black_ks : ei.white_ks);
+
 		// pawn info 
 		U64 enemy_wsq_pawns = (them == WHITE ? ei.white_pawns & ColoredSquaresBB[WHITE] : ei.black_pawns & ColoredSquaresBB[WHITE]);
 		U64 enemy_bsq_pawns = (them == WHITE ? ei.white_pawns & ColoredSquaresBB[BLACK] : ei.black_pawns & ColoredSquaresBB[BLACK]);
 		U64 our_wsq_pawns = (them == WHITE ? ei.black_pawns & ColoredSquaresBB[WHITE] : ei.white_pawns & ColoredSquaresBB[WHITE]);
 		U64 our_bsq_pawns = (them == WHITE ? ei.black_pawns & ColoredSquaresBB[BLACK] : ei.white_pawns & ColoredSquaresBB[BLACK]);
 
-		U64 center_pawns = (ei.white_pawns | ei.black_pawns) & CenterMaskBB;
-		U64 pawns = (ei.white_pawns | ei.black_pawns) & CenterMaskBB;
-		int center_nb = count(center_pawns);
-
-		if (light_bishop && (enemy_wsq_pawns <= 2)) score += BishopEnemyPawnPenalty[ei.phase];
-		if (dark_bishop && (enemy_bsq_pawns <= 2)) score += BishopEnemyPawnPenalty[ei.phase];
+		if (light_bishop && (count(enemy_wsq_pawns) <= 2)) score += BishopEnemyPawnPenalty[ei.phase];
+		if (dark_bishop && (count(enemy_bsq_pawns) <= 2)) score += BishopEnemyPawnPenalty[ei.phase];
 
 		// color penalties -- too many pawns on same color -- in theory this is not so bad in endgames
-		if (light_bishop && (our_wsq_pawns >= 4)) score += BishopFriendlyPawnPenalty[ei.phase];
-		if (dark_bishop && (our_bsq_pawns >= 4)) score += BishopFriendlyPawnPenalty[ei.phase];
+		if (light_bishop && (count(our_wsq_pawns) >= 3)) score += BishopFriendlyPawnPenalty[ei.phase];
+		if (dark_bishop && (count(our_bsq_pawns) >= 3)) score += BishopFriendlyPawnPenalty[ei.phase];
+
+		// color weakness around enemy king
+		U64 enemy_king_pawns = KingSafetyBB[them][ks] & (light_bishop ? ColoredSquaresBB[WHITE] : ColoredSquaresBB[BLACK]) & (them == WHITE ? ei.white_pawns : ei.black_pawns);
+		if (light_bishop && enemy_king_pawns == 0ULL && !enemy_white_bishop) score += KingColorWeaknessBonus[ei.phase];
+		if (dark_bishop && enemy_king_pawns == 0ULL && !enemy_dark_bishop) score += KingColorWeaknessBonus[ei.phase];
+
 		return score;
 	}
 
 	template<Color c> 
 	int eval_space(Board& b, EvalInfo& ei)
 	{
+		U64 pawns = (c == WHITE ? ei.white_pawns : ei.black_pawns);
 		U64 spaceBB = SpaceMask[c];
 		spaceBB ^= ei.pe->attacks[c == WHITE ? BLACK : WHITE];
-		return 2 * count(spaceBB);
+
+		U64 behindPawnsBB = 0ULL;
+		for (int col = COL3; col <= COL5; ++col)
+		{
+			U64 pawnBB = ColBB[col] & pawns;
+			int from = pop_lsb(pawnBB); // imperfect for doubled pawns on same file
+			behindPawnsBB |= SpaceBehindBB[c][from];
+		}
+		spaceBB &= behindPawnsBB;
+		U64 pawnsToRemove = spaceBB & pawns;
+		spaceBB ^= pawnsToRemove;
+		return 7 * count(spaceBB);
 	}
 
 	template<Color c, Piece p>
@@ -355,6 +379,70 @@ namespace
 			int to = pop_lsb(attacks);
 			score += attack_score<p>(ei.phase, b.piece_on(to));
 		}
+		return score;
+	}
+
+	template<Color c>
+	int eval_threats(Board& b, EvalInfo& ei)
+	{
+		int score = 0;
+		int enemy_ks = (c == WHITE ? ei.black_ks : ei.white_ks);
+		int them = (c == WHITE ? BLACK : WHITE);
+
+		U64 pawns = (c == WHITE ? ei.white_pawns : ei.black_pawns);
+		U64 knights = (c == WHITE ? b.get_pieces(WHITE, KNIGHT) : b.get_pieces(BLACK, KNIGHT));
+		U64 bishops = (c == WHITE ? b.get_pieces(WHITE, BISHOP) : b.get_pieces(BLACK, BISHOP));
+		U64 queens = (c == WHITE ? b.get_pieces(WHITE, QUEEN) : b.get_pieces(BLACK, QUEEN));
+		U64 rooks = (c == WHITE ? b.get_pieces(WHITE, ROOK) : b.get_pieces(BLACK, ROOK));
+		U64 our_pawn_attacks = ei.pe->attacks[c];
+		U64 center_pawns = pawns & CenterMask[c];
+		U64 KingRegion = KingSafetyVision[them];
+
+		// targets
+		U64 passed_pawns = ei.pe->passedPawns[them];
+		U64 isolated_pawns = ei.pe->isolatedPawns[them];
+		U64 backward_pawns = ei.pe->backwardPawns[them];
+		U64 doubled_pawns = ei.pe->doubledPawns[them];
+		U64 chain_bases = ei.pe->chainBase[them];
+		U64 undefended_pawns = ei.pe->undefended[them];
+		U64 chain_heads = ei.pe->pawnChainTips[them];	
+
+		// weak pawn targets for pieces/pawns
+		U64 piece_targetBB = (undefended_pawns & (doubled_pawns | backward_pawns | isolated_pawns | passed_pawns));
+		U64 pawn_targetBB = (chain_bases | chain_heads | passed_pawns);
+
+		if (piece_targetBB)
+			while (piece_targetBB)
+			{
+				int sq = pop_lsb(piece_targetBB);
+				int target_value = square_score<c, PAWN>(ei.phase, sq); // ranges from 5-100
+				U64 attackers = b.attackers_of(sq);
+				if ((attackers & knights) != 0ULL) score += target_value;
+				if ((attackers & bishops) != 0ULL) score += target_value;
+				if ((attackers & queens) != 0ULL) score += target_value;
+				if ((attackers & rooks) != 0ULL) score += target_value;
+			}
+
+		if (pawn_targetBB)
+			while (pawn_targetBB)
+			{
+				int sq = pop_lsb(pawn_targetBB);
+				int target_value = square_score<c, PAWN>(ei.phase, sq); // ranges from 5-100
+				U64 attackers = b.attackers_of(sq) & pawns;
+				if (attackers != 0ULL) score += target_value;
+			}
+
+		// nb: this is a little dangerous since no tactics are resolved, it is a bonus for 
+		// attacking a piece with a pawn on the move.
+		//U64 their_pawns = (them == WHITE ? ei.white_pawns : ei.black_pawns);
+		//U64 attacked_by_pawns = ((c == WHITE ? ei.black_pieces : ei.white_pieces) & our_pawn_attacks);		
+		//U64 their_pawns_attacked = attacked_by_pawns & their_pawns;
+		//attacked_by_pawns ^= their_pawns_attacked; // only pieces
+		//// pieces attacked by our pawns
+		//while (attacked_by_pawns) score += attack_score<PAWN>(ei.phase, pop_lsb(attacked_by_pawns));
+		
+		// bonus for attacking king regions
+
 		return score;
 	}
 

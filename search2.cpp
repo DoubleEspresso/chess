@@ -155,7 +155,7 @@ namespace
 		stack->givescheck = false;
 
 		// clear pv
-		for (int j = 0; stack->pv[j] != MOVE_NONE; ++j) stack->pv[j] = MOVE_NONE;
+		for (int j = 0; j < MAX_MOVES; ++j) stack->pv[j] = MOVE_NONE;
 
 		// reductions array specific
 		bool improving = false;
