@@ -14,9 +14,8 @@ struct MoveStats
 {
   int history[2][SQUARES][SQUARES];
   U16 countermoves[SQUARES][SQUARES];
-  //U16 killers[4];
-  //U16 refutation;
-  void update(Board& b, U16& m, U16& last, Node* stack, int d, int c, U16* quiets);
+
+  void update(Board& b, U16& m, U16& last, Node* stack, int d, int eval, U16* quiets);
   
   int score(U16& m, int c)
   {
@@ -34,15 +33,12 @@ struct MoveStats
     for (int s1 =0; s1 < SQUARES; ++s1)
       for (int s2 =0; s2 < SQUARES; ++s2)
 	countermoves[s1][s2] = MOVE_NONE;
-    
-    //memset(killers, 0, 4 * sizeof(U16));
-    //refutation = MOVE_NONE;
+
   }
 };
 
-enum SelectPhase { PHASE_TT, PHASE_CAPTURE_GOOD, 
-		   PHASE_KILLER1, PHASE_KILLER2, PHASE_KILLER3, PHASE_KILLER4,
-		   PHASE_CAPTURE_BAD, PHASE_QUIET, PHASE_END };
+enum SelectPhase { PHASE_TT, PHASE_CAPTURE_GOOD, PHASE_KILLER1, PHASE_KILLER2,
+		    PHASE_KILLER3, PHASE_KILLER4, PHASE_CAPTURE_BAD, PHASE_QUIET, PHASE_END };
 
 class MoveSelect
 {

@@ -762,25 +762,25 @@ bool Board::is_draw(int sz)
 
 bool Board::is_repition_draw()
 {
-  BoardData* state_data = position; int count = 0;
-  //printf("................start............\n");
-  for (int i = 0, e = position->hmvs; i <= e; i += 2)
-    {
-      if (state_data->previous && state_data->previous->previous) state_data = state_data->previous->previous;
-      else return false;
-      if (state_data->pKey == position->pKey) 
+	BoardData* state_data = position; int count = 0;
+	//printf("................start............\n");
+	for (int i = 0, e = position->hmvs; i <= e; i += 2)
 	{
-	  ++count;
-	  //printf("..%lu = %lu, count=%d\n", state_data->pKey, position->pKey, count);
+		if (state_data->previous && state_data->previous->previous) state_data = state_data->previous->previous;
+		else return false;
+		if (state_data->pKey == position->pKey)
+		{
+			++count;
+			//printf("..%lu = %lu, count=%d\n", state_data->pKey, position->pKey, count);
+		}
+		if (count >= 1)
+		{
+			//printf("................end (draw by rep)............\n");
+			return true;
+		}
 	}
-      if (count >= 1) 
-	{
-	  //printf("................end (draw by rep)............\n");
-	  return true;
-	}
-    }
-  //printf("................end............\n");
-  return false;
+	//printf("................end............\n");
+	return false;
 }
 
 void Board::clear()

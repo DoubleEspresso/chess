@@ -207,10 +207,10 @@ namespace
 			}
 			else if (e.bound == BOUND_LOW && e.value >= beta && pv_node)
 			{
-				statistics.update(b, ttm, lastmove, stack, depth, b.whos_move(), quiets);
+				statistics.update(b, ttm, lastmove, stack, depth, eval, quiets);
 				return e.value;
 			}
-			else if (e.bound == BOUND_HIGH && e.value <= alpha && pv_node) return e.value;
+			else if (e.bound == BOUND_HIGH  && e.value <= alpha && pv_node) return e.value;
 		}
 
 
@@ -235,7 +235,7 @@ namespace
 			int v = qsearch<NONPV>(b, ralpha, ralpha + 1, depth, stack, false);
 			if (v <= ralpha)
 			{
-				return ralpha; //v; // fail hard
+				return ralpha;
 			}
 		}
 
@@ -298,7 +298,6 @@ namespace
 
 		// 7. -- internal iterative deepening
 		if (ttm == MOVE_NONE &&
-			//!stack->isNullSearch && //!!
 			depth >= (pv_node ? 6 : 8) &&
 			(pv_node || static_eval + 250 >= beta) &&
 			!b.in_check())
@@ -352,14 +351,16 @@ namespace
 			int extension = 0; int reduction = 1; // always reduce current depth by 1
 			if (inCheck) extension += 1;
 
-			if (depth >= 8 &&
-				!inCheck && !givesCheck && isQuiet &&
+			if (depth >= 10 &&
+				!inCheck && 
+				!givesCheck &&
+				//isQuiet &&
 				move != ttm &&
 				move != stack->killer[0] &&
 				move != stack->killer[1])
 			{
 				reduction += 1;
-				if (depth > 10 && !pv_node) reduction += 1;
+				if (depth > 12 && !pv_node) reduction += 1;
 			}
 
 			// adjust search depth based on reduction/extensions
@@ -367,12 +368,13 @@ namespace
 
 			// futility pruning
 			if (newdepth <= 1 &&
-				//moves_searched > 0 && quiets_searched > 0 &&
 				move != ttm &&
 				move != stack->killer[0] &&
 				move != stack->killer[1] &&
-				!inCheck && !givesCheck && isQuiet && !pv_node &&
-				//static_eval + 650 < alpha && 
+				!inCheck &&
+				!givesCheck &&
+				isQuiet &&
+				!pv_node &&
 				eval + 650 < alpha &&
 				eval > NINF + mate_dist)
 			{
@@ -380,23 +382,21 @@ namespace
 				continue;
 			}
 
-			// exchange pruning at shallow depths - same thing done in qsearch...
-			
+			// exchange pruning at shallow depths - same thing done in qsearch...			
 			//if (newdepth <= 1 &&
-			//    //!inCheck && !givesCheck && !isQuiet && // !pv_node &&
-			//    !pv_node &&
+			//    !inCheck && 
+			//	!givesCheck && 
+			//    //!pv_node &&
 			//    move != ttm &&
 			//    move != stack->killer[0] &&
 			//    move != stack->killer[1] &&
 			//    //eval < alpha && 
-			//    b.see_move(move) <= 0)
+			//    b.see_move(move) < 0)
 			//  {
 			//    ++pruned;
 			//    continue;
 			//  }
-			
 
-			// PVS-type search within a fail-hard framework
 			b.do_move(pd, move);
 
 			// stack updates
@@ -404,18 +404,14 @@ namespace
 			stack->givescheck = givesCheck;
 
 			bool fulldepthSearch = false;
-			if (!pvMove &&
-				move != ttm &&
+			if (move != ttm &&
 				move != stack->killer[0] &&
-				move != stack->killer[1] &&
-				!givesCheck && !inCheck && isQuiet &&
-				depth > 2) //(pv_node ? 6 : 4))
+				move != stack->killer[1] && 
+				depth > 2)
 			{
 				int R = Reduction(pv_node, improving, newdepth, moves_searched);
-
 				int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];
 				if (v <= (NINF - 1)) R += 1;
-
 				int LMR = newdepth - R;
 				eval = (LMR <= 1 ? -qsearch<NONPV>(b, -alpha - 1, -alpha, 0, stack + 1, givesCheck) : -search<NONPV>(b, -alpha - 1, -alpha, LMR, stack + 1));
 
@@ -428,7 +424,6 @@ namespace
 				eval = (newdepth <= 1 ? -qsearch<NONPV>(b, -alpha - 1, -alpha, 0, stack + 1, givesCheck) : -search<NONPV>(b, -alpha - 1, -alpha, newdepth, stack + 1));
 			}
 
-
 			if (pvMove || (eval > alpha))
 			{
 				eval = (newdepth <= 1 ? -qsearch<PV>(b, -beta, -alpha, 0, stack + 1, givesCheck) : -search<PV>(b, -beta, -alpha, newdepth, stack + 1));
@@ -438,20 +433,21 @@ namespace
 			moves_searched++;
 			if (UCI_SIGNALS.stop) return DRAW;
 
-
 			// record move scores/evals
 			if (eval >= beta)
 			{
-				if (isQuiet && quiets_searched < MAXDEPTH - 1)
+				if (isQuiet)
 				{
-					quiets[quiets_searched++] = move;
-					quiets[quiets_searched] = MOVE_NONE;
+					if (quiets_searched < MAXDEPTH - 1)
+					{
+						quiets[quiets_searched++] = move;
+						quiets[quiets_searched] = MOVE_NONE;
+					}
+					statistics.update(b, move, lastmove, stack, depth, eval, quiets);
 				}
-				statistics.update(b, move, lastmove, stack, depth, b.whos_move(), quiets);
 				hashTable.store(key, data, depth, BOUND_LOW, move, adjust_score(beta, mate_dist), static_eval, pv_node);
 				return beta;
 			}
-
 			if (eval > alpha)
 			{
 				stack->bestmove = move;
@@ -463,18 +459,10 @@ namespace
 
 		if (!moves_searched)
 		{
-			if (b.in_check()) //(pruned != mvs.size() && b.in_check()) 
-			{
-				return NINF + mate_dist;
-			}
-			else if (b.is_draw(0)) //(pruned != moves_searched && b.is_draw(0)) 
-			{
-				return DRAW;
-			}
+			if (b.in_check()) return NINF + mate_dist; 
+			else if (b.is_draw(0)) return DRAW;
 		}
-		// detect repetition draw
 		else if (b.is_repition_draw()) return DRAW;
-
 
 		// update gui 
 		//if (timer_thread->elapsed - last_time_ms >= 3000)
@@ -483,25 +471,11 @@ namespace
 		//	last_time_ms = timer_thread->elapsed;
 		//}
 
-		// ttable updates
-		Bound ttb = BOUND_NONE;
-		if (alpha <= aorig)
-		{
-			//alpha = aorig;
-			ttb = BOUND_HIGH;
-		}
-		//else if (alpha >= beta)
-		//{
-		//	ttb = BOUND_LOW;
-		//	//alpha = beta; // beta is stored (fail hard)
-		//}
-		else ttb = BOUND_EXACT;
-
-		if (ttb != BOUND_NONE) hashTable.store(key, data, depth, ttb, bestmove, adjust_score(alpha, mate_dist), static_eval, pv_node);
+		Bound ttb = alpha <= aorig ? BOUND_HIGH : BOUND_EXACT;
+		hashTable.store(key, data, depth, ttb, bestmove, adjust_score(alpha, mate_dist), static_eval, pv_node);
 
 		return alpha;
 	} // end search
-
 
 	template<NodeType type>
 	int qsearch(Board& b, int alpha, int beta, int depth, Node* stack, bool givesCheck)
@@ -519,6 +493,9 @@ namespace
 		U16 ttm = MOVE_NONE;
 		U16 bestmove = MOVE_NONE;
 
+		//stack->ply = (stack - 1)->ply++;
+		//if (b.is_repition_draw()) return DRAW;
+
 		int aorig = alpha;
 		int mate_dist = iter_depth - depth;
 		bool inCheck = b.in_check();
@@ -526,7 +503,6 @@ namespace
 		//SplitBlock * split_point;
 		//if (split) split_point = b.get_worker()->currSplitBlock;
 
-		stack->ply = (stack - 1)->ply++;
 		//U16 lastmove = (stack - 1)->currmove;
 
 		// transposition table lookup    
@@ -552,9 +528,8 @@ namespace
 		{
 			return alpha;
 		}
-		
 		if (alpha < stand_pat && !inCheck) alpha = stand_pat;
-		//if (alpha >= beta && !inCheck) return beta;
+		if (alpha >= beta && !inCheck) return beta;
 
 		MoveSelect ms(statistics, QSEARCH, givesCheck);
 		int moves_searched = 0, pruned = 0;
@@ -575,16 +550,11 @@ namespace
 			bool checksKing = b.gives_check(move);
 			bool isQuiet = b.is_quiet(move); // evasions
 
-			// prune evasions
-			//bool canPrune =  (inCheck && !givesCheck && isQuiet &&
-			//move != ttm && !pv_node);
-			//if (canPrune && depth < -1) continue;
-
 			// futility pruning --continue if we are winning	
-			if (!checksKing && !inCheck &&//|| (givesCheck && depth < -3)) && 
+			if (!checksKing && 
+				!inCheck &&
 				move != ttm &&
-				!pv_node &&
-				//piece != PAWN && 	      
+				!pv_node &&	      
 				eval + material.material_value(b.piece_on(get_to(move)), END_GAME) >= beta &&
 				b.see_move(move) >= 0)
 			{
@@ -594,17 +564,15 @@ namespace
 			}
 
 			// prune captures which have see values <= 0	
-			if ( !inCheck && //!givesCheck &&
-				!pv_node &&
-				//move != ttm && 
-				//stand_pat < alpha &&
-				//piece != PAWN &&
-				b.see_move(move) < 0)
+			if ( !inCheck 
+				&& !pv_node 
+				&& !checksKing  
+				//&& move != ttm 
+				&& b.see_move(move) <= 0)
 			{
 				++pruned;
 				continue;
 			}
-
 
 			BoardData pd;
 			b.do_move(pd, move);
@@ -626,30 +594,16 @@ namespace
 			}
 		}
 
+		// detect terminal node
 		if (!moves_searched)
 		{
-			if (b.in_check()) //(pruned != mvs.size() && b.in_check()) 
-			{
-				return NINF + mate_dist;
-			}
+			if (b.in_check()) return NINF + mate_dist; 
 		}
-		// detect repetition draw
 		else if (b.is_repition_draw()) return DRAW;
 
-		Bound ttb = BOUND_NONE;
-		if (alpha <= aorig)
-		{
-			//alpha = aorig;
-			ttb = BOUND_HIGH;
-		}
-		//else if (alpha >= beta)
-		//{
-		//	//alpha = beta; // fail hard
-		//	ttb = BOUND_LOW;
-		//}
-		else ttb = BOUND_EXACT;
+		Bound ttb = alpha <= aorig ? BOUND_HIGH : BOUND_EXACT;
+		hashTable.store(key, data, depth, ttb, bestmove, adjust_score(alpha, mate_dist), stand_pat, pv_node);
 
-		if (ttb != BOUND_NONE) hashTable.store(key, data, depth, ttb, bestmove, adjust_score(alpha, mate_dist), stand_pat, pv_node);
 		return alpha;
 	}
 
@@ -686,6 +640,12 @@ namespace
 
 	void print_pv_info(Board& b, int depth, int eval, U16 * pv)
 	{
+		// mate scores ..
+		int mate_dist = INF - eval;
+		int mated_dist = NINF - eval;
+		int mate_val = INF - depth;
+		int mated_val = NINF + depth;
+
 		std::string pv_str = "";
 		int j = 0;
 		while (U16 m = pv[j])
@@ -695,8 +655,9 @@ namespace
 			if (j < 2) BestMoves[j] = m;//(!pondering ? BestMoves[j] = m : PonderMoves[j] = m);
 			j++;
 		}
-		printf("info score cp %d depth %d seldepth %d nodes %d time %d pv ",
-			eval,
+		printf("info score %s %d depth %d seldepth %d nodes %d time %d pv ",
+			(eval >= mate_val || eval <= mated_val ? "mate" : "cp"),
+			(eval >= mate_val ? mate_dist / 2+1 : eval <= mated_val ? (mated_dist / 2-1) : eval),
 			depth,
 			j,
 			b.get_nodes_searched(),

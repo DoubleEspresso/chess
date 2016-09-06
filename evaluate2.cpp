@@ -96,6 +96,8 @@ namespace
 	int BishopEnemyPawnBonus[2] = { 20, 35 };
 	int DoubleBishopBonus[2] = { 40, 60 };
 	int KingColorWeaknessBonus[2] = { 45, 65 };
+	int KingExposurePenalty[2] = { 5, 2 };
+	int KingUncastledPenalty[2] = { 25, 1 };
 #undef S
 
 	/*main evaluation methods*/
@@ -187,6 +189,8 @@ namespace
 		score += (eval_space<WHITE>(b, ei) - eval_space<BLACK>(b, ei)); // central space
 
 		score += (eval_threats<WHITE>(b, ei) - eval_threats<BLACK>(b, ei)); // central space
+
+		//score += (eval_king<WHITE>(b, ei) - eval_king<BLACK>(b, ei)) * 0.25;
 
 		score += ei.pe->value; 
 
@@ -442,6 +446,83 @@ namespace
 		//while (attacked_by_pawns) score += attack_score<PAWN>(ei.phase, pop_lsb(attacked_by_pawns));
 		
 		// bonus for attacking king regions
+
+		return score;
+	}
+
+	template<Color c>
+	int eval_king(Board& b, EvalInfo& ei)
+	{
+		int score = 0;
+		int them = (c == WHITE ? BLACK : WHITE);
+		int from = (c == WHITE ? ei.white_ks : ei.black_ks);
+
+		U64 our_pawns = (c == WHITE ? ei.white_pawns : ei.black_pawns);
+		U64 their_pawns = (c == WHITE ? ei.black_pawns : ei.white_pawns);
+		U64 their_king = SquareBB[(c == WHITE ? ei.black_ks : ei.white_ks)];
+		U64 defenders = PseudoAttacksBB(KING, from) & (b.colored_pieces(c));
+		
+		//U64 mask = ei.all_pieces;
+		//bool castled = b.is_castled(c);
+
+		U64 enemy_bishops = (c == WHITE ? b.get_pieces(BLACK, BISHOP) : b.get_pieces(WHITE, BISHOP));
+		U64 enemy_rooks = (c == WHITE ? b.get_pieces(BLACK, ROOK) : b.get_pieces(WHITE, ROOK));
+		U64 enemy_queens = (c == WHITE ? b.get_pieces(BLACK, QUEEN) : b.get_pieces(WHITE, QUEEN));
+		U64 enemy_knights = (c == WHITE ? b.get_pieces(BLACK, KNIGHT) : b.get_pieces(WHITE, KNIGHT));
+		U64 checkers = b.checkers();
+
+		// eval king safety
+		U64 mobility = PseudoAttacksBB(KING, from);
+		U64 local_enemies = KingSafetyBB[c][from] & b.colored_pieces(them);
+
+		int nb_safe = 0;
+		while (mobility)
+		{
+			int to = pop_lsb(mobility);
+			U64 attackers = b.attackers_of(to) & b.colored_pieces(c == WHITE ? BLACK : WHITE);
+			bool empty = b.piece_on(to) == PIECE_NONE; 			
+			if (attackers && empty)
+			{
+				if (attackers & their_pawns) score -= 35;
+				if (attackers & enemy_queens) score -= 25;
+				if (attackers & enemy_rooks) score -=  20;
+				if (attackers & enemy_knights) score -= 15;
+				if (attackers & enemy_bishops) score -= 15;
+				if (attackers & their_king) score -= 120; // nb. in pawn endgames this is not really dangerous
+				//++nb_attackers;
+				// could be a mate threat .. make equal to roughly 1/2 pawn ?
+				if (more_than_one(attackers)) score -= 210;
+			}
+			else if (empty)
+			{
+				++nb_safe;
+				score += 25;
+			}
+		}
+
+		// approximate mate detection
+		if (nb_safe <= 2 && defenders == 0ULL)
+		{
+			score -= 120;
+			//if (local_enemies) score -= 180;
+		}
+		if (checkers != 0ULL && nb_safe <= 1)
+		{
+			score -= 180;
+			//if (nb_safe == 0 && defenders == 0ULL && local_enemies) score -= 180;
+		}
+
+
+		//if (ei.phase == MIDDLE_GAME)
+		//{
+		//	U64 pawn_cover = KingSafetyBB[c][from] & our_pawns;
+		//	if (pawn_cover) score += count(pawn_cover);
+		//	if (count(pawn_cover) < 2) score -= 150;
+		//}
+
+		//if (!castled) score -= KingUncastledPenalty[ei.phase];//castle_weights[ei.phase] * king_exposure[ei.phase];
+		//if (!castled && !b.can_castle(c == WHITE ? ALL_W : ALL_B)) score -= KingUncastledPenalty[ei.phase]; // castle_weights[ei.phase] * king_exposure[ei.phase];
+
 
 		return score;
 	}
