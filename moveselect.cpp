@@ -39,12 +39,11 @@ void MoveStats::update(Board& b, U16& m, U16& last, Node* stack, int d, int eval
 	// if we get here, eval >= beta, so last move is most likely a blunder, reduce the history score of it
 	if (last != MOVE_NONE)
 	{
-		int f = get_from(last);
-		int t = get_to(last);
 		int type = int((last & 0xf000) >> 12);
-		//bool isQuiet = b.is_quiet(last);
 		if (type == QUIET)
 		{
+			int f = get_from(last);
+			int t = get_to(last);
 			history[c = WHITE ? BLACK : WHITE][f][t] -= pow(2, d);
 			countermoves[f][t] = m;
 		}
@@ -151,9 +150,9 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 			// check bonus
 			if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move()) && b.is_dangerous(m, b.piece_on(from)))) 
 			  {
-			    score += 125; // almost always a good move
+			    score += 325; // almost always a good move
 			  }
-			//if (b.gives_check(m) && b.is_dangerous(m, p)) score += 75;
+			//if ((Globals::SquareBB[from] & b.checkers()) && b.is_dangerous(m, b.piece_on(from))) score += 25;
 
 			// promotion bonus
 			//if (mt > PROMOTION && mt <= PROMOTION_CAP) score += piece_vals[(type-4)];
@@ -171,11 +170,11 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 				score += 25;
 
 			// check bonus
-			//if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move())) && b.piece_on(from) > PAWN) 
-			//{
-			//score += 25; // keep small (many not dangerous moves satisfy criteria)			
-			//}
-			//if ((Globals::SquareBB[from] & b.checkers() != 0ULL) && b.is_dangerous(m, b.piece_on(from))) score += 25;
+			if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move())) && b.piece_on(from) > PAWN) 
+			{
+				score += 25; // keep small (many not dangerous moves satisfy criteria)			
+			}
+			//if ((Globals::SquareBB[from] & b.checkers()) && b.is_dangerous(m, b.piece_on(from))) score += 25;
 
 			// promotion bonus
 			//if (mt <= PROMOTION) score += piece_vals[type];	  

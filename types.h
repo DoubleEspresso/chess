@@ -57,10 +57,10 @@ typedef uint8_t U8;
 #define align128 __attribute__((aligned(128)))
 
 
-#ifdef BUILD32
-const bool _64BIT = false;
-#else
-const bool _64BIT = true;
-#endif
+//#ifdef BUILD32
+//const bool _64BIT = false;
+//#else
+//const bool _64BIT = true;
+//#endif
 
 #endif

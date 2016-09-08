@@ -192,16 +192,16 @@ namespace
 
 		score += (eval_space<WHITE>(b, ei) - eval_space<BLACK>(b, ei)); // central space
 
-		score += (eval_threats<WHITE>(b, ei) - eval_threats<BLACK>(b, ei)); // central space
+		score += (eval_threats<WHITE>(b, ei) - eval_threats<BLACK>(b, ei))*0.20; // central space
 
-		score += (eval_king<WHITE>(b, ei) - eval_king<BLACK>(b, ei));
+		score += (eval_king<WHITE>(b, ei) - eval_king<BLACK>(b, ei))*0.60;
 
 		score += ei.pe->value; 
 
 		// nb. rescaling based on nb_pieces encourages trades at all times (each trade increases the scaling)
 		//float f = 110.0 * nb_pieces *(0.1 + 0.2 + 0.3);
 		//float scaling = f == 0 ? 1 : (280.0 / f); // usually around 0.6-0.8
-		score *= 0.15;//0.75;
+		score *= 0.75;
 
 		//if (abs(score) - abs(ei.me->value) >= abs(ei.me->value)) score *= 0.65;
 		score += ei.me->value; 
@@ -276,8 +276,8 @@ namespace
 			}
 
 			// 6. king pressure
-			U64 kingAttacks = (quiet_mvs | captr_mvs) & kingRegion;
-			if (kingAttacks) score += king_pressure_score<p>(ei.phase);
+			//U64 kingAttacks = (quiet_mvs | captr_mvs) & kingRegion;
+			//if (kingAttacks) score += king_pressure_score<p>(ei.phase);
 
 			// 7. connectedness
 

@@ -128,7 +128,7 @@ namespace
 {
 	int Reduction(bool pv_node, bool improving, int d, int mc)
 	{
-	  return Globals::SearchReductions[(int)pv_node][(int)improving][std::min(d, 63)][std::min(mc, 63)];
+	  return Globals::SearchReductions[(int)pv_node][(int)improving][min(d, 63)][min(mc, 63)];
 	}
 
 	template<NodeType type>
@@ -143,7 +143,7 @@ namespace
 		bool pv_node = (type == ROOT || type == PV);
 
 		U16 quiets[MAXDEPTH];
-		//for (int j=0; j<MAXDEPTH; ++j) quiets[j] = MOVE_NONE;
+		for (int j=0; j<MAXDEPTH; ++j) quiets[j] = MOVE_NONE;
 		int moves_searched = 0;
 		int quiets_searched = 0;
 		U16 bestmove = MOVE_NONE;
@@ -383,21 +383,21 @@ namespace
 			}
 
 			// exchange pruning at shallow depths - same thing done in qsearch...			
-			/*
-			if (newdepth <= 1 &&
-			    !inCheck && 
-			    !givesCheck && 
-			    //!pv_node &&
-			    move != ttm &&
-			    move != stack->killer[0] &&
-			    move != stack->killer[1] &&
-			    //eval < alpha && 
-			    b.see_move(move) < 0)
-			  {
-			    ++pruned;
-			    continue;
-			  }
-			*/
+			
+			//if (newdepth <= 1 &&
+			//    !inCheck && 
+			//    !givesCheck && 
+			//    !pv_node &&
+			//    move != ttm &&
+			//    move != stack->killer[0] &&
+			//    move != stack->killer[1] &&
+			//    //eval < alpha && 
+			//    b.see_move(move) < 0)
+			//  {
+			//    ++pruned;
+			//    continue;
+			//  }
+			
 			b.do_move(pd, move);
 
 			// stack updates
