@@ -25,12 +25,13 @@ struct BoardData
   U64 pKey;
   U64 dKey;
   U64 pawnKey;
-
+  U64 disc_checkers[2];
+  U64 blockers[2]; // piece blocking discovered candidate
 
   int king_square[2];
   U64 pinned[2];
   U64 checkers; // pieces checking our king
-  //U64 dc_candidates; // discovered check pieces (candidates)
+
   BoardData* previous;
 };
 
@@ -52,6 +53,8 @@ struct BoardDataReduced
   U64 pKey;
   U64 dKey;
   U64 pawnKey;
+  U64 disc_checkers[2];
+  U64 blockers[2]; // piece blocking discovered candidate
 };
 
 class Board
@@ -121,6 +124,9 @@ class Board
   inline bool compute_in_check();
   bool in_check();
   bool gives_check(U16& move);
+  void compute_discovered_candidates(int c);
+  U64 discovered_checkers(int c);
+  U64 discovered_blockers(int c);
   U64 pinned();
   U64 pinned_to(int s);
   U64 pinned(int c);	

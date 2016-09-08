@@ -399,10 +399,6 @@ void Board::do_move(BoardData& d, U16 m)
   position->hmvs++;
   position->dKey ^= position->hmvs;
 
-  // does this move check the enemy king?
-  // useful during search/evaluation of board
-  int eks = square_of_arr[position->stm][KING][1];
-
   // side to move
   position->stm ^= 1;
   position->dKey ^= Zobrist::stm_rands(position->stm);
@@ -412,8 +408,12 @@ void Board::do_move(BoardData& d, U16 m)
   position->king_square[BLACK] = square_of_arr[BLACK][KING][1];
 
   // if in check, set the checkers bitmap
-  position->checkers = attackers_of(position->ks) & colored_pieces(position->stm == WHITE ? BLACK : WHITE);
-  position->in_check = position->checkers;
+  position->checkers = attackers_of(position->ks) & colored_pieces(position->stm == WHITE ? BLACK : WHITE);  
+  position->in_check = position->checkers != 0ULL;
+
+  // update discovered checking candidates
+  compute_discovered_candidates(position->stm);
+  compute_discovered_candidates(position->stm^1);
 }
 void Board::undo_move(U16 m)
 {
@@ -808,6 +808,7 @@ void Board::clear()
     }
   start.stm = COLOR_NONE;
   start.eps = SQUARE_NONE;
+  start.in_check = false;
   start.ks = SQUARE_NONE;
   start.king_square[WHITE] = SQUARE_NONE;
   start.king_square[BLACK] = SQUARE_NONE;
@@ -819,6 +820,14 @@ void Board::clear()
   start.pKey = 0ULL;
   start.mKey = 0ULL;
   start.pawnKey = 0ULL;
+  start.checkers = 0ULL;
+  start.pinned[WHITE] = 0ULL;
+  start.pinned[BLACK] = 0ULL;
+  start.disc_checkers[WHITE] = 0ULL;
+  start.disc_checkers[BLACK] = 0ULL;
+  start.blockers[WHITE] = 0ULL;
+  start.blockers[BLACK] = 0ULL;
+  start.previous = 0;
   nodes_searched = 0;
   castled[WHITE] = castled[BLACK] = false;
   position = &start;
@@ -1028,6 +1037,56 @@ U64 Board::pinned()
       if (!more_than_one(tmp)) pinned |= tmp;
     } while (sliders);
   return pinned & colored_pieces(fc);
+}
+
+U64 Board::discovered_checkers(int c)
+{
+  return position->disc_checkers[c];
+}
+
+// nb. this method computes the candidates from scratch
+void Board::compute_discovered_candidates(int c)
+{ 
+  position->disc_checkers[c] = 0ULL;
+  position->blockers[c] = 0ULL;
+  int them = c == WHITE ? BLACK : WHITE;
+  int eks = square_of_arr[them][KING][1];
+  //printf("..king square for enemy (%s) = %s\n",c == WHITE ? "black":"white", SanSquares[eks].c_str());
+  U64 rcandidates = KingVisionBB[them][ROOK][eks] & (get_pieces(c, ROOK) | get_pieces(c, QUEEN));
+  //printf("--rcandidates--\n");
+  //U64 r = get_pieces(c, ROOK);
+  //display(r);
+  //display(rcandidates);
+  U64 bcandidates = KingVisionBB[them][BISHOP][eks] & (get_pieces(c, BISHOP) | get_pieces(c, QUEEN));
+  //printf("--bcandidates--\n");
+  //U64 b = get_pieces(c, BISHOP);
+  //display(b); 
+  //display(bcandidates);
+  U64 candidates = bcandidates | rcandidates;
+  //display(candidates);
+  if (candidates)
+    {
+      while (candidates)
+	{
+	  int f = pop_lsb(candidates);
+	  U64 CandidateMask = (BetweenBB[eks][f] & colored_pieces(c))^(SquareBB[f]);
+	  //printf("--candidate mask for sq %s--\n",SanSquares[f].c_str());
+	  //display(CandidateMask);
+	  U64 tmp = CandidateMask; // local copy
+	  if (tmp && count(tmp) == 1) 
+	    {
+	      //printf("..success, adding from sq to stored arrays\n");
+	      position->disc_checkers[c] |= SquareBB[f];
+	      position->blockers[c] |= CandidateMask; 
+	      //display(position->disc_checkers[c]);
+	    }
+	}
+    }
+}
+
+U64 Board::discovered_blockers(int c)
+{
+  return position->blockers[c];
 }
 
 U64 Board::pinned(int c)

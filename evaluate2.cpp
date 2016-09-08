@@ -25,6 +25,8 @@ namespace
 		U64 black_pawns;
 		U64 w_pinned;
 		U64 w_pinners;
+	  int b_king_attacks;
+	  int w_king_attacks;
 		U64 b_pinned;
 		U64 b_pinners;
 		int white_ks;
@@ -62,8 +64,8 @@ namespace
 	{
 		// pawn,    knight,   bishop,   rook,       queen,       king
 		{ S(30,35), S(40,45), S(50,55), S(60,65), S(95, 100), S(100, 110) }, //pawn
-		{ S(10,22), S(35,42), S(42,44), S(65,65), S(95, 100), S(100, 100) }, //knight
-		{ S(10,22), S(35,42), S(42,44), S(65,65), S(95, 100), S(100, 100) }, //bishop
+		{ S(10,22), S(35,42), S(42,44), S(75,85), S(95, 100), S(100, 100) }, //knight
+		{ S(10,22), S(35,42), S(42,44), S(75,85), S(95, 100), S(100, 100) }, //bishop
 		{ S(10,22), S(35,42), S(32,34), S(45,50), S(95, 100), S(95, 100) }, //rook
 		{ S(10,10), S(30,33), S(30,33), S(45,45), S(40, 55), S(95, 100) }, //queen
 	};
@@ -74,8 +76,8 @@ namespace
 	  { S(0,0), S(-2,-3), S(-3,-4), S(-6,-10), S(-15,-20), S(-18,-25) }, // pawn
 	  { S(0,0), S(-1,-2) , S(-2,-3), S(-10,-12), S(-20,-30), S(-30,-40) }, // knight
 	  { S(0,0), S(-1,-2) , S(-1,-2), S(-10,-12), S(-20,-30), S(-30,-40) }, // bishop
-	  { S(0,0), S(-1,-2) , S(-1,-2), S(-1,-2), S(-20,-30), S(-40,-50) }, // rook
-	  { S(0,0), S(-1,-2) , S(-1,-2), S(-1,-2), S(-1,-2), S(-50,-60) } // queen
+	  { S(0,0), S(-1,-2) , S(-1,-2), S(-1,-2), S(-20,-30), S(-70,-80) }, // rook
+	  { S(0,0), S(-1,-2) , S(-1,-2), S(-1,-2), S(-1,-2), S(-90,-100) } // queen
 	};
 
 	// king pressure pawn, knight, bishop, rook, queen
@@ -166,6 +168,8 @@ namespace
 		ei.pe = pawnTable.get(b, ei.phase);
 		ei.w_pinned = b.pinned(WHITE);
 		ei.b_pinned = b.pinned(BLACK);
+		ei.w_king_attacks = 0;
+		ei.b_king_attacks = 0;
 		
 		KingSafetyVision[WHITE] = KingVisionBB[WHITE][QUEEN][ei.white_ks] | NeighborColsBB[COL(ei.white_ks)] | NeighborRowsBB[ROW(ei.white_ks)];
 		KingSafetyVision[BLACK] = KingVisionBB[BLACK][QUEEN][ei.black_ks] | NeighborColsBB[COL(ei.black_ks)] | NeighborRowsBB[ROW(ei.black_ks)];
@@ -190,14 +194,14 @@ namespace
 
 		score += (eval_threats<WHITE>(b, ei) - eval_threats<BLACK>(b, ei)); // central space
 
-		//score += (eval_king<WHITE>(b, ei) - eval_king<BLACK>(b, ei)) * 0.25;
+		score += (eval_king<WHITE>(b, ei) - eval_king<BLACK>(b, ei));
 
 		score += ei.pe->value; 
 
 		// nb. rescaling based on nb_pieces encourages trades at all times (each trade increases the scaling)
 		//float f = 110.0 * nb_pieces *(0.1 + 0.2 + 0.3);
 		//float scaling = f == 0 ? 1 : (280.0 / f); // usually around 0.6-0.8
-		score *= 0.75;
+		score *= 0.15;//0.75;
 
 		//if (abs(score) - abs(ei.me->value) >= abs(ei.me->value)) score *= 0.65;
 		score += ei.me->value; 
@@ -382,6 +386,7 @@ namespace
 		{
 			int to = pop_lsb(attacks);
 			score += attack_score<p>(ei.phase, b.piece_on(to));
+			(c == WHITE ? ++ei.b_king_attacks : ++ei.w_king_attacks);
 		}
 		return score;
 	}
@@ -445,8 +450,38 @@ namespace
 		//// pieces attacked by our pawns
 		//while (attacked_by_pawns) score += attack_score<PAWN>(ei.phase, pop_lsb(attacked_by_pawns));
 		
-		// bonus for attacking king regions
-
+		// bonus for discovered checkers 
+		
+		//if (c == b.whos_move())
+		{
+		U64 disc_checkers = b.discovered_checkers(c);
+		U64 disc_blockers = b.discovered_blockers(c);
+		U64 enemy_pieces = (b.colored_pieces(c == WHITE ? BLACK : WHITE));
+		if (disc_checkers != 0ULL)
+		  {
+		    //printf("..tomove == %s\n",c==WHITE?"white":"black");
+		    //b.print();
+		    //display(disc_checkers);
+		    //printf("\n\n");
+		    
+		    while(disc_checkers)
+		      {
+			int f = pop_lsb(disc_checkers);
+			U64 disc_mask = (BetweenBB[f][enemy_ks]) & enemy_pieces;
+			if (count(disc_mask) <= 1) score += 80;
+		      }
+		    if (disc_blockers)
+		      {
+			while(disc_blockers)
+			  {
+			    int f = pop_lsb(disc_blockers);
+			    if (b.piece_on(f) >= KNIGHT) score += 125;
+			  }
+		      }
+		    
+		  }
+		  }
+		//*/
 		return score;
 	}
 
@@ -454,6 +489,9 @@ namespace
 	int eval_king(Board& b, EvalInfo& ei)
 	{
 		int score = 0;
+		int nb_attacks = (c == WHITE ? ei.w_king_attacks : ei.b_king_attacks); // attackers of our king
+		if (nb_attacks <= 3) return score;
+
 		int them = (c == WHITE ? BLACK : WHITE);
 		int from = (c == WHITE ? ei.white_ks : ei.black_ks);
 
@@ -462,8 +500,10 @@ namespace
 		U64 their_king = SquareBB[(c == WHITE ? ei.black_ks : ei.white_ks)];
 		U64 defenders = PseudoAttacksBB(KING, from) & (b.colored_pieces(c));
 		
-		//U64 mask = ei.all_pieces;
-		//bool castled = b.is_castled(c);
+		U64 pawnsRank2 = (c == WHITE ? RowBB[ROW2] & our_pawns : RowBB[ROW7] & our_pawns);
+		if (count(pawnsRank2) >= 6) return score;
+
+		bool castled = b.is_castled(c);
 
 		U64 enemy_bishops = (c == WHITE ? b.get_pieces(BLACK, BISHOP) : b.get_pieces(WHITE, BISHOP));
 		U64 enemy_rooks = (c == WHITE ? b.get_pieces(BLACK, ROOK) : b.get_pieces(WHITE, ROOK));
@@ -509,20 +549,19 @@ namespace
 		if (checkers != 0ULL && nb_safe <= 1)
 		{
 			score -= 180;
-			//if (nb_safe == 0 && defenders == 0ULL && local_enemies) score -= 180;
+			if (more_than_one(checkers)) score -= 180;
+			if (nb_safe == 0 && defenders == 0ULL && local_enemies) score -= 180;
 		}
 
+		if (ei.phase == MIDDLE_GAME)
+		{
+			U64 pawn_cover = KingSafetyBB[c][from] & our_pawns;
+			if (pawn_cover) score += count(pawn_cover);
+			if (count(pawn_cover) < 2) score -= 150;
+		}
 
-		//if (ei.phase == MIDDLE_GAME)
-		//{
-		//	U64 pawn_cover = KingSafetyBB[c][from] & our_pawns;
-		//	if (pawn_cover) score += count(pawn_cover);
-		//	if (count(pawn_cover) < 2) score -= 150;
-		//}
-
-		//if (!castled) score -= KingUncastledPenalty[ei.phase];//castle_weights[ei.phase] * king_exposure[ei.phase];
-		//if (!castled && !b.can_castle(c == WHITE ? ALL_W : ALL_B)) score -= KingUncastledPenalty[ei.phase]; // castle_weights[ei.phase] * king_exposure[ei.phase];
-
+		if (!castled) score -= KingUncastledPenalty[ei.phase];
+		if (!castled && !b.can_castle(c == WHITE ? ALL_W : ALL_B)) score -= KingUncastledPenalty[ei.phase];
 
 		return score;
 	}

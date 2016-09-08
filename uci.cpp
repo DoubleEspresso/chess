@@ -206,6 +206,20 @@ void UCI::uci_command(std::string cmd, int& GAME_OVER)
 	{
 	  std::cout << "readyok" << std::endl;
 	}
+      else if (command == "candidates")
+	{
+	  b.print();
+	  printf("----discovered candidates for side to move---\n");
+	  b.compute_discovered_candidates(b.whos_move());
+	  U64 dc = b.discovered_checkers(b.whos_move());
+	  U64 db = b.discovered_blockers(b.whos_move());
+	  display(dc); display(db);
+	  printf("----discovered candidates for side *NOT* to move---\n");
+	  b.compute_discovered_candidates(b.whos_move()^1);
+	  dc = b.discovered_checkers(b.whos_move()^1);
+	  db = b.discovered_blockers(b.whos_move()^1);
+	  display(dc); display(db);
+	}
       else if (command == "ucinewgame")
 	{
 	  //ttable.clear();

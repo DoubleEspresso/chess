@@ -2,6 +2,7 @@
 #include <functional>
 
 #include "moveselect.h"
+#include "globals.h"
 #include "evaluate.h"
 #include "board.h"
 #include "hashtable.h"
@@ -9,6 +10,7 @@
 #include "squares.h"
 #include "search.h"
 #include "uci.h"
+
 
 // sorting using std::sort()
 struct {
@@ -147,6 +149,10 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 			if (score < 0 && b.is_legal(m)) score = b.see_move(m);
 
 			// check bonus
+			if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move()) && b.is_dangerous(m, b.piece_on(from)))) 
+			  {
+			    score += 125; // almost always a good move
+			  }
 			//if (b.gives_check(m) && b.is_dangerous(m, p)) score += 75;
 
 			// promotion bonus
@@ -165,7 +171,11 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 				score += 25;
 
 			// check bonus
-			//if (b.gives_check(m) && b.is_dangerous(m, p)) score += 25;
+			//if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move())) && b.piece_on(from) > PAWN) 
+			//{
+			//score += 25; // keep small (many not dangerous moves satisfy criteria)			
+			//}
+			//if ((Globals::SquareBB[from] & b.checkers() != 0ULL) && b.is_dangerous(m, b.piece_on(from))) score += 25;
 
 			// promotion bonus
 			//if (mt <= PROMOTION) score += piece_vals[type];	  
