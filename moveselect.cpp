@@ -150,7 +150,7 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 			// check bonus
 			if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move()) && b.is_dangerous(m, b.piece_on(from)))) 
 			  {
-			    score += 325; // almost always a good move
+			    score += 225; // almost always a good move
 			  }
 			//if ((Globals::SquareBB[from] & b.checkers()) && b.is_dangerous(m, b.piece_on(from))) score += 25;
 

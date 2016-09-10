@@ -383,7 +383,7 @@ namespace
 			move != stack->killer[0] &&
 			move != stack->killer[1] &&
 			//eval < alpha && 
-			b.see_move(move) <= 0)
+			b.see_move(move) < 0)
 		{
 			++pruned;
 			continue;

@@ -341,7 +341,7 @@ namespace
     if (ei.phase == END_GAME) maxv /= 2;
     int rdiff = ROW(sq) - ROW(ks); rdiff = (rdiff < 0 ? -rdiff : rdiff);
     int cdiff = COL(sq) - COL(ks); cdiff = (cdiff < 0 ? -cdiff : cdiff);
-    int dist = std::max(rdiff, cdiff);
+	int dist = 0;// max(rdiff, cdiff);
     float r = exp(-(1-dist)*(1-dist)/1.75); printf("r=%f, sq=%s, sc=%f\n",r,SanSquares[sq].c_str(), maxv*r);
     return (int) maxv * r;
   }

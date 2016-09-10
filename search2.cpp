@@ -23,10 +23,8 @@ namespace
 {
 	int iter_depth = 0;
 	U64 last_time_ms = 0; // print pv frequently
-
 	MoveStats statistics;
-	//U16 pv_line[MAXDEPTH];
-	std::vector<int> searchEvals;
+	int hash_hits = 0;
 
 	template<NodeType type>
 	int search(Board& b, int alpha, int beta, int depth, Node* stack);
@@ -92,7 +90,6 @@ namespace Search
 
 		// clear search data
 		iter_depth = 1;
-		searchEvals.clear();
 
 		// start the timer thread now
 		timer_thread->searching = true;
@@ -103,7 +100,7 @@ namespace Search
 		// the main iterative deepening loop
 		for (int depth = 1; depth <= dpth; depth += 1)
 		{
-			if (UCI_SIGNALS.stop) break;
+			if (UCI_SIGNALS.stop) break; hash_hits = 0;
 			//else if (UCI_SIGNALS.timesUp) checkMoreTime(b, stack + 2);
 			statistics.init(); // move ordering of quiet moves
 			eval = search<ROOT>(b, alpha, beta, depth, stack + 2);
@@ -177,46 +174,40 @@ namespace
 
 		// 1. -- mate distance pruning    
 		int mate_val = INF - mate_dist;
-		if (mate_val < beta)
-		{
-			beta = mate_val;
-			if (alpha >= mate_val) return mate_val;
-		}
+		beta = min(mate_val, beta);
+		if (alpha >= mate_val) return mate_val;
 
 		int mated_val = NINF + mate_dist;
-		if (mated_val > alpha)
-		{
-			alpha = mated_val;
-			if (beta <= mated_val) return mated_val;
-		}
+		alpha = max(mated_val, alpha);
+		if (beta <= mated_val) return mated_val;
 
 		// 2. -- ttable lookup 
 		data = b.data_key();
 		key = b.pos_key();
-
 		if (hashTable.fetch(key, e) && e.depth >= depth)
 		{
 			ttm = e.move;
 			//ttstatic_value = e.static_value;	
 			ttvalue = e.value;
+			++hash_hits;
 
-			if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta && pv_node)
-			{
-				stack->currmove = stack->bestmove = e.move;
-				return e.value;
-			}
-			else if (e.bound == BOUND_LOW && e.value >= beta && pv_node)
-			{
-				statistics.update(b, ttm, lastmove, stack, depth, eval, quiets);
-				return e.value;
-			}
-			else if (e.bound == BOUND_HIGH  && e.value <= alpha && pv_node) return e.value;
+			if (pv_node)
+				if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta)
+				{
+					stack->currmove = stack->bestmove = e.move;
+					return e.value;
+				}
+				else if (e.bound == BOUND_LOW && e.value >= beta)
+				{
+					statistics.update(b, ttm, lastmove, stack, depth, eval, quiets);
+					return e.value;
+				}
+				else if (e.bound == BOUND_HIGH  && e.value <= alpha) return e.value;
 		}
 
-
 		// 3. -- static evaluation of position    
-		int static_eval = Eval::evaluate(b);
-		//int static_eval = (ttvalue > NINF ? ttvalue : Eval::evaluate(b));
+		//int static_eval = Eval::evaluate(b);
+		int static_eval = (ttvalue > NINF ? ttvalue : Eval::evaluate(b));
 		//int static_eval = (ttvalue > NINF ? ttvalue : ttstatic_value > NINF ? ttstatic_value : Eval::evaluate(b));
 
 		// 4. -- drop into qsearch if we are losing
@@ -273,7 +264,7 @@ namespace
 
 		// 7. -- probcut from stockfish
 		if (!pv_node &&
-			depth >= 400 && !b.in_check() &&
+			depth >= 600 && !b.in_check() &&
 			!stack->isNullSearch &&
 			movetype((stack - 1)->bestmove) == CAPTURE)
 		{
@@ -351,7 +342,7 @@ namespace
 			int extension = 0; int reduction = 1; // always reduce current depth by 1
 			if (inCheck) extension += 1;
 
-			if (depth >= 10 &&
+			if (depth >= 8 &&
 				!inCheck && 
 				!givesCheck &&
 				//isQuiet &&
@@ -360,7 +351,7 @@ namespace
 				move != stack->killer[1])
 			{
 				reduction += 1;
-				if (depth > 12 && !pv_node) reduction += 1;
+				if (depth > 10 && !pv_node) reduction += 1;
 			}
 
 			// adjust search depth based on reduction/extensions
@@ -409,7 +400,9 @@ namespace
 			    move != ttm &&
 			    move != stack->killer[0] &&
 			    move != stack->killer[1] && 
-			    depth > 1)
+				!givesCheck &&
+				isQuiet &&
+			    depth > 2)
 			{
 				int R = Reduction(pv_node, improving, newdepth, moves_searched);
 				int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];
@@ -490,6 +483,7 @@ namespace
 		U64 data = 0ULL;
 
 		TableEntry e;
+		//bool root_node = type == ROOT;
 		bool pv_node = (type == ROOT || type == PV);
 
 		U16 ttm = MOVE_NONE;
@@ -512,17 +506,19 @@ namespace
 		key = b.pos_key();
 		if (hashTable.fetch(key, e) && e.depth >= depth)
 		{
+			++hash_hits;
 			ttm = e.move;
 			//ttstatic_value = e.static_value;
 			ttval = e.value;
-			if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta && pv_node) return e.value;
-			else if (e.bound == BOUND_LOW && e.value >= beta && pv_node) return e.value;
-			else if (e.bound == BOUND_HIGH && e.value <= alpha && pv_node) return e.value;
+			if (pv_node)
+				if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta) return e.value;
+				else if (e.bound == BOUND_LOW && e.value >= beta) return e.value;
+				else if (e.bound == BOUND_HIGH && e.value <= alpha) return e.value;
 		}
 
 		// stand pat lower bound -- tried using static_eval for the stand-pat value, play was weak
-		int stand_pat = Eval::evaluate(b);
-		//int stand_pat= (ttval == NINF ? Eval::evaluate(b) : ttval);    
+		//int stand_pat = Eval::evaluate(b);
+		int stand_pat= (ttval == NINF ? Eval::evaluate(b) : ttval);    
 
 		if (stand_pat >= beta && !inCheck) return beta;
 		// delta pruning                 		
@@ -569,7 +565,7 @@ namespace
 			if ( !inCheck 
 				&& !pv_node 
 				&& !checksKing  
-				//&& move != ttm 
+				&& move != ttm 
 				&& b.see_move(move) < 0)
 			{
 				++pruned;
@@ -657,12 +653,13 @@ namespace
 			if (j < 2) BestMoves[j] = m;//(!pondering ? BestMoves[j] = m : PonderMoves[j] = m);
 			j++;
 		}
-		printf("info score %s %d depth %d seldepth %d nodes %d time %d pv ",
+		printf("info score %s %d depth %d seldepth %d nodes %d tbhits %d time %d pv ",
 			(eval >= mate_val || eval <= mated_val ? "mate" : "cp"),
-			(eval >= mate_val ? mate_dist / 2+1 : eval <= mated_val ? (mated_dist / 2-1) : eval),
+			(eval >= mate_val ? mate_dist / 2 + 1 : eval <= mated_val ? (mated_dist / 2 - 1) : eval),
 			depth,
 			j,
 			b.get_nodes_searched(),
+			hash_hits,
 			(int)timer_thread->elapsed);
 		std::cout << pv_str << std::endl;
 	}
