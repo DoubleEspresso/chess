@@ -13,7 +13,7 @@
 // build information definitions
 #ifdef _WIN32
 #define OS "Windows"
-#define VERSION "v.1.0"
+#define VERSION "v.2.0"
 #endif
 
 #define ENGINE_NAME "Hedwig"
