@@ -150,7 +150,7 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 			// check bonus
 			if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move()) && b.is_dangerous(m, b.piece_on(from)))) 
 			  {
-			    score += 225; // almost always a good move
+			    score += 125; // almost always a good move
 			  }
 			//if ((Globals::SquareBB[from] & b.checkers()) && b.is_dangerous(m, b.piece_on(from))) score += 25;
 
@@ -275,7 +275,7 @@ bool MoveSelect::nextmove(Board &b, Node * stack, U16& ttm, U16& out, bool split
 			else if (type == QSEARCH) mvs.generate_qsearch_mvs(b, CAPTURE, givesCheck); // only generates checks if givesCheck == true
 			load_and_sort(mvs, b, ttm, stack, CAPTURE);
 		}
-		if (captures[c_sz].score > 0 && captures[c_sz].m != MOVE_NONE)
+		if (captures[c_sz].score >= 0 && captures[c_sz].m != MOVE_NONE)
 		{
 			out = captures[c_sz].m; c_sz++; return true;
 		}
@@ -283,7 +283,7 @@ bool MoveSelect::nextmove(Board &b, Node * stack, U16& ttm, U16& out, bool split
 		break;
 
 	case PHASE_CAPTURE_BAD:
-		if (captures[c_sz].score <= 0 && captures[c_sz].m != MOVE_NONE)
+		if (captures[c_sz].score < 0 && captures[c_sz].m != MOVE_NONE)
 		{
 			out = captures[c_sz].m; c_sz++; return true;
 		}

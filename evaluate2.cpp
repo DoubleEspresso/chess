@@ -64,10 +64,10 @@ namespace
 	{
 		// pawn,    knight,   bishop,   rook,       queen,       king
 		{ S(30,35), S(40,45), S(50,55), S(60,65), S(95, 100), S(100, 110) }, //pawn
-		{ S(10,22), S(35,42), S(42,44), S(75,85), S(95, 100), S(100, 100) }, //knight
-		{ S(10,22), S(35,42), S(42,44), S(75,85), S(95, 100), S(100, 100) }, //bishop
-		{ S(10,22), S(35,42), S(32,34), S(45,50), S(95, 100), S(95, 100) }, //rook
-		{ S(10,10), S(30,33), S(30,33), S(45,45), S(40, 55), S(95, 100) }, //queen
+		{ S(5,22), S(35,42), S(42,44), S(75,85), S(95, 100), S(100, 100) }, //knight
+		{ S(5,22), S(35,42), S(42,44), S(75,85), S(95, 100), S(100, 100) }, //bishop
+		{ S(5,22), S(35,42), S(32,34), S(45,50), S(95, 100), S(95, 100) }, //rook
+		{ S(5,10), S(30,33), S(30,33), S(45,45), S(40, 55), S(95, 100) }, //queen
 	};
 
 	// [pinned piece][piece pinned to]
@@ -156,7 +156,7 @@ namespace
 		ei.stm = b.whos_move();
 		ei.me = material.get(b);
 		ei.phase = ei.me->game_phase;
-		ei.tempoBonus = (ei.phase == MIDDLE_GAME ? 16 : 22);
+		ei.tempoBonus = (ei.phase == MIDDLE_GAME ? 10 : 20); //16 : 22);
 		ei.white_pieces = b.colored_pieces(WHITE);
 		ei.black_pieces = b.colored_pieces(BLACK);
 		ei.empty = ~b.all_pieces();
@@ -185,7 +185,7 @@ namespace
 
 		score += (eval_pieces<WHITE>(b, ei) - eval_pieces<BLACK>(b, ei));
 
-		score += (eval_space<WHITE>(b, ei) - eval_space<BLACK>(b, ei)); // central space
+		//score += (eval_space<WHITE>(b, ei) - eval_space<BLACK>(b, ei)); // central space
 
 		score += (eval_threats<WHITE>(b, ei) - eval_threats<BLACK>(b, ei)); // central space
 
@@ -196,7 +196,7 @@ namespace
 		// nb. rescaling based on nb_pieces encourages trades at all times (each trade increases the scaling)
 		//float f = 110.0 * nb_pieces *(0.1 + 0.2 + 0.3);
 		//float scaling = f == 0 ? 1 : (280.0 / f); // usually around 0.6-0.8
-		score *= 0.60;
+		score *= 0.85;
 
 		//if (abs(score) - abs(ei.me->value) >= abs(ei.me->value)) score *= 0.65;
 		score += ei.me->value;
@@ -245,7 +245,7 @@ namespace
 			score += eval_attacks<c, p>(b, ei, from, captr_mvs);
 
 			// 2. mobility (using built pin bitboards)
-			score += eval_mobility<c, p>(b, ei, from, quiet_mvs);
+			//score += eval_mobility<c, p>(b, ei, from, quiet_mvs);
 
 			// 3. pins (part of mobility)
 			if (c == b.whos_move()) score += eval_pins<c, p>(b, ei, from); // note: these are *negative* scores
@@ -270,13 +270,14 @@ namespace
 				++bishopCount;
 			}
 
-			// 6. king pressure
-			U64 kingAttacks = (quiet_mvs | captr_mvs) & kingRegion;
-			if (kingAttacks)
-			{
-				score += king_pressure_score<p>(ei.phase);
-				(c == WHITE ? ++ei.w_king_attacks : ++ei.b_king_attacks); // attackers of enemy king
-			}
+			// 6. king pressure - note : need something like this (does help in specific 
+			// scenarios, but misses multiple simple tactics in most other positions with uncommented.
+			//U64 kingAttacks = (quiet_mvs | captr_mvs) & kingRegion;
+			//if (kingAttacks)
+			//{
+			//	score += king_pressure_score<p>(ei.phase);
+			//	(c == WHITE ? ++ei.w_king_attacks : ++ei.b_king_attacks); // attackers of enemy king
+			//}
 
 			// 7. connectedness
 
@@ -430,14 +431,14 @@ namespace
 				if ((attackers & rooks) != 0ULL) score += target_value;
 			}
 
-		if (pawn_targetBB)
-			while (pawn_targetBB)
-			{
-				int sq = pop_lsb(pawn_targetBB);
-				int target_value = square_score<c, PAWN>(ei.phase, sq); // ranges from 5-100
-				U64 attackers = b.attackers_of(sq) & pawns;
-				if (attackers != 0ULL) score += target_value;
-			}
+		//if (pawn_targetBB)
+		//	while (pawn_targetBB)
+		//	{
+		//		int sq = pop_lsb(pawn_targetBB);
+		//		int target_value = square_score<c, PAWN>(ei.phase, sq); // ranges from 5-100
+		//		U64 attackers = b.attackers_of(sq) & pawns;
+		//		if (attackers != 0ULL) score += 4;//target_value * 0.2;
+		//	}
 
 		// nb: this is a little dangerous since no tactics are resolved, it is a bonus for 
 		// attacking a piece with a pawn on the move.
@@ -458,12 +459,30 @@ namespace
 			{
 				int f = pop_lsb(disc_checkers);
 				U64 disc_mask = (BetweenBB[f][enemy_ks]) & enemy_pieces;
-				if (count(disc_mask) <= 1) score += 50;//80;
+				if (count(disc_mask) <= 1) score += 25;//50;//80;
 			}
 			while (disc_blockers)
 			{
 				int f = pop_lsb(disc_blockers);
-				if (b.piece_on(f) >= KNIGHT) score += 150;// 125;
+				if (b.piece_on(f) >= KNIGHT) score += 25;//50;//150;// 125;
+			}
+		}
+
+		// eval knight forks
+		U64 knight_forks = b.checkers() & knights;
+		if (knight_forks)
+		{
+			int sq = pop_lsb(knight_forks);
+			U64 attacks = PseudoAttacksBB(KNIGHT, sq) & b.colored_pieces(them);
+			while (attacks)
+			{
+				int to = pop_lsb(attacks);
+				int p = b.piece_on(to);
+			    if (p > KNIGHT)
+				{
+					int delta = (ei.phase == MIDDLE_GAME ? MaterialMG[p] - MaterialMG[KNIGHT] : MaterialEG[p] - MaterialEG[KNIGHT]);
+					score += delta; 
+				}
 			}
 		}
 
@@ -511,14 +530,14 @@ namespace
 			if (attackers)// && empty)
 			{
 				if (attackers & our_pawns) score += 15;//35;
-				if (attackers & queens) score += 20;// 25;
+				if (attackers & queens) score += 15;//20;// 25;
 				if (attackers & rooks) score += 10;// 20;
 				if (attackers & knights) score += 5;// 15;
 				if (attackers & bishops) score += 5;// 15;
-				if (attackers & our_king) score += 40;// 120; // nb. in pawn endgames this is not really dangerous
+				if (attackers & our_king) score += 20;//40;// 120; // nb. in pawn endgames this is not really dangerous
 				++nb_attackers;
 				// could be a mate threat
-				if (more_than_one(attackers)) score += 30;// 210;
+				if (more_than_one(attackers)) score += 15;//30;// 210;
 			}
 			else if (empty)
 			{
@@ -528,11 +547,11 @@ namespace
 		}
 
 		// approximate mate detection
-		if (nb_safe <= 2 && defenders == 0ULL && nb_attackers >= 2)
-		{
-			score += 25;// 120;
-			if (local_attackers) score += 10;// 25;
-		}
+		//if (nb_safe <= 2 && defenders == 0ULL && nb_attackers >= 2)
+		//{
+		//	score += 25;// 120;
+		//	if (local_attackers) score += 10;// 25;
+		//}
 		if (checkers != 0ULL && nb_safe <= 1)
 		{
 			score += 20;// 180;
@@ -576,8 +595,7 @@ namespace
 			{
 				score += pin_score<p, KING>(ei.phase);
 			}
-			else if (mdiff == 0) score = -20;
-			else score = -10;
+			else score -= 0.5*ei.tempoBonus;
 		}
 		return score;
 	}

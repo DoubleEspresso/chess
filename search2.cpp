@@ -206,8 +206,8 @@ namespace
 		}
 
 		// 3. -- static evaluation of position    
-		//int static_eval = Eval::evaluate(b);
-		int static_eval = (ttvalue > NINF ? ttvalue : Eval::evaluate(b));
+		int static_eval = Eval::evaluate(b);
+		//int static_eval = (ttvalue > NINF ? ttvalue : Eval::evaluate(b));
 		//int static_eval = (ttvalue > NINF ? ttvalue : ttstatic_value > NINF ? ttstatic_value : Eval::evaluate(b));
 
 		// 4. -- drop into qsearch if we are losing
@@ -375,19 +375,19 @@ namespace
 
 			// exchange pruning at shallow depths - same thing done in qsearch...			
 			
-			//if (newdepth <= 1 &&
-			//    !inCheck && 
-			//    !givesCheck && 
-			//    !pv_node &&
-			//    move != ttm &&
-			//    move != stack->killer[0] &&
-			//    move != stack->killer[1] &&
-			//    //eval < alpha && 
-			//    b.see_move(move) < 0)
-			//  {
-			//    ++pruned;
-			//    continue;
-			//  }
+			if (newdepth <= 1 &&
+			    !inCheck && 
+			    !givesCheck && 
+			    !pv_node &&
+			    move != ttm &&
+			    move != stack->killer[0] &&
+			    move != stack->killer[1] &&
+			    //eval < alpha && 
+			    b.see_move(move) <= 0)
+			  {
+			    ++pruned;
+			    continue;
+			  }
 			
 			b.do_move(pd, move);
 
@@ -397,11 +397,11 @@ namespace
 
 			bool fulldepthSearch = false;
 			if (!pvMove && 
-			    move != ttm &&
+			    //move != ttm &&
 			    move != stack->killer[0] &&
 			    move != stack->killer[1] && 
-				!givesCheck &&
-				isQuiet &&
+				//!givesCheck &&
+				//isQuiet &&
 			    depth > 2)
 			{
 				int R = Reduction(pv_node, improving, newdepth, moves_searched);
@@ -517,8 +517,8 @@ namespace
 		}
 
 		// stand pat lower bound -- tried using static_eval for the stand-pat value, play was weak
-		//int stand_pat = Eval::evaluate(b);
-		int stand_pat= (ttval == NINF ? Eval::evaluate(b) : ttval);    
+		int stand_pat = Eval::evaluate(b);
+		//int stand_pat= (ttval == NINF ? Eval::evaluate(b) : ttval);    
 
 		if (stand_pat >= beta && !inCheck) return beta;
 		// delta pruning                 		
