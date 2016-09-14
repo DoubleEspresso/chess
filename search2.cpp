@@ -202,7 +202,7 @@ namespace
 					statistics.update(b, ttm, lastmove, stack, depth, eval, quiets);
 					return e.value;
 				}
-				else if (e.bound == BOUND_HIGH  && e.value <= alpha) return e.value;
+				else if (e.bound == BOUND_HIGH  && e.value <= alpha) return  e.value;
 		}
 
 		// 3. -- static evaluation of position    
@@ -333,7 +333,7 @@ namespace
 
 			// piece and move data
 			int piece = b.piece_on(get_from(move));
-			bool givesCheck = b.gives_check(move);
+			bool givesCheck = b.gives_check(move); stack->givescheck = givesCheck;
 			bool inCheck = b.in_check();
 			bool isQuiet = b.is_quiet(move);
 			bool pvMove = (moves_searched == 0 && pv_node);
@@ -374,20 +374,20 @@ namespace
 			}
 
 			// exchange pruning at shallow depths - same thing done in qsearch...			
-			
-			if (newdepth <= 1 &&
-			    !inCheck && 
-			    !givesCheck && 
-			    !pv_node &&
-			    move != ttm &&
-			    move != stack->killer[0] &&
-			    move != stack->killer[1] &&
-			    //eval < alpha && 
-			    b.see_move(move) <= 0)
-			  {
-			    ++pruned;
-			    continue;
-			  }
+			// note - leave commented (king related tactics are missed when uncommented)
+			//if (newdepth <= 1 &&
+			//    !inCheck && 
+			//    !givesCheck && 
+			//    !pv_node &&
+			//    move != ttm &&
+			//    move != stack->killer[0] &&
+			//    move != stack->killer[1] &&
+			//    //eval < alpha && 
+			//    b.see_move(move) <= 0)
+			//  {
+			//    ++pruned;
+			//    continue;
+			//  }
 			
 			b.do_move(pd, move);
 
@@ -397,10 +397,11 @@ namespace
 
 			bool fulldepthSearch = false;
 			if (!pvMove && 
-			    //move != ttm &&
+			    move != ttm &&
 			    move != stack->killer[0] &&
 			    move != stack->killer[1] && 
 				//!givesCheck &&
+				!inCheck &&
 				//isQuiet &&
 			    depth > 2)
 			{
@@ -473,7 +474,7 @@ namespace
 	} // end search
 
 	template<NodeType type>
-	int qsearch(Board& b, int alpha, int beta, int depth, Node* stack, bool givesCheck)
+	int qsearch(Board& b, int alpha, int beta, int depth, Node* stack, bool inCheck)
 	{
 		int eval = NINF;
 		int ttval = NINF;
@@ -494,12 +495,12 @@ namespace
 
 		int aorig = alpha;
 		int mate_dist = iter_depth - depth;
-		bool inCheck = b.in_check();
 		//bool split = (b.get_worker()->currSplitBlock != NULL);
 		//SplitBlock * split_point;
 		//if (split) split_point = b.get_worker()->currSplitBlock;
 
 		//U16 lastmove = (stack - 1)->currmove;
+		bool genChecks = (stack-2)->givescheck;
 
 		// transposition table lookup    
 		data = b.data_key();
@@ -512,8 +513,8 @@ namespace
 			ttval = e.value;
 			if (pv_node)
 				if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta) return e.value;
-				else if (e.bound == BOUND_LOW && e.value >= beta) return e.value;
-				else if (e.bound == BOUND_HIGH && e.value <= alpha) return e.value;
+				else if (e.bound == BOUND_LOW && e.value >= beta) return  e.value;
+				else if (e.bound == BOUND_HIGH && e.value <= alpha) return  e.value;
 		}
 
 		// stand pat lower bound -- tried using static_eval for the stand-pat value, play was weak
@@ -529,12 +530,11 @@ namespace
 		if (alpha < stand_pat && !inCheck) alpha = stand_pat;
 		if (alpha >= beta && !inCheck) return beta;
 
-		MoveSelect ms(statistics, QSEARCH, givesCheck);
+		MoveSelect ms(statistics, QSEARCH, genChecks);
 		int moves_searched = 0, pruned = 0;
 		U16 move;
 		Node dummy;
 
-		// movegenerator generates only legal moves in qsearch (fyi)
 		while (ms.nextmove(b, stack, ttm, move, false))
 		{
 			if (!b.is_legal(move))
@@ -545,8 +545,9 @@ namespace
 
 			// move data
 			int piece = b.piece_on(get_from(move));
-			bool checksKing = b.gives_check(move);
+			bool checksKing = b.gives_check(move); stack->givescheck = checksKing;
 			bool isQuiet = b.is_quiet(move); // evasions
+			bool discoveredBlocker = (Globals::SquareBB[get_from(move)] && b.discovered_blockers(b.whos_move()));
 
 			// futility pruning --continue if we are winning	
 			if (!checksKing && 
@@ -572,9 +573,12 @@ namespace
 				continue;
 			}
 
+			// qsearch *does* generate quiet checks -- detect non-dangerous 
+			//if (!inCheck && checksKing && !b.dangerous_check(move, discoveredBlocker)) continue;
+
 			BoardData pd;
 			b.do_move(pd, move);
-			eval = -qsearch<type>(b, -beta, -alpha, depth - 1, stack + 1, (depth > -1 ? givesCheck : false));
+			eval = -qsearch<type>(b, -beta, -alpha, depth - 1, stack + 1, checksKing);
 			b.undo_move(move);
 			moves_searched++;
 

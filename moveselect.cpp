@@ -130,11 +130,12 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 		int p = b.piece_on(to);
 
 		if (m == ttm) continue;
-		if (m == killer1 || m == killer2 ) continue; //|| m == killer3 || m == killer4
+		if (m == killer1 || m == killer2) continue; //|| m == killer3 || m == killer4
 
 		// build capture list -- evasions include quiet moves (fyi)
 		if (movetype == CAPTURE &&
 			(mt == CAPTURE || mt == EP || (mt <= PROMOTION_CAP && mt > PROMOTION)))
+	
 		{
 			captures[c_sz].m = m;
 			int score = 0;
@@ -143,16 +144,16 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 				captures[c_sz++].score = score;
 				continue;
 			}
+
 			score = piece_vals[b.piece_on(to)] - piece_vals[b.piece_on(from)];
-			// TODO :: speed this up ... ?
 			if (score < 0 && b.is_legal(m)) score = b.see_move(m);
 
-			// check bonus
+			//// check bonus
 			if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move()) && b.is_dangerous(m, b.piece_on(from)))) 
 			  {
-			    score += 125; // almost always a good move
+			    score += 225; // almost always a good move
 			  }
-			//if ((Globals::SquareBB[from] & b.checkers()) && b.is_dangerous(m, b.piece_on(from))) score += 25;
+			if ((Globals::SquareBB[from] & b.checkers()) && b.dangerous_check(m, false)) score += 125;
 
 			// promotion bonus
 			//if (mt > PROMOTION && mt <= PROMOTION_CAP) score += piece_vals[(type-4)];
@@ -174,7 +175,7 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 			{
 				score += 25; // keep small (many not dangerous moves satisfy criteria)			
 			}
-			//if ((Globals::SquareBB[from] & b.checkers()) && b.is_dangerous(m, b.piece_on(from))) score += 25;
+			if ((Globals::SquareBB[from] & b.checkers()) && b.is_dangerous(m, false)) score += 125;
 
 			// promotion bonus
 			//if (mt <= PROMOTION) score += piece_vals[type];	  
@@ -272,7 +273,7 @@ bool MoveSelect::nextmove(Board &b, Node * stack, U16& ttm, U16& out, bool split
 		{
 			MoveGenerator mvs; //mvs.generate_pseudo_legal(b, CAPTURE);
 			if (type == MAIN) mvs.generate_pseudo_legal(b, CAPTURE);
-			else if (type == QSEARCH) mvs.generate_qsearch_mvs(b, CAPTURE, givesCheck); // only generates checks if givesCheck == true
+			else if (type == QSEARCH) mvs.generate_qsearch_mvs(b, CAPTURE, genChecks); // only generates checks if givesCheck == true
 			load_and_sort(mvs, b, ttm, stack, CAPTURE);
 		}
 		if (captures[c_sz].score >= 0 && captures[c_sz].m != MOVE_NONE)
@@ -299,7 +300,7 @@ bool MoveSelect::nextmove(Board &b, Node * stack, U16& ttm, U16& out, bool split
 		{
 			MoveGenerator mvs; //mvs.generate_pseudo_legal(b, QUIET);
 			if (type == MAIN) mvs.generate_pseudo_legal(b, QUIET);
-			else if (type == QSEARCH) mvs.generate_qsearch_mvs(b, QUIET, givesCheck); // only generates checks if givesCheck == true
+			else if (type == QSEARCH && b.in_check()) mvs.generate_qsearch_mvs(b, QUIET, genChecks); // hack to generate quiet evasions (only when in check)
 			load_and_sort(mvs, b, ttm, stack, QUIET);
 		}
 		if (stored_qsz > 0 && quiets[q_sz].m != MOVE_NONE)

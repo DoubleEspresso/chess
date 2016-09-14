@@ -121,6 +121,7 @@ class Board
 	
   // king safety/evaluation related
   bool is_dangerous(U16& m, int piece);
+  bool dangerous_check(U16& move, bool discoveredBlocker);
   inline bool compute_in_check();
   bool in_check();
   bool gives_check(U16& move);

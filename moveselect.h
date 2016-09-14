@@ -50,12 +50,12 @@ class MoveSelect
   //U16 killers[4];
   MoveStats * statistics;
   SearchType type;
-  bool givesCheck;
+  bool genChecks;
 
  public:
  MoveSelect(MoveStats& stats, SearchType t) : 
   c_sz(0), stored_csz(0), q_sz(0), 
-    stored_qsz(0), select_phase(PHASE_TT), statistics(0), type(t), givesCheck(false)
+    stored_qsz(0), select_phase(PHASE_TT), statistics(0), type(t), genChecks(false)
   {   
     // fixme...
     for (int j = 0; j<MAX_MOVES; ++j)
@@ -66,9 +66,9 @@ class MoveSelect
     statistics = &stats;
   }  
   
- MoveSelect(MoveStats& stats, SearchType t, bool checksKing) : 
+ MoveSelect(MoveStats& stats, SearchType t, bool gChecks) : 
   c_sz(0), stored_csz(0), q_sz(0), 
-    stored_qsz(0), select_phase(PHASE_TT), statistics(0), type(t), givesCheck(checksKing)
+    stored_qsz(0), select_phase(PHASE_TT), statistics(0), type(t), genChecks(gChecks)
   {   
     // fixme...
     for (int j = 0; j<MAX_MOVES; ++j)

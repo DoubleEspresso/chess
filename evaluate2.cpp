@@ -245,7 +245,7 @@ namespace
 			score += eval_attacks<c, p>(b, ei, from, captr_mvs);
 
 			// 2. mobility (using built pin bitboards)
-			//score += eval_mobility<c, p>(b, ei, from, quiet_mvs);
+			score += eval_mobility<c, p>(b, ei, from, quiet_mvs)*0.5;
 
 			// 3. pins (part of mobility)
 			if (c == b.whos_move()) score += eval_pins<c, p>(b, ei, from); // note: these are *negative* scores
@@ -266,18 +266,18 @@ namespace
 
 			if (p == BISHOP)
 			{
-				score += eval_color_complexes<c>(b, ei, from, pawnCount);  // apply penalties
+				score += eval_color_complexes<c>(b, ei, from, pawnCount)*0.5;  // apply penalties
 				++bishopCount;
 			}
 
 			// 6. king pressure - note : need something like this (does help in specific 
 			// scenarios, but misses multiple simple tactics in most other positions with uncommented.
-			//U64 kingAttacks = (quiet_mvs | captr_mvs) & kingRegion;
-			//if (kingAttacks)
-			//{
-			//	score += king_pressure_score<p>(ei.phase);
-			//	(c == WHITE ? ++ei.w_king_attacks : ++ei.b_king_attacks); // attackers of enemy king
-			//}
+			U64 kingAttacks = (quiet_mvs | captr_mvs) & kingRegion;
+			if (kingAttacks)
+			{
+				score += king_pressure_score<p>(ei.phase);
+				(c == WHITE ? ++ei.w_king_attacks : ++ei.b_king_attacks); // attackers of enemy king
+			}
 
 			// 7. connectedness
 
@@ -459,12 +459,12 @@ namespace
 			{
 				int f = pop_lsb(disc_checkers);
 				U64 disc_mask = (BetweenBB[f][enemy_ks]) & enemy_pieces;
-				if (count(disc_mask) <= 1) score += 25;//50;//80;
+				if (count(disc_mask) <= 1) score += 50;//80;
 			}
 			while (disc_blockers)
 			{
 				int f = pop_lsb(disc_blockers);
-				if (b.piece_on(f) >= KNIGHT) score += 25;//50;//150;// 125;
+				if (b.piece_on(f) >= KNIGHT) score += 50;//150;// 125;
 			}
 		}
 
@@ -556,7 +556,7 @@ namespace
 		{
 			score += 20;// 180;
 			if (more_than_one(checkers)) score += 30;// 180;
-			if (nb_safe == 0 && defenders == 0ULL && local_attackers) score += 50;// 180;
+			if (nb_safe == 0 && defenders == 0ULL && local_attackers) score += 180;
 		}
 
 		// bonus for enemy with no pawn cover in middle game
