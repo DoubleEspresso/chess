@@ -18,6 +18,7 @@ namespace Globals
 	U64 SmallCenterBB;
 	U64 BigCenterBB;
 	U64 CornersBB;
+	U64 LongDiagonalsBB;
 
 	// evaluation/utility bitmaps
 	U64 PawnAttacksBB[COLORS][SQUARES];          // the pawn attacks (by color)
@@ -332,6 +333,9 @@ namespace Globals
 		CastleMask[WHITE][1] = (U64(F1) | U64(G1)); // kside
 		CastleMask[BLACK][0] = (U64(B8) | U64(C8) | U64(D8));
 		CastleMask[BLACK][1] = (U64(F8) | U64(G8));
+
+		// long diagonals
+		LongDiagonalsBB = (BetweenBB[A1][H8] | BetweenBB[H1][A8]);
 
 		return true;
 	}

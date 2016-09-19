@@ -100,7 +100,7 @@ MaterialEntry * MaterialTable::get(Board& b)
 	}
 
       // game phase
-      table[idx].game_phase = (piece_count >= 6 ? MIDDLE_GAME : END_GAME);
+      table[idx].game_phase = (piece_count > 6 ? MIDDLE_GAME : END_GAME);
       int phase = table[idx].game_phase;
 
       // compute the base material score (just a counting of each piece type multiplied by the value definition).

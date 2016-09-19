@@ -619,7 +619,9 @@ MoveList* MoveGenerator::generate_qsearch_mvs(Board& b, MoveType mt, bool genChe
 		for (unsigned int i = 0; i < _sz; ++i)
 		{
 			int legal = 1;
-			if ((genChecks && !b.gives_check(list[i].m)) && (!b.is_qsearch_mv(list[i].m))) legal = 0;
+			//if (genChecks && (!b.gives_check(list[i].m) || !b.is_qsearch_mv(list[i].m))) legal = 0;
+			//if (!genChecks && !b.is_qsearch_mv(list[i].m)) legal = 0;
+			if (!b.is_qsearch_mv(list[i].m)) legal = 0;
 			(legal == 1 ? legal_i[iter++] = i : last--);
 		}
 	}

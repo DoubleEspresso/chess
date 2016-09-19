@@ -22,6 +22,7 @@ namespace Globals
 	extern U64 SmallCenterBB;
 	extern U64 BigCenterBB;
 	extern U64 CornersBB;
+	extern U64 LongDiagonalsBB;
 	
 	// evaluation/utility bitmaps
 	extern U64 PawnAttacksBB[COLORS][SQUARES];          // the pawn attacks (by color)

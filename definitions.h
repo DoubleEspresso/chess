@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include <type_traits>
+#include <cmath>
 
 // build information definitions
 #ifdef _WIN32
@@ -70,24 +71,19 @@ enum MoveType
     CHECK, CASTLE, CASTLE_KS = 9, CASTLE_QS = 10, PSEUDO_LEGAL = 17, LEGAL, CAPTURE_CHECKS
   };
 
-enum SearchType
-  {
-    PROBCUT, MAIN, QSEARCH
-  };
-
 enum MaterialValue
-  {
-    PawnValueMG = 100, 
-    KnightValueMG = 365, 
-    BishopValueMG = 380, 
-    RookValueMG = 550, 
-    QueenValueMG = 1090,
+{
+	PawnValueMG = 150,
+	KnightValueMG = 455,//365, 
+    BishopValueMG = 490,// 380,
+    RookValueMG = 655, 
+    QueenValueMG = 1280,
 
-    PawnValueEG = 110,
-    KnightValueEG = 355,
-    BishopValueEG = 385,
-    RookValueEG = 565,
-    QueenValueEG = 1115
+    PawnValueEG = 170,
+    KnightValueEG = 475,
+    BishopValueEG = 510,
+    RookValueEG = 685,
+    QueenValueEG = 1335
   };
 
 enum Square
@@ -168,4 +164,8 @@ enum BenchType
     MINORS, MAJORS, PERFT, ENDGAME, TTABLE, BENCH, DIVIDE
   };
 
+inline float rounded(float number)
+{
+	return number < 0.0 ? ceil(number - 0.5) : floor(number + 0.5);
+}
 #endif

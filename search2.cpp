@@ -102,7 +102,7 @@ namespace Search
 		{
 			if (UCI_SIGNALS.stop) break; hash_hits = 0;
 			//else if (UCI_SIGNALS.timesUp) checkMoreTime(b, stack + 2);
-			statistics.init(); // move ordering of quiet moves
+			statistics.clear(); // move ordering of quiet moves
 			eval = search<ROOT>(b, alpha, beta, depth, stack + 2);
 			iter_depth++;
 
@@ -260,6 +260,16 @@ namespace
 
 			if (null_eval >= beta) return beta;
 
+			// the null move search failed low - which means we may be faced with threat ..
+			// record the "to" square and record the move as a possible threat (bonus to those moves attack/evading to square)			
+			if ((stack + 1)->bestmove != MOVE_NONE &&
+				!b.is_quiet((stack + 1)->bestmove) &&
+				null_eval < alpha &&
+				null_eval > NINF + stack->ply)
+			{
+				stack->threat = (stack + 1)->bestmove;
+				stack->threat_gain = null_eval - static_eval;
+			}
 		}
 
 		// 7. -- probcut from stockfish
@@ -269,7 +279,7 @@ namespace
 			movetype((stack - 1)->bestmove) == CAPTURE)
 		{
 			BoardData pd;
-			MoveSelect ms(statistics, PROBCUT);
+			MoveSelect ms(statistics, Probcut);
 			U16 move;
 			int rbeta = beta + 400;
 			int rdepth = depth - 2;
@@ -313,7 +323,7 @@ namespace
 
 		// 6. -- moves search
 		BoardData pd;
-		MoveSelect ms(statistics, MAIN);
+		MoveSelect ms(statistics, MainSearch);
 		U16 move;
 		int pruned = 0; moves_searched = 0;
 		//if (ttm == MOVE_NONE) ttm = (stack-2)->pv[iter_depth-depth];
@@ -340,7 +350,7 @@ namespace
 
 			// extension/reductions
 			int extension = 0; int reduction = 1; // always reduce current depth by 1
-			if (inCheck) extension += 1;
+			if (givesCheck) extension += 1;
 
 			if (depth >= 8 &&
 				!inCheck && 
@@ -382,8 +392,8 @@ namespace
 			//    move != ttm &&
 			//    move != stack->killer[0] &&
 			//    move != stack->killer[1] &&
-			//    //eval < alpha && 
-			//    b.see_move(move) <= 0)
+			//    //eval <= alpha && 
+			//    b.see_move(move) < 0)
 			//  {
 			//    ++pruned;
 			//    continue;
@@ -403,9 +413,9 @@ namespace
 				//!givesCheck &&
 				!inCheck &&
 				//isQuiet &&
-			    depth > 2)
+				depth > 2) //(pv_node ? 4 : 6))
 			{
-				int R = Reduction(pv_node, improving, newdepth, moves_searched);
+				int R = Reduction(pv_node, improving, newdepth, moves_searched)/2;
 				int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];
 				if (v <= (NINF - 1)) R += 1;
 				int LMR = newdepth - R;
@@ -420,7 +430,7 @@ namespace
 				eval = (newdepth <= 1 ? -qsearch<NONPV>(b, -alpha - 1, -alpha, 0, stack + 1, givesCheck) : -search<NONPV>(b, -alpha - 1, -alpha, newdepth, stack + 1));
 			}
 
-			if (pvMove || (eval > alpha))
+			if (pvMove || eval > alpha)
 			{
 				eval = (newdepth <= 1 ? -qsearch<PV>(b, -beta, -alpha, 0, stack + 1, givesCheck) : -search<PV>(b, -beta, -alpha, newdepth, stack + 1));
 			}
@@ -439,7 +449,7 @@ namespace
 						quiets[quiets_searched++] = move;
 						quiets[quiets_searched] = MOVE_NONE;
 					}
-					statistics.update(b, move, lastmove, stack, depth, eval, quiets);
+					statistics.update(b, move, lastmove, stack, depth, adjust_score(eval, mate_dist), quiets);
 				}
 				hashTable.store(key, data, depth, BOUND_LOW, move, adjust_score(beta, mate_dist), static_eval, pv_node);
 				return beta;
@@ -467,7 +477,7 @@ namespace
 		//	last_time_ms = timer_thread->elapsed;
 		//}
 
-		Bound ttb = alpha <= aorig ? BOUND_HIGH : BOUND_EXACT;
+		Bound ttb = alpha <= aorig ? BOUND_HIGH : alpha >= beta ? BOUND_LOW : BOUND_EXACT;
 		hashTable.store(key, data, depth, ttb, bestmove, adjust_score(alpha, mate_dist), static_eval, pv_node);
 
 		return alpha;
@@ -500,7 +510,7 @@ namespace
 		//if (split) split_point = b.get_worker()->currSplitBlock;
 
 		//U16 lastmove = (stack - 1)->currmove;
-		bool genChecks = (stack-2)->givescheck;
+		bool genChecks = (stack - 2)->givescheck;
 
 		// transposition table lookup    
 		data = b.data_key();
@@ -530,7 +540,7 @@ namespace
 		if (alpha < stand_pat && !inCheck) alpha = stand_pat;
 		if (alpha >= beta && !inCheck) return beta;
 
-		MoveSelect ms(statistics, QSEARCH, genChecks);
+		MoveSelect ms(statistics, QsearchCaptures, genChecks);
 		int moves_searched = 0, pruned = 0;
 		U16 move;
 		Node dummy;
@@ -547,7 +557,7 @@ namespace
 			int piece = b.piece_on(get_from(move));
 			bool checksKing = b.gives_check(move); stack->givescheck = checksKing;
 			bool isQuiet = b.is_quiet(move); // evasions
-			bool discoveredBlocker = (Globals::SquareBB[get_from(move)] && b.discovered_blockers(b.whos_move()));
+			//bool discoveredBlocker = (Globals::SquareBB[get_from(move)] && b.discovered_blockers(b.whos_move()));
 
 			// futility pruning --continue if we are winning	
 			if (!checksKing && 
@@ -572,9 +582,6 @@ namespace
 				++pruned;
 				continue;
 			}
-
-			// qsearch *does* generate quiet checks -- detect non-dangerous 
-			//if (!inCheck && checksKing && !b.dangerous_check(move, discoveredBlocker)) continue;
 
 			BoardData pd;
 			b.do_move(pd, move);
@@ -603,7 +610,7 @@ namespace
 		}
 		else if (b.is_repition_draw()) return DRAW;
 
-		Bound ttb = alpha <= aorig ? BOUND_HIGH : BOUND_EXACT;
+		Bound ttb = alpha <= aorig ? BOUND_HIGH : alpha >= beta ? BOUND_LOW : BOUND_EXACT;
 		hashTable.store(key, data, depth, ttb, bestmove, adjust_score(alpha, mate_dist), stand_pat, pv_node);
 
 		return alpha;

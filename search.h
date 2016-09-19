@@ -42,11 +42,10 @@ struct Limits
 };
 
 
-
 struct Node
 {
   NodeType type;
-  U16 currmove, bestmove;
+  U16 currmove, bestmove , threat;
   U16 killer[4];
   int ply, static_eval, threat_gain;
   bool isNullSearch;

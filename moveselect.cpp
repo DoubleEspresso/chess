@@ -67,6 +67,13 @@ void MoveStats::update(Board& b, U16& m, U16& last, Node* stack, int d, int eval
 		stack->killer[1] = stack->killer[0];
 		stack->killer[0] = m;
 	}
+
+	// mate killers
+	//if (type == QUIET && eval >= MATE_IN_MAXPLY && m != stack->killer[2])
+	//{
+	//	stack->killer[3] = stack->killer[2];
+	//	stack->killer[2] = m;
+	//}
 }
 
 // dbg print movelist -- deprecated
@@ -116,9 +123,10 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 {
 	U16 killer1 = stack->killer[0];
 	U16 killer2 = stack->killer[1];
-	//U16 killer3 = stack->killer[2];  
-	//U16 killer4 = stack->killer[3];  
+	//U16 mate1 = stack->killer[2];  
+	//U16 mate2 = stack->killer[3];
 	U16 lastmove = (stack - 1)->currmove;
+	U16 threat = stack->threat;
 	bool inCheck = b.in_check();
 
 	for (; !mvs.end(); ++mvs)
@@ -130,7 +138,7 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 		int p = b.piece_on(to);
 
 		if (m == ttm) continue;
-		if (m == killer1 || m == killer2) continue; //|| m == killer3 || m == killer4
+		if (m == killer1 || m == killer2) continue;// || m == mate1 || m == mate2) continue; 
 
 		// build capture list -- evasions include quiet moves (fyi)
 		if (movetype == CAPTURE &&
@@ -148,12 +156,12 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 			score = piece_vals[b.piece_on(to)] - piece_vals[b.piece_on(from)];
 			if (score < 0 && b.is_legal(m)) score = b.see_move(m);
 
-			//// check bonus
+			// check bonus
 			if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move()) && b.is_dangerous(m, b.piece_on(from)))) 
 			  {
-			    score += 225; // almost always a good move
+			    score += 1; // almost always a good move
 			  }
-			if ((Globals::SquareBB[from] & b.checkers()) && b.dangerous_check(m, false)) score += 125;
+			if ((Globals::SquareBB[from] & b.checkers()) && b.dangerous_check(m, false)) score += 1;
 
 			// promotion bonus
 			//if (mt > PROMOTION && mt <= PROMOTION_CAP) score += piece_vals[(type-4)];
@@ -168,18 +176,31 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 			// countermove bonus
 			if (lastmove != MOVE_NONE &&
 				m == statistics->countermoves[get_from(lastmove)][get_to(lastmove)])
-				score += 25;
+				score += 1;
+
+			// bonus for avoiding the capture from the threat move (from null search)
+			if (threat != MOVE_NONE && get_to(threat) == get_from(m)) score += piece_vals[b.piece_on(from)] / 2;
+
+			// if previous bestmove attacks the from-sq, give a bonus for avoiding the capture/attack
+			if (to_sq(lastmove) == from)
+			{
+				int diff = (piece_vals[b.piece_on(from)] - piece_vals[b.piece_on(to_sq(lastmove))]);
+				score += (diff < 0 ? -piece_vals[b.piece_on(from)] : piece_vals[b.piece_on(from)]);
+			}
 
 			// check bonus
 			if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move())) && b.piece_on(from) > PAWN) 
 			{
-				score += 25; // keep small (many not dangerous moves satisfy criteria)			
+				score += 1; // keep small (many not dangerous moves satisfy criteria)			
 			}
-			if ((Globals::SquareBB[from] & b.checkers()) && b.is_dangerous(m, false)) score += 125;
+			if ((Globals::SquareBB[from] & b.checkers()) && b.is_dangerous(m, false)) score += 1;
 
 			// promotion bonus
-			//if (mt <= PROMOTION) score += piece_vals[type];	  
+			//if (mt <= PROMOTION) score += piece_vals[type];
 
+			// square score based ordering if score is unchanged.
+			//if (score == (NINF - 1)) score += (square_score(b.whos_move(), p, b.phase(), to) - square_score(b.whos_move(), p, b.phase(), from));
+			
 			quiets[q_sz++].score = score;
 		}
 	}
@@ -239,75 +260,75 @@ bool MoveSelect::nextmove(Board &b, Node * stack, U16& ttm, U16& out, bool split
 	}
 
 	out = MOVE_NONE;
-	if (select_phase >= PHASE_END) return false;
-	switch (select_phase)
+	if (phase >= End) return false;
+	switch (phase)
 	{
-	case PHASE_TT:
-		if (type == QSEARCH && b.is_qsearch_mv(ttm)) out = ttm;
-		else if (type == MAIN) out = ttm;
-		select_phase++;
+	case HashMove:
+		if (type == QsearchCaptures && (b.is_qsearch_mv(ttm))) out = ttm;
+		else if (type == MainSearch) out = ttm;
+		phase++;
 		break;
 
-	case PHASE_KILLER1:
-		if (type == MAIN) out = stack->killer[0];
-		select_phase++;
+	case Killer1:
+		if (type == MainSearch) out = stack->killer[0];
+		phase++;
 		return true;
 
-	case PHASE_KILLER2:
-		if (type == MAIN) out = stack->killer[1];
-		select_phase++;
+	case Killer2:
+		if (type == MainSearch) out = stack->killer[1];
+		phase++;
 		return true;
 
-	case PHASE_KILLER3:
-		//out = stack->killer[2];
-		select_phase++;
+	case MateKiller1:
+		out = stack->killer[2];
+		phase++;
 		return true;
 
-	case PHASE_KILLER4:
-		//out = stack->killer[3];
-		select_phase++;
+	case MateKiller2:
+		out = stack->killer[3];
+		phase++;
 		return true;
 
-	case PHASE_CAPTURE_GOOD:
+	case GoodCaptures:
 		if (stored_csz == 0)
 		{
-			MoveGenerator mvs; //mvs.generate_pseudo_legal(b, CAPTURE);
-			if (type == MAIN) mvs.generate_pseudo_legal(b, CAPTURE);
-			else if (type == QSEARCH) mvs.generate_qsearch_mvs(b, CAPTURE, genChecks); // only generates checks if givesCheck == true
+			MoveGenerator mvs; 
+			if (type == MainSearch) mvs.generate_pseudo_legal(b, CAPTURE);
+			else if (type == QsearchCaptures) mvs.generate_qsearch_mvs(b, CAPTURE, genChecks); // only generates checks if givesCheck == true
 			load_and_sort(mvs, b, ttm, stack, CAPTURE);
 		}
 		if (captures[c_sz].score >= 0 && captures[c_sz].m != MOVE_NONE)
 		{
 			out = captures[c_sz].m; c_sz++; return true;
 		}
-		select_phase++;
+		phase++;
 		break;
 
-	case PHASE_CAPTURE_BAD:
+	case BadCaptures:
 		if (captures[c_sz].score < 0 && captures[c_sz].m != MOVE_NONE)
 		{
 			out = captures[c_sz].m; c_sz++; return true;
 		}
-		select_phase++;
+		phase++;
 		break;
 
-	case PHASE_QUIET:
-		if (type == QSEARCH)
+	case Quiet:
+		if (type == QsearchCaptures)
 		{
 			if (!b.in_check()) return false;
 		}
 		if (stored_qsz == 0)  // if we are in check and have not found an evasion, generate moves even in qsearch
 		{
 			MoveGenerator mvs; //mvs.generate_pseudo_legal(b, QUIET);
-			if (type == MAIN) mvs.generate_pseudo_legal(b, QUIET);
-			else if (type == QSEARCH && b.in_check()) mvs.generate_qsearch_mvs(b, QUIET, genChecks); // hack to generate quiet evasions (only when in check)
+			if (type == MainSearch) mvs.generate_pseudo_legal(b, QUIET);
+			else if (type == QsearchCaptures && b.in_check()) mvs.generate_qsearch_mvs(b, QUIET, genChecks); // hack to generate quiet evasions (only when in check)
 			load_and_sort(mvs, b, ttm, stack, QUIET);
 		}
 		if (stored_qsz > 0 && quiets[q_sz].m != MOVE_NONE)
 		{
 			out = quiets[q_sz].m; q_sz++; return true;
 		}
-		select_phase++;
+		phase++;
 		return false;
 	}
 	return true;
