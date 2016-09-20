@@ -71,20 +71,35 @@ enum MoveType
     CHECK, CASTLE, CASTLE_KS = 9, CASTLE_QS = 10, PSEUDO_LEGAL = 17, LEGAL, CAPTURE_CHECKS
   };
 
+
 enum MaterialValue
 {
-	PawnValueMG = 150,
-	KnightValueMG = 455,//365, 
-    BishopValueMG = 490,// 380,
-    RookValueMG = 655, 
-    QueenValueMG = 1280,
+	PawnValueMG = 100,
+	KnightValueMG = 330,
+	BishopValueMG = 360,
+	RookValueMG = 550,
+	QueenValueMG = 990,
 
-    PawnValueEG = 170,
-    KnightValueEG = 475,
-    BishopValueEG = 510,
-    RookValueEG = 685,
-    QueenValueEG = 1335
-  };
+	PawnValueEG = 110,
+	KnightValueEG = 345,
+	BishopValueEG = 385,
+	RookValueEG = 575,
+	QueenValueEG = 1015
+};
+//enum MaterialValue
+//{
+//	PawnValueMG = 150,
+//	KnightValueMG = 455,//365, 
+//    BishopValueMG = 490,// 380,
+//    RookValueMG = 655, 
+//    QueenValueMG = 1280,
+//
+//    PawnValueEG = 170,
+//    KnightValueEG = 475,
+//    BishopValueEG = 510,
+//    RookValueEG = 685,
+//    QueenValueEG = 1335
+//  };
 
 enum Square
   {

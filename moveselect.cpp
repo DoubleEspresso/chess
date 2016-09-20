@@ -154,14 +154,14 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 			}
 
 			score = piece_vals[b.piece_on(to)] - piece_vals[b.piece_on(from)];
-			if (score < 0 && b.is_legal(m)) score = b.see_move(m);
+			if (score <= 0 && b.is_legal(m)) score = b.see_move(m);
 
 			// check bonus
 			if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move()) && b.is_dangerous(m, b.piece_on(from)))) 
 			  {
-			    score += 1; // almost always a good move
+			    score += 225; // almost always a good move
 			  }
-			if ((Globals::SquareBB[from] & b.checkers()) && b.dangerous_check(m, false)) score += 1;
+			if ((Globals::SquareBB[from] & b.checkers()) && b.dangerous_check(m, false)) score += 15;
 
 			// promotion bonus
 			//if (mt > PROMOTION && mt <= PROMOTION_CAP) score += piece_vals[(type-4)];
@@ -176,22 +176,22 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 			// countermove bonus
 			if (lastmove != MOVE_NONE &&
 				m == statistics->countermoves[get_from(lastmove)][get_to(lastmove)])
-				score += 1;
+				score += 15;
 
 			// bonus for avoiding the capture from the threat move (from null search)
-			if (threat != MOVE_NONE && get_to(threat) == get_from(m)) score += piece_vals[b.piece_on(from)] / 2;
+			if (threat != MOVE_NONE && get_to(threat) == get_from(m)) score += 1;// piece_vals[b.piece_on(from)] / 2;
 
-			// if previous bestmove attacks the from-sq, give a bonus for avoiding the capture/attack
+			//// if previous bestmove attacks the from-sq, give a bonus for avoiding the capture/attack
 			if (to_sq(lastmove) == from)
 			{
 				int diff = (piece_vals[b.piece_on(from)] - piece_vals[b.piece_on(to_sq(lastmove))]);
-				score += (diff < 0 ? -piece_vals[b.piece_on(from)] : piece_vals[b.piece_on(from)]);
+				score += (diff < 0 ? -1 : 1);//-piece_vals[b.piece_on(from)] : piece_vals[b.piece_on(from)]);
 			}
 
 			// check bonus
 			if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move())) && b.piece_on(from) > PAWN) 
 			{
-				score += 1; // keep small (many not dangerous moves satisfy criteria)			
+				score += 15; // keep small (many not dangerous moves satisfy criteria)			
 			}
 			if ((Globals::SquareBB[from] & b.checkers()) && b.is_dangerous(m, false)) score += 1;
 

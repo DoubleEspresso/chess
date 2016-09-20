@@ -188,11 +188,11 @@ namespace
 
 		score += (eval_squares<WHITE>(b, ei) - eval_squares<BLACK>(b, ei));
 
-		score += (eval_pieces<WHITE>(b, ei) - eval_pieces<BLACK>(b, ei));
+		score += (eval_pieces<WHITE>(b, ei) - eval_pieces<BLACK>(b, ei))*0.1;
 
-		score += (eval_space<WHITE>(b, ei) - eval_space<BLACK>(b, ei))*0.5;
+		score += (eval_space<WHITE>(b, ei) - eval_space<BLACK>(b, ei))*0.1;
 
-		score += (eval_center_pressure<WHITE>(b, ei) - eval_center_pressure<BLACK>(b, ei));
+		score += (eval_center_pressure<WHITE>(b, ei) - eval_center_pressure<BLACK>(b, ei))*0.1;
 
 		score += (eval_threats<WHITE>(b, ei) - eval_threats<BLACK>(b, ei)); 
 		
@@ -203,7 +203,7 @@ namespace
 		// nb. rescaling based on nb_pieces encourages trades at all times (each trade increases the scaling)
 		//float f = 110.0 * nb_pieces *(0.1 + 0.2 + 0.3);
 		//float scaling = f == 0 ? 1 : (280.0 / f); // usually around 0.6-0.8
-		//score *= 0.85;// 0.35;// 0.85;
+		score *= 0.85;// 0.35;// 0.85;
 		
 		//if (abs(score) - abs(ei.me->value) >= abs(ei.me->value)) score *= 0.65;
 		score += ei.me->value;
@@ -599,32 +599,32 @@ namespace
 			}
 		}
 
-		if (checkers != 0ULL)
-		{
-			int nb_checking = 0;
-			while (checkers)
-			{
-				score += ei.tempoBonus / 2;
-				++nb_checking;
-				int f = pop_lsb(checkers); int p = b.piece_on(f);
-				bool contact_check = (PseudoAttacksBB(KING, eks) & SquareBB[f]);
-				bool defended_check = (b.attackers_of(f) & b.colored_pieces(them));
-				//U64 other_attacks = PseudoAttacksBB(p, f) & b.colored_pieces(them);
-				if ((p == PAWN || p >= ROOK) && contact_check)
-				{
-					score += 170;
-					if (defended_check) score -= 25;
-					if (nb_safe == 0) score += 120;
-				}
-				if (p == KNIGHT || p == BISHOP)
-				{
-					score += 5;
-					if (nb_safe == 0) score += 70;
-				}
-				//if (other_attacks) score += 70;
-			}
-			if (nb_checking > 1) score += 80;
-		}
+		//if (checkers != 0ULL)
+		//{
+		//	int nb_checking = 0;
+		//	while (checkers)
+		//	{
+		//		score += ei.tempoBonus / 2;
+		//		++nb_checking;
+		//		int f = pop_lsb(checkers); int p = b.piece_on(f);
+		//		bool contact_check = (PseudoAttacksBB(KING, eks) & SquareBB[f]);
+		//		bool defended_check = (b.attackers_of(f) & b.colored_pieces(them));
+		//		U64 other_attacks = PseudoAttacksBB(p, f) & b.colored_pieces(them);
+		//		if ((p == PAWN || p >= ROOK) && contact_check)
+		//		{
+		//			score += 170;
+		//			if (defended_check) score -= 25;
+		//			if (nb_safe == 0) score += 120;
+		//		}
+		//		if (p == KNIGHT || p == BISHOP)
+		//		{
+		//			score += 5;
+		//			if (nb_safe == 0) score += 70;
+		//		}
+		//		if (other_attacks) score += 70;
+		//	}
+		//	if (nb_checking > 1) score += 80;
+		//}
 
 		// approximate mate detection
 		if (nb_safe <= 2 && defenders == 0ULL && nb_attackers >= 2)

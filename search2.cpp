@@ -199,7 +199,7 @@ namespace
 				}
 				else if (e.bound == BOUND_LOW && e.value >= beta)
 				{
-					statistics.update(b, ttm, lastmove, stack, depth, eval, quiets);
+					if (ttm != MOVE_NONE) statistics.update(b, ttm, lastmove, stack, depth, eval, quiets);
 					return e.value;
 				}
 				else if (e.bound == BOUND_HIGH  && e.value <= alpha) return  e.value;
@@ -413,7 +413,7 @@ namespace
 				//!givesCheck &&
 				!inCheck &&
 				//isQuiet &&
-				depth > 2) //(pv_node ? 4 : 6))
+				depth > (pv_node ? 6 : 4))
 			{
 				int R = Reduction(pv_node, improving, newdepth, moves_searched)/2;
 				int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];

@@ -156,7 +156,7 @@
     <ClCompile Include="bench.cpp" />
     <ClCompile Include="board.cpp" />
     <ClCompile Include="book.cpp" />
-    <ClCompile Include="evaluate2.cpp" />
+    <ClCompile Include="evaluate.cpp" />
     <ClCompile Include="globals.cpp" />
     <ClCompile Include="hashtable.cpp" />
     <ClCompile Include="magic.cpp" />
