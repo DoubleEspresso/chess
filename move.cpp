@@ -176,7 +176,6 @@ MoveList * MoveGenerator::generate_piece_moves(Board& b, MoveType mt)
 	int  stm = b.whos_move();
 	U64  enemies = b.colored_pieces(stm == WHITE ? BLACK : WHITE);
 	U64  mask = b.all_pieces();
-
 	U64  empty = ~mask;
 
 	// the knights
@@ -511,7 +510,6 @@ MoveList* MoveGenerator::generate_pseudo_legal(Board& b, MoveType mt)
 	{
 		legal_i[i] = i;
 	}
-
 	return list;
 }
 
@@ -591,16 +589,8 @@ MoveList* MoveGenerator::generate_qsearch_mvs(Board& b, MoveType mt, bool genChe
 	}
 	else
 	{
-		if (b.phase() == MIDDLE_GAME)
-		{
-			generate_piece_moves(b, mt);
-			generate_pawn_moves(b, mt);
-		}
-		else
-		{
-			generate_pawn_moves(b, mt);
-			generate_piece_moves(b, mt);
-		}
+	  generate_piece_moves(b, mt);
+	  generate_pawn_moves(b, mt);	  
 	}
 
 	// mark all moves as legal

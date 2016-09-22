@@ -102,7 +102,7 @@ namespace Search
 		{
 			if (UCI_SIGNALS.stop) break; hash_hits = 0;
 			//else if (UCI_SIGNALS.timesUp) checkMoreTime(b, stack + 2);
-			//statistics.clear(); // move ordering of quiet moves
+			statistics.clear(); // move ordering of quiet moves
 			eval = search<ROOT>(b, alpha, beta, depth, stack + 2);
 			iter_depth++;
 
@@ -125,7 +125,7 @@ namespace
 {
 	int Reduction(bool pv_node, bool improving, int d, int mc)
 	{
-	  return Globals::SearchReductions[(int)pv_node][(int)improving][min(d, 63)][min(mc, 63)];
+	  return Globals::SearchReductions[(int)pv_node][(int)improving][std::min(d, 63)][std::min(mc, 63)];
 	}
 
 	template<NodeType type>
@@ -174,11 +174,11 @@ namespace
 
 		// 1. -- mate distance pruning    
 		int mate_val = INF - mate_dist;
-		beta = min(mate_val, beta);
+		beta = std::min(mate_val, beta);
 		if (alpha >= mate_val) return mate_val;
 
 		int mated_val = NINF + mate_dist;
-		alpha = max(mated_val, alpha);
+		alpha = std::max(mated_val, alpha);
 		if (beta <= mated_val) return mated_val;
 
 		// 2. -- ttable lookup 
@@ -274,25 +274,26 @@ namespace
 
 		// 7. -- probcut from stockfish
 		if (!pv_node &&
-			depth >= 600 && !b.in_check() &&
-			!stack->isNullSearch &&
-			movetype((stack - 1)->bestmove) == CAPTURE)
-		{
+		    depth >= 6 && 
+		    !b.in_check() &&
+		    !stack->isNullSearch &&
+		    movetype((stack - 1)->currmove) == CAPTURE)
+		  {
 			BoardData pd;
-			MoveSelect ms(statistics, Probcut);
+			MoveSelect ms(statistics, QsearchCaptures, false); // no checks just captures
 			U16 move;
-			int rbeta = beta + 400;
+			int rbeta = beta + 620;
 			int rdepth = depth - 2;
 			while (ms.nextmove(b, stack, ttm, move, false))
 			{
+			  if (!b.is_legal(move)) continue;
 				b.do_move(pd, move);
 				stack->currmove = move;
 				eval = -search<NONPV>(b, -rbeta, -rbeta + 1, rdepth, stack + 1);
 				b.undo_move(move);
 				if (eval >= rbeta)
 				{
-					printf("probcut prune\n");
-					return beta;
+				  return beta;
 				}
 			}
 		}
@@ -442,7 +443,7 @@ namespace
 			// record move scores/evals
 			if (eval >= beta)
 			{
-				if (isQuiet)
+			  if (isQuiet)
 				{
 					if (quiets_searched < MAXDEPTH - 1)
 					{
