@@ -102,7 +102,7 @@ namespace Search
 		{
 			if (UCI_SIGNALS.stop) break; hash_hits = 0;
 			//else if (UCI_SIGNALS.timesUp) checkMoreTime(b, stack + 2);
-			statistics.clear(); // move ordering of quiet moves
+			//statistics.clear(); // move ordering of quiet moves
 			eval = search<ROOT>(b, alpha, beta, depth, stack + 2);
 			iter_depth++;
 
@@ -413,7 +413,7 @@ namespace
 				//!givesCheck &&
 				!inCheck &&
 				//isQuiet &&
-				depth > (pv_node ? 6 : 4))
+				depth > (pv_node ? 4 : 2))
 			{
 				int R = Reduction(pv_node, improving, newdepth, moves_searched)/2;
 				int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];

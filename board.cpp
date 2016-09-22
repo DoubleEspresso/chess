@@ -523,7 +523,7 @@ bool Board::is_quiet(U16& move)
 bool Board::is_qsearch_mv(U16& move)
 {
 	int mt = ((move & 0xf000) >> 12);
-	return (mt == EP || mt == CAPTURE || mt <= PROMOTION || (mt > PROMOTION && mt <= PROMOTION_CAP));
+	return mt != MOVE_NONE && (mt == EP || mt == CAPTURE || mt <= PROMOTION || (mt > PROMOTION && mt <= PROMOTION_CAP));
 }
 // note: this is meant to test if a "random" move is legal given a legal position
 bool Board::is_legal(U16& move)
@@ -891,7 +891,6 @@ int Board::smallest_attacker(int sq, int color, int& from)
 // to determine the safety of the "to-square".
 int Board::see_move(U16& move)
 {
-
 	int square = get_to(move);
 	int value = material.material_value(piece_on(square), phase());
 
@@ -905,7 +904,7 @@ int Board::see_move(U16& move)
 
 // note: standard method to return a score based on the "most reasonable"
 // capturing order at a given square.  Negative values imply the capture is losing, positive imply 
-// winning.
+// winning (for side on the move).
 int Board::see(int to)
 {
 	int value = 0;
@@ -917,19 +916,14 @@ int Board::see(int to)
 	// return if no more attacking pieces
 	if (piece >= 0)
 	{
-		// build move
 		U16 m = MOVE_NONE;
 		int val = 0;
-
 		m = (from | (to << 6) | (CAPTURE << 12));
 		val = material.material_value(piece_on(to), phase());
 
 		BoardData pd;
 		do_move(pd, m);
-
 		value = val - see(to);
-		//std::cout << " see mv " << UCI::move_to_string(m) << " value " << value << std::endl;
-
 		undo_move(m);
 	}
 	return value;

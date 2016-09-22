@@ -16,7 +16,7 @@
 struct {
 	bool operator()(const MoveList& x, const MoveList& y)
 	{
-		return x.score > y.score;
+		return x.score >= y.score;
 	}
 } GreaterThan;
 
@@ -150,16 +150,15 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 			if0(mt == EP)
 			{
 				captures[c_sz++].score = score;
-				continue;
+				//continue;
 			}
-
-			score = piece_vals[b.piece_on(to)] - piece_vals[b.piece_on(from)];
-			if (score <= 0 && b.is_legal(m)) score = b.see_move(m);
+			else if (b.is_legal(m)) score = b.see_move(m);
+			else continue;
 
 			// check bonus
 			if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move()) && b.is_dangerous(m, b.piece_on(from)))) 
 			  {
-			    score += 225; // almost always a good move
+			    score += 25; // almost always a good move
 			  }
 			if ((Globals::SquareBB[from] & b.checkers()) && b.dangerous_check(m, false)) score += 15;
 
@@ -176,9 +175,9 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 			// countermove bonus
 			if (lastmove != MOVE_NONE &&
 				m == statistics->countermoves[get_from(lastmove)][get_to(lastmove)])
-				score += 15;
+				score += 25;
 
-			// bonus for avoiding the capture from the threat move (from null search)
+			//// bonus for avoiding the capture from the threat move (from null search)
 			if (threat != MOVE_NONE && get_to(threat) == get_from(m)) score += 1;// piece_vals[b.piece_on(from)] / 2;
 
 			//// if previous bestmove attacks the from-sq, give a bonus for avoiding the capture/attack
@@ -199,9 +198,9 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 			//if (mt <= PROMOTION) score += piece_vals[type];
 
 			// square score based ordering if score is unchanged.
-			//if (score == (NINF - 1)) score += (square_score(b.whos_move(), p, b.phase(), to) - square_score(b.whos_move(), p, b.phase(), from));
+			//if (score <= (NINF - 1)) score += (square_score(b.whos_move(), p, b.phase(), to) - square_score(b.whos_move(), p, b.phase(), from));
 			
-			quiets[q_sz++].score = score;
+			quiets[q_sz++].score = score;// (score < NINF - 1 ? NINF - 1 : score);
 		}
 	}
 
