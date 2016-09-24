@@ -892,13 +892,13 @@ int Board::smallest_attacker(int sq, int color, int& from)
 int Board::see_move(U16& move)
 {
 	int square = get_to(move);
-	int value = material.material_value(piece_on(square), phase());
+	int p = piece_on(square);
+	int value = (p != PIECE_NONE ? material.material_value(p, phase()) : 0);
 
 	BoardData pd;
 	do_move(pd, move);
 	value += (-see(square));
 	undo_move(move);
-
 	return value;
 }
 

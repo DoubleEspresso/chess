@@ -264,7 +264,8 @@ void UCI::uci_command(std::string cmd, int& GAME_OVER)
 	  timer_thread->search_limits = &limits;
 
 	  ROOT_BOARD = b;
-	  ROOT_DEPTH = (limits.depth == 0 ? 64 : limits.depth);
+	  ROOT_DEPTH = (limits.depth == 0 ? MAXDEPTH : limits.depth);
+	  ROOT_DEPTH = (ROOT_DEPTH > MAXDEPTH ? MAXDEPTH : ROOT_DEPTH <= 0 ? MAXDEPTH : ROOT_DEPTH);
 	  UCI_SIGNALS.stop = false;
 	  Threads.start_thinking(ROOT_BOARD);
 	}

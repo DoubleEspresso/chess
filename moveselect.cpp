@@ -70,11 +70,11 @@ void MoveStats::update(Board& b, U16& m, U16& last, Node* stack, int d, int eval
 	}
 
 	// mate killers
-	//if (type == QUIET && eval >= MATE_IN_MAXPLY && m != stack->killer[2])
-	//{
-	//	stack->killer[3] = stack->killer[2];
-	//	stack->killer[2] = m;
-	//}
+	if (eval >= MATE_IN_MAXPLY && m != stack->killer[2])
+	{
+		stack->killer[3] = stack->killer[2];
+		stack->killer[2] = m;
+	}
 }
 
 // dbg print movelist -- deprecated
@@ -127,8 +127,8 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 {
 	U16 killer1 = stack->killer[0];
 	U16 killer2 = stack->killer[1];
-	//U16 mate1 = stack->killer[2];  
-	//U16 mate2 = stack->killer[3];
+	U16 mate1 = stack->killer[2];  
+	U16 mate2 = stack->killer[3];
 	U16 lastmove = (stack - 1)->currmove;
 	U16 threat = stack->threat;
 	bool inCheck = b.in_check();
@@ -142,7 +142,7 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 		int p = b.piece_on(to);
 
 		if (m == ttm) continue;
-		if (m == killer1 || m == killer2) continue;// || m == mate1 || m == mate2) continue; 
+		if (m == killer1 || m == killer2 || m == mate1 || m == mate2) continue; 
 
 		// build capture list -- evasions include quiet moves (fyi)
 		if (movetype == CAPTURE &&
@@ -154,7 +154,7 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 			if0(mt == EP)
 			{
 				captures[c_sz++].score = score;
-				//continue;
+				continue;
 			}
 			else if (b.is_legal(m)) score = b.see_move(m);
 			else continue;
@@ -179,22 +179,22 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 			// countermove bonus
 			if (lastmove != MOVE_NONE &&
 				m == statistics->countermoves[get_from(lastmove)][get_to(lastmove)])
-				score += 1;
+				score += 10;
 
 			// bonus for avoiding the capture from the threat move (from null search)
-			if (threat != MOVE_NONE && get_to(threat) == get_from(m)) score += 1;// piece_vals[b.piece_on(from)] / 2;
+			if (threat != MOVE_NONE && get_to(threat) == from) score += 1; //piece_vals[b.piece_on(from)] / 2;
 
-			// if previous bestmove attacks the from-sq, give a bonus for avoiding the capture/attack
+			// if previous bestmove attacks the from-sq, give a bonus for avoiding the capture/attack			
 			if (to_sq(lastmove) == from)
 			{
-				int diff = (piece_vals[b.piece_on(from)] - piece_vals[b.piece_on(to_sq(lastmove))]);
-				score += (diff < 0 ? -1 : 1);//-piece_vals[b.piece_on(from)] : piece_vals[b.piece_on(from)]);
+			  int diff = (piece_vals[b.piece_on(from)] - piece_vals[b.piece_on(to_sq(lastmove))]);
+			  score += (diff < 0 ? -1 : 1);//-piece_vals[b.piece_on(from)] : piece_vals[b.piece_on(from)]);
 			}
 
 			// check bonus
 			if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move())) && b.piece_on(from) > PAWN) 
 			{
-				score += 1; // keep small (many not dangerous moves satisfy criteria)			
+			  	score += 1; // keep small (many not dangerous moves satisfy criteria)			
 			}
 			if ((Globals::SquareBB[from] & b.checkers()) && b.is_dangerous(m, false)) score += 1;
 
@@ -202,7 +202,12 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 			//if (mt <= PROMOTION) score += 1;//piece_vals[type];
 
 			// square score based ordering if score is unchanged.
-			//if (score <= (NINF - 1)) score += (square_score(b.whos_move(), p, b.phase(), to) - square_score(b.whos_move(), p, b.phase(), from));
+			if (score <= (NINF - 1)) 
+			  {
+			    if (Globals::SquareBB[from] && b.checkers()) score += 1;
+			    score += b.see_move(m);
+			    score += (square_score(b.whos_move(), p, b.phase(), to) - square_score(b.whos_move(), p, b.phase(), from))*0.1;
+			  }
 			//printf("score=%d, q_sz=%d\n",score, q_sz);
 			quiets[q_sz++].score = score;// (score < NINF - 1 ? NINF - 1 : score);
 		}

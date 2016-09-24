@@ -40,8 +40,8 @@
 #define INF 9999
 #define NINF -9999
 #define VAL_NONE 10000
-#define MATE_VAL 9998
-#define MATED_VAL -9998
+#define MATE_VAL 9999
+#define MATED_VAL -9999
 #define DRAW 0
 #define MAXDEPTH 32
 #define MAXPLY 64

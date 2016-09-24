@@ -63,35 +63,30 @@ namespace
 		{ 5,4,3,2,1 },
 		{ 5,4,3,2,1 }
 	};
-	int AttackBonus[2][5][6] =
-	{
-		{
-			// pawn, knight, bishop, rook, queen, king
-			{ 2, 6, 7, 9, 11, 13 },  // pawn attcks mg
-			{ 1, 2, 3, 7, 9, 11 },  // knight attcks mg
-			{ 1, 1, 2, 6, 9, 11 },   // bishop attcks mg
-			{ 1, 1, 1, 2, 4, 11 },    // rook attcks mg
-			{ 1, 1, 1, 2, 3, 11 },    // queen attcks mg
-		},
-		{
-			// pawn, knight, bishop, rook, queen, king
-			{ 2, 4, 5, 7, 9, 11 },  // pawn attcks eg
-			{ 1, 2, 3, 7, 9, 11 },  // knight attcks eg
-			{ 1, 1, 2, 6, 9, 11 },   // bishop attcks eg
-			{ 1, 1, 1, 2, 4, 11 },    // rook attcks eg
-			{ 1, 1, 1, 2, 3, 11 },    // queen attcks eg
-		}
-	};
-	int OpenPositionBonus[2][6] =
-	{
-		// pawn, knight, bishop, rook, queen, king
-		{ 0, 1, 12, 15, 20, 0 }, // mg
-		{ 0, 5, 15, 25, 30, 4 } // eg
-	};
-	int KingExposureBonus[2] = { 5, 2 };
-	int CastleBonus[2] = { 2, 1 };
-	int SpaceBonus[2] = { 2, 1 };
-
+  int AttackBonus[2][5][6] =
+    {
+      {
+	// pawn, knight, bishop, rook, queen, king
+	{ 2, 6, 7, 9, 11, 13 },  // pawn attcks mg
+	{ 1, 2, 3, 7, 9, 11 },  // knight attcks mg
+	{ 1, 1, 2, 6, 9, 11 },   // bishop attcks mg
+	{ 1, 1, 1, 2, 4, 11 },    // rook attcks mg
+	{ 1, 1, 1, 2, 3, 11 },    // queen attcks mg
+      },
+      {
+	// pawn, knight, bishop, rook, queen, king
+	{ 2, 4, 5, 7, 9, 11 },  // pawn attcks eg
+	{ 1, 2, 3, 7, 9, 11 },  // knight attcks eg
+	{ 1, 1, 2, 6, 9, 11 },   // bishop attcks eg
+	{ 1, 1, 1, 2, 4, 11 },    // rook attcks eg
+	{ 1, 1, 1, 2, 3, 11 },    // queen attcks eg
+      }
+    };
+  
+  int KingExposureBonus[2] = { 5, 2 };
+  int CastleBonus[2] = { 2, 1 };
+  int SpaceBonus[2] = { 2, 1 };
+  
 	/* main evaluation methods */
 	int eval(Board& b);
 	void traceout(EvalInfo& e);
@@ -118,7 +113,7 @@ namespace
 	int eval(Board &b)
 	{
 		EvalInfo ei;
-		ei.tempoBonus = 16;
+		ei.tempoBonus = 8;//16;
 		ei.stm = b.whos_move();
 		ei.me = material.get(b);
 		ei.phase = ei.me->game_phase;
@@ -217,12 +212,8 @@ namespace
 		int them = (c == WHITE ? BLACK : WHITE);
 		U64 pinned = (c == WHITE ? ei.w_pinned : ei.b_pinned);
 
-
 		for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
 		{
-			// knight mobility
-			// 1. how many "safe" empty squares does it see
-			// 2. is it pinned?
 			U64 mobility = 0ULL;
 
 			if ((SquareBB[from] & pinned)) score -= ei.tempoBonus / 2;
@@ -241,14 +232,16 @@ namespace
 			}
 
 			// knight attacks weighted by game phase, and piece being attacked.
-			U64 attacks = PseudoAttacksBB(KNIGHT, from) & ei.pe->undefended[c == WHITE ? BLACK : WHITE];//(c == WHITE ? ei.black_pieces : ei.white_pieces);
+			//U64 attacks = PseudoAttacksBB(KNIGHT, from) & ei.pe->undefended[c == WHITE ? BLACK : WHITE];//(c == WHITE ? ei.black_pieces : ei.white_pieces);
+			
+			U64 attacks = PseudoAttacksBB(KNIGHT,from) & (c == WHITE ? ei.black_pieces:ei.white_pieces);//ei.pe->undefended[c == WHITE ? BLACK : WHITE];//(c == WHITE ? ei.black_pieces : ei.white_pieces);
 			while (attacks)
 			{
 				int to = pop_lsb(attacks);
 				int p = b.piece_on(to);
 				score += int(AttackBonus[ei.phase][KNIGHT][p]); // already weighted by game phase.
 			}
-
+			
 			// does the position favor a knight? since ei.position_type is not very precise
 			// we do not penalize for having a knight in an open position
 			//if (pawn_cnt >= 13 && ei.position_type == POSITION_CLOSED) score += Value( 50 );
@@ -269,12 +262,12 @@ namespace
 			if ((c == WHITE ? ROW(from) >= ROW3 : ROW(from) <= ROW6))
 			{
 				U64 outpost = (mobility | SquareBB[from]) & (c == WHITE ? ei.pe->attacks[WHITE] : ei.pe->attacks[BLACK]) & blockade;
-				score += 1;//count(outpost);
+				if (outpost) score += 1;//count(outpost);
 			}
 
 			// evaluate threats to king 
 			U64 king_threats = PseudoAttacksBB(KNIGHT, from) & KingSafetyBB[them][(them == BLACK ? ei.black_ks : ei.white_ks)];
-			if (king_threats) score += 2;//threats_to_king_weights[ei.phase][KNIGHT] * count(king_threats);
+			if (king_threats) score += count(king_threats);//threats_to_king_weights[ei.phase][KNIGHT] * count(king_threats);
 
 
 			// evaluate the connected-ness of this piece (how many friendly pieces attack it)
@@ -342,14 +335,16 @@ namespace
 			// 3. sum attack bonus (all pieces (excluding pawns) the bishop is attacking).		
 
 			// bishop attacks weighted by game phase, and piece being attacked (pawns removed (?))
-			U64 attacks = mvs & ei.pe->undefended[c == WHITE ? BLACK : WHITE];//(c == WHITE ? ei.black_pieces : ei.white_pieces);
+			//U64 attacks = mvs & ei.pe->undefended[c == WHITE ? BLACK : WHITE];//(c == WHITE ? ei.black_pieces : ei.white_pieces);
+			
+			U64 attacks = mvs & (c == WHITE ? ei.black_pieces:ei.white_pieces);//ei.pe->undefended[c == WHITE ? BLACK : WHITE];//(c == WHITE ? ei.black_pieces : ei.white_pieces);
 			while (attacks)
 			{
 				int to = pop_lsb(attacks);
 				int p = b.piece_on(to);
 				score += int(AttackBonus[ei.phase][BISHOP][p]);
 			}
-
+			
 			////////////////////////////////////////////////////////////////////////
 			// positional bonuses for this pieces
 			// 1. open center, with not many pawns in the position
@@ -377,7 +372,7 @@ namespace
 
 			//// threats to king 
 			U64 king_threats = mvs & PseudoAttacksBB(KING, (them == BLACK ? ei.black_ks : ei.white_ks));
-			if (king_threats) score += 1;//threats_to_king_weights[ei.phase][BISHOP] *count(king_threats);
+			if (king_threats) score += count(king_threats);//threats_to_king_weights[ei.phase][BISHOP] *count(king_threats);
 
 			// connected-ness of this piece (how many friendly pieces attack it)
 			// needs to be weighted by game phase (attacking pawns in endgame is good!)
@@ -432,13 +427,16 @@ namespace
 			if (attackers) score -= ei.tempoBonus / 2;
 
 			// rook attacks, weighted by game phase	
-			U64 attacks = mvs & ei.pe->undefended[c == WHITE ? BLACK : WHITE];//(c == WHITE ? ei.black_pieces : ei.white_pieces);
+			
+			U64 attacks = mvs & (c == WHITE ? ei.black_pieces:ei.white_pieces);//ei.pe->undefended[c == WHITE ? BLACK : WHITE];//(c == WHITE ? ei.black_pieces : ei.white_pieces);
+			//U64 attacks = mvs & ei.pe->undefended[c == WHITE ? BLACK : WHITE];//(c == WHITE ? ei.black_pieces : ei.white_pieces);
 			while (attacks)
 			{
 				int to = pop_lsb(attacks);
 				int p = b.piece_on(to);
 				score += int(AttackBonus[ei.phase][ROOK][p]);
 			}
+			
 
 			// open file bonus for the rook
 			U64 file_closed = ColBB[COL(from)] & pawns;
@@ -447,7 +445,7 @@ namespace
 			if (SquareBB[from] & rank7) score += 1;//int(rank7_bonus[ei.phase]); 
 
 			U64 king_threats = mvs & KingSafetyBB[them][(them == BLACK ? ei.black_ks : ei.white_ks)];
-			if (king_threats) score += 1;//threats_to_king_weights[ei.phase][ROOK];// *count(king_threats);
+			if (king_threats) score += count(king_threats);//threats_to_king_weights[ei.phase][ROOK];// *count(king_threats);
 
 			// evaluate the connected-ness of this piece (how many friendly pieces attack it)
 			// needs to be weighted by game phase (attacking pawns in endgame is good!)
@@ -496,16 +494,17 @@ namespace
 			if (attackers) score -= ei.tempoBonus / 2;
 
 			// queen attacks, weighted by game phase
-			U64 attacks = mvs & ei.pe->undefended[c == WHITE ? BLACK : WHITE];//(c == WHITE ? ei.black_pieces : ei.white_pieces);
+			
+			U64 attacks = mvs & (c == WHITE ? ei.black_pieces:ei.white_pieces);//ei.pe->undefended[c == WHITE ? BLACK : WHITE];//(c == WHITE ? ei.black_pieces : ei.white_pieces);
 			while (attacks)
 			{
 				int to = pop_lsb(attacks);
 				int p = b.piece_on(to);
 				score += int(AttackBonus[ei.phase][QUEEN][p]);
 			}
-
+			
 			U64 king_threats = mvs & KingSafetyBB[them][(them == BLACK ? ei.black_ks : ei.white_ks)];
-			if (king_threats) score += 1;//threats_to_king_weights[ei.phase][QUEEN];
+			if (king_threats) score += count(king_threats);//threats_to_king_weights[ei.phase][QUEEN];
 
 			// evaluate the connected-ness of this piece (how many friendly pieces attack it)
 			// needs to be weighted by game phase (attacking pawns in endgame is good!)
@@ -531,7 +530,7 @@ namespace
 
 		U64 mask = ei.all_pieces;
 		bool castled = b.is_castled(c);
-
+		
 		U64 enemy_bishops = (c == WHITE ? b.get_pieces(BLACK, BISHOP) : b.get_pieces(WHITE, BISHOP));
 		U64 enemy_rooks = (c == WHITE ? b.get_pieces(BLACK, ROOK) : b.get_pieces(WHITE, ROOK));
 		U64 enemy_queens = (c == WHITE ? b.get_pieces(BLACK, QUEEN) : b.get_pieces(WHITE, QUEEN));
@@ -539,30 +538,42 @@ namespace
 
 		// king safety
 		U64 mobility = PseudoAttacksBB(KING, from) & (ei.empty | b.colored_pieces(them));
+		U64 local_attackers = KingSafetyBB[c][from] & b.colored_pieces(them);
 		U64 sliders = (enemy_bishops | enemy_rooks | enemy_queens);
+		int nb_safe = 0; int nb_attackers = 0;
 		while (mobility)
-		{
-			int ksquare = pop_lsb(mobility);
-			U64 attackers = b.attackers_of(ksquare) & b.colored_pieces(c == WHITE ? BLACK : WHITE);
-			if (attackers)
-			{
-				// could be a mate threat .. make equal to roughly 1/2 pawn ?
-				if (more_than_one(attackers))
-				{
-					score -= 50;
-					if (attackers & enemy_queens) score -= 50;
-					if (attackers & enemy_rooks) score -= 25;
-					if (attackers & enemy_knights) score -= 25;
-					if (attackers & enemy_bishops) score -= 25;
-				}
-				score -= count(attackers);
-			}
-		}
-
+		  {
+		    int to = pop_lsb(mobility);
+		    U64 attackers = b.attackers_of(to) & b.colored_pieces(c == WHITE ? BLACK : WHITE);
+		    bool empty = b.piece_on(to) == PIECE_NONE;
+		    if (attackers)
+		      {
+			if (attackers & their_pawns) score -= 35;//35;
+			if (attackers & enemy_queens) score -= 50;//50;
+			if (attackers & enemy_rooks) score -= 20;//25;
+			if (attackers & enemy_knights) score -= 15;//25;
+			if (attackers & enemy_bishops) score -= 15;//25;
+			++nb_attackers;
+			if (more_than_one(attackers)) score -= 20; 
+		      }		    
+		    else if (empty)
+		      {
+			score += 1;
+			++nb_safe;
+		      }			  		    
+		  }
+		
+		if (nb_safe <= 1 && nb_attackers >= 1) 
+		  {
+		    score -= 20;
+		    if (local_attackers) score -= 10;
+		    if (nb_safe <= 0) score -= 10;
+		  }
+		
 		// we almost never want the king in the corner during an endgame
-		if ((from == A1 || from == A8 || from == H8 || from == H1) && ei.phase == ENDGAME) score -= KingExposureBonus[ei.phase];
+		//if ((from == A1 || from == A8 || from == H8 || from == H1) && ei.phase == ENDGAME) score -= KingExposureBonus[ei.phase];
 		//U64 tmp = ei.pe->attacks[them];
-			//if (tmp)
+		//if (tmp)
 			//{
 			//	if (tmp & SquareBB[from]) score -= ei.tempoBonus;
 			//	U64 bm = mobility & tmp;
@@ -572,16 +583,16 @@ namespace
 
 		// pawn cover around king -- based on game phase
 		if (ei.phase == MIDDLE_GAME)
-		{
-			U64 pawn_cover = KingSafetyBB[c][from] & our_pawns;
-			if (pawn_cover) score += count(pawn_cover);
-		}
-
+		  {
+		    U64 pawn_cover = KingSafetyBB[c][from] & our_pawns;
+		    if (pawn_cover) score += count(pawn_cover);
+		  }
+		
 		// piece cover around king
 		U64 piece_cover = KingSafetyBB[c][from] & (c == WHITE ? ei.white_pieces : ei.black_pieces);
 		if (piece_cover) score += 1;//count(piece_cover);
-
-
+		
+		
 		// check if castled (not perfect) -- favors "faster" castling not necessarily "safer" castling
 		// better to give bonuses for rook-connectedness and pawn/piece cover so it discovers safe castle 
 		// positions on its own .. how to implement?

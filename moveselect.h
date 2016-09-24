@@ -36,11 +36,10 @@ struct MoveStats
 	}
 };
 
-
 enum SearchType { Probcut, MainSearch, QsearchCaptures, QsearchChecks, QsearchEvasions };
 
 enum Phase {
-	HashMove, MateKiller1, MateKiller2, GoodCaptures,
+        HashMove, MateKiller1, MateKiller2, GoodCaptures,
 	Killer1, Killer2, BadCaptures, Quiet, End
 };
 

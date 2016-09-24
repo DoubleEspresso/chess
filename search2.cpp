@@ -125,7 +125,7 @@ namespace
 {
 	int Reduction(bool pv_node, bool improving, int d, int mc)
 	{
-	  return Globals::SearchReductions[(int)pv_node][(int)improving][std::min(d, 63)][std::min(mc, 63)];
+	  return Globals::SearchReductions[(int)pv_node][(int)improving][std::max(0,std::min(d, MAXDEPTH-1))][std::max(0,std::min(mc, MAXDEPTH-1))];
 	}
 
 	template<NodeType type>
@@ -206,8 +206,8 @@ namespace
 		}
 
 		// 3. -- static evaluation of position    
-		int static_eval = Eval::evaluate(b);
-		//int static_eval = (ttvalue > NINF ? ttvalue : Eval::evaluate(b));
+		//int static_eval = Eval::evaluate(b);
+		int static_eval = (ttvalue > NINF ? ttvalue : Eval::evaluate(b));
 		//int static_eval = (ttvalue > NINF ? ttvalue : ttstatic_value > NINF ? ttstatic_value : Eval::evaluate(b));
 
 		// 4. -- drop into qsearch if we are losing
@@ -232,23 +232,24 @@ namespace
 
 		// 5. -- futility pruning
 		if (depth <= 6 &&
-			!pv_node && !b.in_check() &&
-			!stack->isNullSearch &&
-			static_eval - 200 * depth >= beta &&
-			beta < INF - mate_dist &&
-			b.non_pawn_material(b.whos_move()))
+		    !pv_node && 
+		    !b.in_check() &&
+		    !stack->isNullSearch &&
+		    static_eval - 200 * depth >= beta &&
+		    beta < INF - mate_dist &&
+		    b.non_pawn_material(b.whos_move()))
 		{
-			return beta; // fail hard
+		  return beta; // fail hard
 		}
 
 		// 6. -- null move search    
 		if (!pv_node &&
-			depth >= 2 &&
-			!stack->isNullSearch &&
-			static_eval >= beta &&
-			!b.in_check() &&
-			b.non_pawn_material(b.whos_move()))
-		{
+		    depth >= 2 &&
+		    !stack->isNullSearch &&
+		    static_eval >= beta &&
+		    !b.in_check() &&
+		    b.non_pawn_material(b.whos_move()))
+		  {
 			int R = (depth >= 8 ? depth / 2 : 2);
 			BoardData pd;
 
@@ -258,19 +259,21 @@ namespace
 			b.undo_null_move();
 			(stack + 1)->isNullSearch = false;
 
-			if (null_eval >= beta) return beta;
-
+			if (null_eval >= beta) 
+			  {
+			    return beta;
+			  }
 			// the null move search failed low - which means we may be faced with threat ..
 			// record the "to" square and record the move as a possible threat (bonus to those moves attack/evading to square)			
-			if ((stack + 1)->bestmove != MOVE_NONE &&
-				!b.is_quiet((stack + 1)->bestmove) &&
-				null_eval < alpha &&
-				null_eval > NINF + stack->ply)
-			{
-				stack->threat = (stack + 1)->bestmove;
-				stack->threat_gain = null_eval - static_eval;
-			}
-		}
+			if ((stack + 1)->currmove != MOVE_NONE &&
+			    //!b.is_quiet((stack + 1)->currmove) &&
+			    //null_eval < beta &&
+			    null_eval > NINF + mate_dist)
+			  {
+			    stack->threat = (stack + 1)->currmove;
+			    stack->threat_gain = null_eval - static_eval;
+			  }
+		  }
 
 		// 7. -- probcut from stockfish
 		if (!pv_node &&
@@ -386,20 +389,21 @@ namespace
 
 			// exchange pruning at shallow depths - same thing done in qsearch...			
 			// note - leave commented (king related tactics are missed when uncommented)
-			//if (newdepth <= 1 &&
-			//    !inCheck && 
-			//    !givesCheck && 
-			//    !pv_node &&
-			//    move != ttm &&
-			//    move != stack->killer[0] &&
-			//    move != stack->killer[1] &&
-			//    //eval <= alpha && 
-			//    b.see_move(move) < 0)
-			//  {
-			//    ++pruned;
-			//    continue;
-			//  }
-			
+			/*
+			if (depth <= 1 &&
+			    !inCheck && 
+			    !givesCheck && 
+			    //!pv_node &&
+			    move != ttm &&
+			    move != stack->killer[0] &&
+			    move != stack->killer[1] &&
+			    //eval <= alpha && 
+			    b.see_move(move) < 0)
+			  {
+			    ++pruned;
+			    continue;
+			  }
+			*/
 			b.do_move(pd, move);
 
 			// stack updates
@@ -411,59 +415,59 @@ namespace
 			    move != ttm &&
 			    move != stack->killer[0] &&
 			    move != stack->killer[1] && 
-				//!givesCheck &&
-				!inCheck &&
-				//isQuiet &&
-				depth > (pv_node ? 4 : 2))
-			{
-				int R = Reduction(pv_node, improving, newdepth, moves_searched)/2;
-				int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];
-				if (v <= (NINF - 1)) R += 1;
-				int LMR = newdepth - R;
-				eval = (LMR <= 1 ? -qsearch<NONPV>(b, -alpha - 1, -alpha, 0, stack + 1, givesCheck) : -search<NONPV>(b, -alpha - 1, -alpha, LMR, stack + 1));
-
-				if (eval > alpha) fulldepthSearch = true;
-			}
+			    //!givesCheck &&
+			    !inCheck &&
+			    //isQuiet &&
+			    depth > (pv_node ? 4 : 2))
+			  {
+			    int R = Reduction(pv_node, improving, newdepth, moves_searched)/2;
+			    int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];
+			    if (v <= (NINF - 1)) R += 1;
+			    int LMR = newdepth - R;
+			    eval = (LMR <= 1 ? -qsearch<NONPV>(b, -alpha - 1, -alpha, 0, stack + 1, givesCheck) : -search<NONPV>(b, -alpha - 1, -alpha, LMR, stack + 1));
+			    if (eval > alpha) fulldepthSearch = true;
+			  }
 			else fulldepthSearch = !pvMove;
-
+			
 			if (fulldepthSearch)
-			{
-				eval = (newdepth <= 1 ? -qsearch<NONPV>(b, -alpha - 1, -alpha, 0, stack + 1, givesCheck) : -search<NONPV>(b, -alpha - 1, -alpha, newdepth, stack + 1));
-			}
-
+			  {
+			    eval = (newdepth <= 1 ? -qsearch<NONPV>(b, -alpha - 1, -alpha, 0, stack + 1, givesCheck) : -search<NONPV>(b, -alpha - 1, -alpha, newdepth, stack + 1));
+			  }
+			
 			if (pvMove || eval > alpha)
-			{
-				eval = (newdepth <= 1 ? -qsearch<PV>(b, -beta, -alpha, 0, stack + 1, givesCheck) : -search<PV>(b, -beta, -alpha, newdepth, stack + 1));
-			}
-
+			  {
+			    eval = (newdepth <= 1 ? -qsearch<PV>(b, -beta, -alpha, 0, stack + 1, givesCheck) : -search<PV>(b, -beta, -alpha, newdepth, stack + 1));
+			  }
+			
 			b.undo_move(move);
 			moves_searched++;
 			if (UCI_SIGNALS.stop) return DRAW;
-
+			
 			// record move scores/evals
 			if (eval >= beta)
-			{
-			  if (isQuiet)
-				{
-					if (quiets_searched < MAXDEPTH - 1)
-					{
-						quiets[quiets_searched++] = move;
-						quiets[quiets_searched] = MOVE_NONE;
-					}
-					statistics.update(b, move, lastmove, stack, depth, adjust_score(eval, mate_dist), quiets);
-				}
-				hashTable.store(key, data, depth, BOUND_LOW, move, adjust_score(beta, mate_dist), static_eval, pv_node);
-				return beta;
-			}
+			  {
+			    if (isQuiet)
+			      {
+				if (quiets_searched < MAXDEPTH - 1)
+				  {
+				    quiets[quiets_searched++] = move;
+				    quiets[quiets_searched] = MOVE_NONE;
+				  }
+				statistics.update(b, move, lastmove, stack, depth, adjust_score(eval, mate_dist), quiets);
+			      }
+			    hashTable.store(key, data, depth, BOUND_LOW, move, adjust_score(beta, mate_dist), static_eval, pv_node);
+			    return beta;
+			  }
 			if (eval > alpha)
-			{
-				stack->bestmove = move;
-				alpha = eval;
-				bestmove = move;
-				update_pv(stack->pv, move, (stack + 1)->pv);
-			}
+			  {
+			    stack->bestmove = move;
+			    alpha = eval;
+			    bestmove = move;
+			    update_pv(stack->pv, move, (stack + 1)->pv);
+			  }
 		}
-
+		
+		//printf("..depth9 = %d\n", depth);
 		if (!moves_searched)
 		{
 			if (b.in_check()) return NINF + mate_dist; 
@@ -486,7 +490,7 @@ namespace
 
 	template<NodeType type>
 	int qsearch(Board& b, int alpha, int beta, int depth, Node* stack, bool inCheck)
-	{
+	{	  
 		int eval = NINF;
 		int ttval = NINF;
 		//int ttstatic_value = NINF;
@@ -523,9 +527,9 @@ namespace
 			//ttstatic_value = e.static_value;
 			ttval = e.value;
 			if (pv_node)
-				if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta) return e.value;
-				else if (e.bound == BOUND_LOW && e.value >= beta) return  e.value;
-				else if (e.bound == BOUND_HIGH && e.value <= alpha) return  e.value;
+			  if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta) return e.value;
+			  else if (e.bound == BOUND_LOW && e.value >= beta) return  e.value;
+			  else if (e.bound == BOUND_HIGH && e.value <= alpha) return  e.value;
 		}
 
 		// stand pat lower bound -- tried using static_eval for the stand-pat value, play was weak
@@ -698,6 +702,6 @@ namespace
 
 	int adjust_score(int bestScore, int ply)
 	{
-		return (bestScore >= MATE_IN_MAXPLY ? bestScore = bestScore - ply : bestScore <= MATED_IN_MAXPLY ? bestScore + ply : bestScore);
+	  return bestScore;//(bestScore >= MATE_IN_MAXPLY ? bestScore = bestScore - ply : bestScore <= MATED_IN_MAXPLY ? bestScore + ply : bestScore);
 	}
 };
