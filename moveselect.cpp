@@ -16,7 +16,7 @@
 struct {
 	bool operator()(const MoveList& x, const MoveList& y)
 	{
-	  return x.score > y.score; // nb. linux sorting needs > not >=
+		return x.score > y.score; // nb. linux sorting needs > not >=
 	}
 } GreaterThan;
 
@@ -77,44 +77,44 @@ void MoveStats::update(Board& b, U16& m, U16& last, Node* stack, int d, int eval
 	}
 }
 
-// dbg print movelist -- deprecated
+// dbg
 void MoveSelect::print_list()
-{	
-  /*
-	if (ttmv)
-	  {
-	    std::string s = UCI::move_to_string(ttmv);
-	    std::cout << "currmove " << s << " (ttmove)" << std::endl;
-	  }
-	if (stack->killer[0])
-	  {
-	    std::string s = UCI::move_to_string(stack->killer[0]);
-	    std::cout << "currmove " << s << " (killer1)" << std::endl;
-	  }
-	if (stack->killer[1])
-	  {
-	    std::string s = UCI::move_to_string(stack->killer[1]);
-	    std::cout << "currmove " << s << " (killer2)" << std::endl;
-	  }	
-  */
+{
+	/*
+	  if (ttmv)
+		{
+		  std::string s = UCI::move_to_string(ttmv);
+		  std::cout << "currmove " << s << " (ttmove)" << std::endl;
+		}
+	  if (stack->killer[0])
+		{
+		  std::string s = UCI::move_to_string(stack->killer[0]);
+		  std::cout << "currmove " << s << " (killer1)" << std::endl;
+		}
+	  if (stack->killer[1])
+		{
+		  std::string s = UCI::move_to_string(stack->killer[1]);
+		  std::cout << "currmove " << s << " (killer2)" << std::endl;
+		}
+	*/
 	if (captures)
 	{
-	  printf("...captures...\n");
-	  MoveList * ml = captures;
+		printf("...captures...\n");
+		MoveList * ml = captures;
 		for (; ; ml++)
 		{
-		  if (ml->m == MOVE_NONE) break;
+			if (ml->m == MOVE_NONE) break;
 			std::string s = UCI::move_to_string(ml->m);
 			std::cout << "currmove " << s << " " << ml->score << std::endl;
 		}
 	}
 	if (quiets)
 	{
-	  printf("...quiets...\n");
-	  MoveList * ml = quiets;
-	  for ( ; ; ml++)
+		printf("...quiets...\n");
+		MoveList * ml = quiets;
+		for (; ; ml++)
 		{
-		  if(ml->m == MOVE_NONE) break;
+			if (ml->m == MOVE_NONE) break;
 			std::string s = UCI::move_to_string(ml->m);
 			std::cout << "currmove " << s << " " << ml->score << std::endl;
 		}
@@ -127,7 +127,7 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 {
 	U16 killer1 = stack->killer[0];
 	U16 killer2 = stack->killer[1];
-	U16 mate1 = stack->killer[2];  
+	U16 mate1 = stack->killer[2];
 	U16 mate2 = stack->killer[3];
 	U16 lastmove = (stack - 1)->currmove;
 	U16 threat = stack->threat;
@@ -140,14 +140,15 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 		int to = int((m & 0xfc0) >> 6);
 		int mt = int((m & 0xf000) >> 12);
 		int p = b.piece_on(to);
+		bool checksKing = b.gives_check(m);
 
 		if (m == ttm) continue;
-		if (m == killer1 || m == killer2 || m == mate1 || m == mate2) continue; 
+		if (m == killer1 || m == killer2 || m == mate1 || m == mate2) continue;
 
 		// build capture list -- evasions include quiet moves (fyi)
 		if (movetype == CAPTURE &&
-			(mt == CAPTURE || mt == EP || (mt <= PROMOTION_CAP && mt > PROMOTION)))
-	
+			(mt == CAPTURE || mt == EP || (mt <= PROMOTION_CAP && mt > PROMOTION) || (includeQsearchChecks() && checksKing) ))
+
 		{
 			captures[c_sz].m = m;
 			int score = 0;
@@ -156,20 +157,20 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 				captures[c_sz++].score = score;
 				continue;
 			}
-			else if (b.is_legal(m)) score = b.see_move(m);
-			else continue;
+		else if (b.is_legal(m)) score = b.see_move(m);
+		else continue;
 
-			// check bonus
-			if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move()) && b.is_dangerous(m, b.piece_on(from)))) 
-			  {
-			    score += 1;//piece_vals[b.piece_on(to)]; // almost always a good move
-			  }
-			if ((Globals::SquareBB[from] & b.checkers()) && b.dangerous_check(m, false)) score += 1;
+		// check bonus
+		if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move()) && b.is_dangerous(m, b.piece_on(from))))
+		{
+			score += 1;//piece_vals[b.piece_on(to)]; // almost always a good move
+		}
+		if ((Globals::SquareBB[from] & b.checkers()) && b.dangerous_check(m, false)) score += 1;
 
-			// promotion bonus
-			//if (mt > PROMOTION && mt <= PROMOTION_CAP) score += piece_vals[(type-4)];
+		// promotion bonus
+		//if (mt > PROMOTION && mt <= PROMOTION_CAP) score += piece_vals[(type-4)];
 
-			captures[c_sz++].score = score;
+		captures[c_sz++].score = score;
 		}
 		else if ((mt == QUIET || mt == CASTLE_KS || mt == CASTLE_QS || mt <= PROMOTION)) // build quiet list
 		{
@@ -187,14 +188,14 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 			// if previous bestmove attacks the from-sq, give a bonus for avoiding the capture/attack			
 			if (to_sq(lastmove) == from)
 			{
-			  int diff = (piece_vals[b.piece_on(from)] - piece_vals[b.piece_on(to_sq(lastmove))]);
-			  score += (diff < 0 ? -1 : 1);//-piece_vals[b.piece_on(from)] : piece_vals[b.piece_on(from)]);
+				int diff = (piece_vals[b.piece_on(from)] - piece_vals[b.piece_on(to_sq(lastmove))]);
+				score += (diff < 0 ? -1 : 1);//-piece_vals[b.piece_on(from)] : piece_vals[b.piece_on(from)]);
 			}
 
 			// check bonus
-			if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move())) && b.piece_on(from) > PAWN) 
+			if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move())) && b.piece_on(from) > PAWN)
 			{
-			  	score += 1; // keep small (many not dangerous moves satisfy criteria)			
+				score += 1; // keep small (many not dangerous moves satisfy criteria)			
 			}
 			if ((Globals::SquareBB[from] & b.checkers()) && b.is_dangerous(m, false)) score += 1;
 
@@ -202,12 +203,12 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 			//if (mt <= PROMOTION) score += 1;//piece_vals[type];
 
 			// square score based ordering if score is unchanged.
-			if (score <= (NINF - 1)) 
-			  {
-			    if (Globals::SquareBB[from] && b.checkers()) score += 1;
-			    score += b.see_move(m);
-			    score += (square_score(b.whos_move(), p, b.phase(), to) - square_score(b.whos_move(), p, b.phase(), from))*0.1;
-			  }
+			if (score <= (NINF - 1))
+			{
+				if (Globals::SquareBB[from] && b.checkers()) score += 1;
+				score += b.see_move(m);
+				score += (square_score(b.whos_move(), p, b.phase(), to) - square_score(b.whos_move(), p, b.phase(), from))*0.1;
+			}
 			//printf("score=%d, q_sz=%d\n",score, q_sz);
 			quiets[q_sz++].score = score;// (score < NINF - 1 ? NINF - 1 : score);
 		}
@@ -302,9 +303,7 @@ bool MoveSelect::nextmove(Board &b, Node * stack, U16& ttm, U16& out, bool split
 	case GoodCaptures:
 		if (stored_csz == 0)
 		{
-		  //printf("*********generate captures for %s**********", b.whos_move()==WHITE?"white":"black");
-		  //b.print();
-			MoveGenerator mvs; 
+			MoveGenerator mvs;
 			if (type == MainSearch) mvs.generate_pseudo_legal(b, CAPTURE);
 			else if (type == QsearchCaptures) mvs.generate_qsearch_mvs(b, CAPTURE, genChecks); // only generates checks if givesCheck == true
 			load_and_sort(mvs, b, ttm, stack, CAPTURE);
@@ -331,12 +330,9 @@ bool MoveSelect::nextmove(Board &b, Node * stack, U16& ttm, U16& out, bool split
 		}
 		if (stored_qsz == 0)  // if we are in check and have not found an evasion, generate moves even in qsearch
 		{
-		  //printf("*********generate quiets for %s**********", b.whos_move()==WHITE?"white":"black");
-		  //b.print();
 			MoveGenerator mvs; //mvs.generate_pseudo_legal(b, QUIET);
 			if (type == MainSearch) mvs.generate_pseudo_legal(b, QUIET);
 			else if (type == QsearchCaptures && b.in_check()) mvs.generate_qsearch_mvs(b, QUIET, genChecks); // hack to generate quiet evasions (only when in check)
-			//printf("...found %d quiet moves\n", mvs.size());
 			load_and_sort(mvs, b, ttm, stack, QUIET);
 		}
 		if (stored_qsz > 0 && quiets[q_sz].m != MOVE_NONE)

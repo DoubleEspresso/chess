@@ -38,6 +38,7 @@ namespace
 	void pv_from_tt(Board& b, int eval, int d);
 	void store_pv(Board& b, U16 * pv, int depth);
 	void print_pv_info(Board& b, int depth, int eval, U16 * pv);
+	void ReadoutRootMoves(int depth);
 };
 
 namespace Search
@@ -106,11 +107,14 @@ namespace Search
 			eval = search<ROOT>(b, alpha, beta, depth, stack + 2);
 			iter_depth++;
 
+			if (timer_thread->elapsed - last_time_ms >= 3000) ReadoutRootMoves(depth);
+
 			if (!UCI_SIGNALS.stop)
 			{
 				print_pv_info(b, depth, eval, (stack + 2)->pv);
 				last_time_ms = timer_thread->elapsed;
-			}
+				RootMoves.clear();
+			}			
 		}
 	}
 
@@ -125,7 +129,12 @@ namespace
 {
 	int Reduction(bool pv_node, bool improving, int d, int mc)
 	{
-	  return Globals::SearchReductions[(int)pv_node][(int)improving][std::max(0,std::min(d, MAXDEPTH-1))][std::max(0,std::min(mc, MAXDEPTH-1))];
+	  return Globals::SearchReductions[(int)pv_node][(int)improving][max(0,min(d, MAXDEPTH-1))][max(0,min(mc, MAXDEPTH-1))];
+	}
+
+	bool RootsContain(U16& root_mv)
+	{
+		return std::find(RootMoves.begin(), RootMoves.end(), root_mv) != RootMoves.end();
 	}
 
 	template<NodeType type>
@@ -174,11 +183,11 @@ namespace
 
 		// 1. -- mate distance pruning    
 		int mate_val = INF - mate_dist;
-		beta = std::min(mate_val, beta);
+		beta = min(mate_val, beta);
 		if (alpha >= mate_val) return mate_val;
 
 		int mated_val = NINF + mate_dist;
-		alpha = std::max(mated_val, alpha);
+		alpha = max(mated_val, alpha);
 		if (beta <= mated_val) return mated_val;
 
 		// 2. -- ttable lookup 
@@ -344,6 +353,8 @@ namespace
 				++pruned;
 				continue;
 			}
+			
+			if (type == ROOT && !RootsContain(move)) RootMoves.push_back(move);
 
 			// piece and move data
 			int piece = b.piece_on(get_from(move));
@@ -467,13 +478,8 @@ namespace
 			  }
 		}
 		
-		//printf("..depth9 = %d\n", depth);
-		if (!moves_searched)
-		{
-			if (b.in_check()) return NINF + mate_dist; 
-			else if (b.is_draw(0)) return DRAW;
-		}
-		else if (b.is_repition_draw()) return DRAW;
+		if (b.in_check() && !moves_searched) return NINF + mate_dist;
+		else if (b.is_draw(moves_searched)) return DRAW;
 
 		// update gui 
 		//if (timer_thread->elapsed - last_time_ms >= 3000)
@@ -515,7 +521,7 @@ namespace
 		//if (split) split_point = b.get_worker()->currSplitBlock;
 
 		//U16 lastmove = (stack - 1)->currmove;
-		bool genChecks = (stack - 2)->givescheck;
+		bool genChecks = (stack - 2)->givescheck && depth > -3;
 
 		// transposition table lookup    
 		data = b.data_key();
@@ -548,7 +554,6 @@ namespace
 		MoveSelect ms(statistics, QsearchCaptures, genChecks);
 		int moves_searched = 0, pruned = 0;
 		U16 move;
-		Node dummy;
 
 		while (ms.nextmove(b, stack, ttm, move, false))
 		{
@@ -650,6 +655,14 @@ namespace
 			b.get_nodes_searched(),
 			(int)timer_thread->elapsed);
 		std::cout << pv << std::endl;
+	}
+
+	void ReadoutRootMoves(int depth)
+	{
+		for (int j = 0; j < RootMoves.size(); ++j)
+		{
+			printf("info depth %d currmove %s currmovenumber %d\n", depth, UCI::move_to_string(RootMoves[j]), j+1);
+		}
 	}
 
 	void print_pv_info(Board& b, int depth, int eval, U16 * pv)

@@ -7,6 +7,7 @@
 #endif
 
 #include <vector>
+#include <algorithm>
 
 #include "definitions.h"
 #include "globals.h"
