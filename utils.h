@@ -3,6 +3,9 @@
 #ifndef HEDWIG_UTILS_H
 #define HEDWIG_UTILS_H
 
+#define MIN(x,y) (x <= y ? x : y)
+#define MAX(x,y) (x <= y ? y : x)
+
 #include <time.h>
 #include <stdio.h>
 #include <string>
@@ -171,7 +174,6 @@ inline U64 behind_square(U64& col, int color, int square)
   return (color == WHITE ? col >> 8 * ROW(square) : col << 8 * ROW(square));
 };
 
-
 inline U64 infrontof_square(U64& col, int color, int square)
 {
   return (color == WHITE ? col << 8 * (ROW(square)+1) : col >> 8* (8-ROW(square)) );
@@ -194,6 +196,18 @@ inline int get_movetype(U16 m)
 {
   return int((m & 0xf000) >> 12);
 };
+
+inline bool is_quiet_promotion(U16 m)
+{
+	int mt = get_movetype(m);
+	return (mt > MOVE_NONE && mt <= PROMOTION);
+}
+
+inline bool is_cap_promotion(U16 m)
+{
+	int mt = get_movetype(m);
+	return (mt > PROMOTION && mt <= PROMOTION_CAP);
+}
 
 // for hash table elements/size computation (most-sig-bit would be faster).
 inline size_t nearest_power_of_2(size_t x)

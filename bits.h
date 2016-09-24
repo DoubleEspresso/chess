@@ -67,7 +67,7 @@ namespace
 	
   inline int count(U64 b)
   {
-    return (_64BIT ? count64(b) : count32(b));
+    return ( _64BIT ? count64(b) : count32(b));
   }
 
   // use when most bits in "b" are 0.

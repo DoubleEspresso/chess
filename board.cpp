@@ -554,12 +554,12 @@ bool Board::is_legal(U16& move)
 		return false;
 	}
 
-	if ((mt == QUIET || mt == PROMOTION || mt == EP) && color_on(to) != COLOR_NONE)
+	if ((mt == QUIET || is_quiet_promotion(move) || mt == EP) && color_on(to) != COLOR_NONE)
 	{
 		return false;
 	}
 
-	if ((mt == CAPTURE || mt == PROMOTION_CAP) && color_on(to) != ec)
+	if ((mt == CAPTURE || is_cap_promotion(move)) && color_on(to) != ec)
 	{
 		return false;
 	}
