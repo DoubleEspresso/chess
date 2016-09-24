@@ -96,6 +96,7 @@ namespace {
 			int row = 7 - ROW(square);
 			square = 8 * row + col;
 		}
+		if (c == 0 && p == 2 && square > 63) printf("c=%d, piece=%d, phase=%d, square=%d\n", c, p, phase, square);
 		int ss = square_scores[p][square];
 		int eg = ss / 100;
 		//int rp = (eg <= 0 ? floor(ss / 100 + 0.5) : floor(ss / 100 + 0.5)); 

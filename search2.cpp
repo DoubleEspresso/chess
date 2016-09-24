@@ -129,7 +129,7 @@ namespace
 {
 	int Reduction(bool pv_node, bool improving, int d, int mc)
 	{
-	  return Globals::SearchReductions[(int)pv_node][(int)improving][max(0,min(d, MAXDEPTH-1))][max(0,min(mc, MAXDEPTH-1))];
+	  return Globals::SearchReductions[(int)pv_node][(int)improving][std::max(0,std::min(d, MAXDEPTH-1))][std::max(0,std::min(mc, MAXDEPTH-1))];
 	}
 
 	bool RootsContain(U16& root_mv)
@@ -183,11 +183,11 @@ namespace
 
 		// 1. -- mate distance pruning    
 		int mate_val = INF - mate_dist;
-		beta = min(mate_val, beta);
+		beta = std::min(mate_val, beta);
 		if (alpha >= mate_val) return mate_val;
 
 		int mated_val = NINF + mate_dist;
-		alpha = max(mated_val, alpha);
+		alpha = std::max(mated_val, alpha);
 		if (beta <= mated_val) return mated_val;
 
 		// 2. -- ttable lookup 
@@ -661,7 +661,7 @@ namespace
 	{
 		for (int j = 0; j < RootMoves.size(); ++j)
 		{
-			printf("info depth %d currmove %s currmovenumber %d\n", depth, UCI::move_to_string(RootMoves[j]), j+1);
+		  printf("info depth %d currmove %s currmovenumber %d\n", depth, UCI::move_to_string(RootMoves[j]).c_str(), j+1);
 		}
 	}
 

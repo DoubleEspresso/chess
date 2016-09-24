@@ -178,7 +178,15 @@ namespace
 		// bishop sqs
 		sqs = b.sq_of<BISHOP>(c);
 		for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
-			score += square_score<c, BISHOP>(e.phase, from);
+		  {
+		    if (from > 63)
+		      {
+			printf("...from=%d\n",from);
+			b.print();
+		      }
+		    score += square_score<c, BISHOP>(e.phase, from);
+		  }
+
 
 		// rook sqs
 		sqs = b.sq_of<ROOK>(c);
@@ -232,9 +240,7 @@ namespace
 			}
 
 			// knight attacks weighted by game phase, and piece being attacked.
-			//U64 attacks = PseudoAttacksBB(KNIGHT, from) & ei.pe->undefended[c == WHITE ? BLACK : WHITE];//(c == WHITE ? ei.black_pieces : ei.white_pieces);
-
-			U64 attacks = PseudoAttacksBB(KNIGHT, from) & (c == WHITE ? ei.black_pieces : ei.white_pieces);//ei.pe->undefended[c == WHITE ? BLACK : WHITE];//(c == WHITE ? ei.black_pieces : ei.white_pieces);
+			U64 attacks = 0ULL;//PseudoAttacksBB(KNIGHT, from) & (c == WHITE ? ei.black_pieces : ei.white_pieces);
 			while (attacks)
 			{
 				int to = pop_lsb(attacks);
@@ -242,17 +248,8 @@ namespace
 				score += int(AttackBonus[ei.phase][KNIGHT][p]); // already weighted by game phase.
 			}
 
-			// does the position favor a knight? since ei.position_type is not very precise
-			// we do not penalize for having a knight in an open position
+			// ..positional
 			//if (pawn_cnt >= 13 && ei.position_type == POSITION_CLOSED) score += Value( 50 );
-
-			/////////////////////////////////////////////////////////////////////////////////////////
-			// the positional features...
-			// 1. blockade backward/isolated pawns
-			// 2. attacks weak pawns (backward/isolated)
-			// 3. attacks "holes" in position (>= 4th rank?)
-			// 4. penalize for board edge position
-			// blockade squares in front of isolated and backward pawns
 			U64 blockade = (c == WHITE ? (ei.pe->backwardPawns[BLACK] >> NORTH) : (ei.pe->backwardPawns[WHITE] << NORTH));
 			blockade |= (c == WHITE ? (ei.pe->isolatedPawns[BLACK] >> NORTH) : (ei.pe->isolatedPawns[WHITE] << NORTH));
 			blockade &= mobility;
@@ -268,7 +265,6 @@ namespace
 			// evaluate threats to king 
 			U64 king_threats = PseudoAttacksBB(KNIGHT, from) & KingSafetyBB[them][(them == BLACK ? ei.black_ks : ei.white_ks)];
 			if (king_threats) score += count(king_threats);//threats_to_king_weights[ei.phase][KNIGHT] * count(king_threats);
-
 
 			// evaluate the connected-ness of this piece (how many friendly pieces attack it)
 			U64 connected = b.attackers_of(from) & (c == WHITE ? ei.white_pieces : ei.black_pieces);
@@ -313,10 +309,7 @@ namespace
 			U64 mvs = attacks<BISHOP>(mask, from);
 			{
 				if ((SquareBB[from] & pinned)) score -= ei.tempoBonus / 2;
-
-				// collect the legal moves
 				U64 mobility = mvs & ei.empty;
-
 				// remove sqs attacked by enemy pawns
 				U64 tmp = ei.pe->attacks[them];
 				if (tmp)
@@ -328,16 +321,7 @@ namespace
 				score += count(mobility) / 4;
 			}
 
-			////////////////////////////////////////////////////////////////////////////////////
-			// basic bishop eval
-			// 1. base eval given by piece sq. score
-			// 2. eval mobility -- remove sqs. attacked by pawns.
-			// 3. sum attack bonus (all pieces (excluding pawns) the bishop is attacking).		
-
-			// bishop attacks weighted by game phase, and piece being attacked (pawns removed (?))
-			//U64 attacks = mvs & ei.pe->undefended[c == WHITE ? BLACK : WHITE];//(c == WHITE ? ei.black_pieces : ei.white_pieces);
-
-			U64 attacks = mvs & (c == WHITE ? ei.black_pieces : ei.white_pieces);//ei.pe->undefended[c == WHITE ? BLACK : WHITE];//(c == WHITE ? ei.black_pieces : ei.white_pieces);
+			U64 attacks = 0ULL;//mvs & (c == WHITE ? ei.black_pieces : ei.white_pieces);
 			while (attacks)
 			{
 				int to = pop_lsb(attacks);
@@ -345,22 +329,15 @@ namespace
 				score += int(AttackBonus[ei.phase][BISHOP][p]);
 			}
 
-			////////////////////////////////////////////////////////////////////////
-			// positional bonuses for this pieces
-			// 1. open center, with not many pawns in the position
-			// 2. color weakness bonus -- too few/many pawns of specific color.
-			// 3. blockade/attack/protect weak squares.
-			// 3. bishop pair bonus -- added at the end
 
-			// does the position favor a bishop? -- does allow a "bad" bishop to get a bonus somtimes, look
-			// at white bishop here (8/8/1pp4b/8/3Pk3/4P3/1B1K4/8), it gets the bonus below, and shouldn't.
+			// ..positional
 			if (center_nb <= 2) score += score += (ei.phase == MIDDLE_GAME ? 4 : 6);
 
-			// color penalties -- too few targets -- in endgame, should not penalize for attacking any nb of pawns!
+			// color penalties -- too few targets
 			if (light_bishop && (enemy_wsq_pawns <= 2))  score -= (ei.phase == MIDDLE_GAME ? 2 : 4);
 			if (dark_bishop && (enemy_bsq_pawns <= 2))  score -= (ei.phase == MIDDLE_GAME ? 2 : 4);
 
-			// color penalties -- too many pawns on same color -- in theory this is not so bad in endgames
+			// color penalties -- too many pawns on same color
 			if (light_bishop && (our_wsq_pawns >= 3)) score -= (ei.phase == MIDDLE_GAME ? 6 : 2);
 			if (dark_bishop && (our_bsq_pawns >= 3))  score -= (ei.phase == MIDDLE_GAME ? 6 : 2);
 
@@ -370,12 +347,11 @@ namespace
 			////blockade &= mobility;
 			//if (blockade) score += count(blockade);
 
-			//// threats to king 
+			// threats to king 
 			U64 king_threats = mvs & PseudoAttacksBB(KING, (them == BLACK ? ei.black_ks : ei.white_ks));
 			if (king_threats) score += count(king_threats);//threats_to_king_weights[ei.phase][BISHOP] *count(king_threats);
 
 			// connected-ness of this piece (how many friendly pieces attack it)
-			// needs to be weighted by game phase (attacking pawns in endgame is good!)
 			U64 connected = b.attackers_of(from) & (c == WHITE ? ei.white_pieces : ei.black_pieces);
 			score += count(connected);// connected_weights[ei.phase][BISHOP]
 		}
@@ -420,16 +396,14 @@ namespace
 				U64 bm = mobility & tmp;
 				mobility ^= bm;
 			}
-			if (mobility) score += count(mobility) / 4;// *mobility_weights[ei.phase][ROOK];
+			if (mobility) score += count(mobility) / 4;
 
 			// penalize the rook if attacked by a knight, bishop or pawn
 			U64 attackers = b.attackers_of(from) & (enemy_pawns | enemy_knights | enemy_bishops);
 			if (attackers) score -= ei.tempoBonus / 2;
 
-			// rook attacks, weighted by game phase	
-
-			U64 attacks = mvs & (c == WHITE ? ei.black_pieces : ei.white_pieces);//ei.pe->undefended[c == WHITE ? BLACK : WHITE];//(c == WHITE ? ei.black_pieces : ei.white_pieces);
-			//U64 attacks = mvs & ei.pe->undefended[c == WHITE ? BLACK : WHITE];//(c == WHITE ? ei.black_pieces : ei.white_pieces);
+			// .. rook attacks
+			U64 attacks = 0ULL; //mvs & (c == WHITE ? ei.black_pieces : ei.white_pieces);
 			while (attacks)
 			{
 				int to = pop_lsb(attacks);
@@ -437,18 +411,15 @@ namespace
 				score += int(AttackBonus[ei.phase][ROOK][p]);
 			}
 
-
 			// open file bonus for the rook
 			U64 file_closed = ColBB[COL(from)] & pawns;
-			if (!file_closed) score += 1;//int(open_file_bonus[ei.phase]); 
+			if (!file_closed) score += 1;
 
-			if (SquareBB[from] & rank7) score += 1;//int(rank7_bonus[ei.phase]); 
+			if (SquareBB[from] & rank7) score += 1;
 
 			U64 king_threats = mvs & KingSafetyBB[them][(them == BLACK ? ei.black_ks : ei.white_ks)];
 			if (king_threats) score += count(king_threats);//threats_to_king_weights[ei.phase][ROOK];// *count(king_threats);
 
-			// evaluate the connected-ness of this piece (how many friendly pieces attack it)
-			// needs to be weighted by game phase (attacking pawns in endgame is good!)
 			U64 connected = b.attackers_of(from) & (c == WHITE ? ei.white_pieces : ei.black_pieces);
 			score += count(connected); //connected_weights[ei.phase][ROOK]
 		}
@@ -486,30 +457,24 @@ namespace
 				U64 bm = mobility & tmp;
 				mobility ^= bm;
 			}
-
-			if (mobility) score += count(mobility) / 8; // helps to avoid queen traps
+			if (mobility) score += count(mobility) / 8;
 
 			// penalize the queen if attacked by a knight, bishop or pawn
 			U64 attackers = b.attackers_of(from) & (enemy_pawns | enemy_knights | enemy_bishops | enemy_rooks);
 			if (attackers) score -= ei.tempoBonus / 2;
 
-			// queen attacks, weighted by game phase
-
-			U64 attacks = mvs & (c == WHITE ? ei.black_pieces : ei.white_pieces);//ei.pe->undefended[c == WHITE ? BLACK : WHITE];//(c == WHITE ? ei.black_pieces : ei.white_pieces);
+			U64 attacks = 0ULL; //mvs & (c == WHITE ? ei.black_pieces : ei.white_pieces);
 			while (attacks)
 			{
 				int to = pop_lsb(attacks);
 				int p = b.piece_on(to);
 				score += int(AttackBonus[ei.phase][QUEEN][p]);
 			}
-
 			U64 king_threats = mvs & KingSafetyBB[them][(them == BLACK ? ei.black_ks : ei.white_ks)];
-			if (king_threats) score += count(king_threats);//threats_to_king_weights[ei.phase][QUEEN];
+			if (king_threats) score += count(king_threats);
 
-			// evaluate the connected-ness of this piece (how many friendly pieces attack it)
-			// needs to be weighted by game phase (attacking pawns in endgame is good!)
 			U64 connected = b.attackers_of(from) & (c == WHITE ? ei.white_pieces : ei.black_pieces);
-			score += count(connected); //connected_weights[ei.phase][QUEEN]
+			score += count(connected); 
 		}
 
 		if (ei.do_trace)
@@ -548,11 +513,11 @@ namespace
 			bool empty = b.piece_on(to) == PIECE_NONE;
 			if (attackers)
 			{
-				if (attackers & their_pawns) score -= 35;//35;
-				if (attackers & enemy_queens) score -= 50;//50;
-				if (attackers & enemy_rooks) score -= 20;//25;
-				if (attackers & enemy_knights) score -= 15;//25;
-				if (attackers & enemy_bishops) score -= 15;//25;
+				if (attackers & their_pawns) score -= 35;
+				if (attackers & enemy_queens) score -= 50;
+				if (attackers & enemy_rooks) score -= 20;
+				if (attackers & enemy_knights) score -= 15;
+				if (attackers & enemy_bishops) score -= 15;
 				++nb_attackers;
 				if (more_than_one(attackers)) score -= 20;
 			}
@@ -570,17 +535,6 @@ namespace
 			if (nb_safe <= 0) score -= 10;
 		}
 
-		// we almost never want the king in the corner during an endgame
-		//if ((from == A1 || from == A8 || from == H8 || from == H1) && ei.phase == ENDGAME) score -= KingExposureBonus[ei.phase];
-		//U64 tmp = ei.pe->attacks[them];
-		//if (tmp)
-			//{
-			//	if (tmp & SquareBB[from]) score -= ei.tempoBonus;
-			//	U64 bm = mobility & tmp;
-			//	mobility ^= bm;
-			//}
-			//score += count(mobility);
-
 		// pawn cover around king -- based on game phase
 		if (ei.phase == MIDDLE_GAME)
 		{
@@ -592,10 +546,6 @@ namespace
 		U64 piece_cover = KingSafetyBB[c][from] & (c == WHITE ? ei.white_pieces : ei.black_pieces);
 		if (piece_cover) score += 1;//count(piece_cover);
 
-
-		// check if castled (not perfect) -- favors "faster" castling not necessarily "safer" castling
-		// better to give bonuses for rook-connectedness and pawn/piece cover so it discovers safe castle 
-		// positions on its own .. how to implement?
 		if (!castled) score -= 4 * CastleBonus[ei.phase] * KingExposureBonus[ei.phase];
 
 		// update : penalize more if not castled and cannot castle
@@ -630,13 +580,13 @@ namespace
 			if (!colsLeftLeft) score -= KingExposureBonus[ei.phase];
 		}
 
-		// idea : evaluate development and treat our "less active" pieces as dangerous to our king
+		// .. evaluate development and treat our "less active" pieces as dangerous to our king
 		U64 back_rank = (c == WHITE ? RowBB[ROW1] : RowBB[ROW8]);
 		U64 undev_pieces = back_rank & (b.get_pieces(c, KNIGHT) | b.get_pieces(c, BISHOP) | b.get_pieces(c, ROOK) | b.get_pieces(c, QUEEN));
 		if (undev_pieces)
 		{
 			int nb_undev_pieces = count(undev_pieces);
-			if (nb_undev_pieces > 2) score -= 2;// *nb_undev_pieces;
+			if (nb_undev_pieces > 2) score -= 2;
 		}
 
 		if (ei.do_trace)
@@ -709,10 +659,7 @@ namespace
 			(undefended_pawns & passed_pawns) |
 			(undefended_pawns & center_pawns) |
 			(undefended_pawns & chain_bases);
-		//U64 pawn_targets[3] = { isolated_pawns, doubled_pawns, undefended_pawns};
 
-		// note: attack_weights for piece attacks pawn are all <= 4 so this adjustment
-		// should be small (in theory).
 		if (pawn_targets)
 			while (pawn_targets)
 			{
@@ -737,7 +684,7 @@ namespace
 				if (tmp) score += count(tmp) *AttackBonus[ei.phase][ROOK][PAWN];
 			}
 
-		// evaluate checks to enemy king (if any)
+
 		U64 king_attackers = b.attackers_of(enemy_ks) & b.colored_pieces(c);
 
 		// evaluate checks which skewer king and another piece, or check king and attack another piece/pawn
@@ -800,13 +747,13 @@ namespace
 		U64 our_passed_pawns = ei.pe->passedPawns[c];
 		if (our_passed_pawns)
 		{
-			score += 1;
+			score += 4;
 			while (our_passed_pawns)
 			{
 				// pawns close to promotion are almost always a threat
 				int from = pop_lsb(our_passed_pawns);
 				U64 squares_until_promotion = SpaceInFrontBB[c][from];
-				if (count(squares_until_promotion) <= 3) score += 1;
+				if (count(squares_until_promotion) <= 3) score += 20;
 			}
 		}
 
@@ -837,35 +784,26 @@ namespace
 			U64 tmp = b.attackers_of(s) & b.colored_pieces(c);
 			if (tmp) attackers_of_big_center |= tmp;
 		}
-
-		// pawn weight -- weight pawns a little more than normal pieces
-		// this is to boost opening play..hedwig doesn't really fight for central control...at all.
 		if (pawns)
 		{
 			U64 pawn_bm = pawns & attackers_of_big_center;
 			if (pawn_bm) score += count(pawn_bm) * CenterBonus[ei.phase][PAWN];
 		}
-
-		// knight weight
-		//if (knights)
-		//{
-		//	U64 knight_bm = knights & attackers_of_big_center;
-		//	if (knight_bm) score += 1;// *center_weights[ei.phase][KNIGHT];
-		//}
-
-		//// bishop weight
-		//if (bishops)
-		//{
-		//	U64 bish_bm = bishops & attackers_of_big_center;
-		//	if (bish_bm) score += 1;// *center_weights[ei.phase][BISHOP];
-		//}
-
-		//// rook weight
-		//if (rooks)
-		//{
-		//	U64 rook_bm = rooks & attackers_of_big_center;
-		//	score += count(rook_bm);// *center_weights[ei.phase][ROOK];
-		//}
+		if (knights)
+		{
+			U64 knight_bm = knights & attackers_of_big_center;
+			if (knight_bm) score += 1;// *center_weights[ei.phase][KNIGHT];
+		}
+		if (bishops)
+		{
+			U64 bish_bm = bishops & attackers_of_big_center;
+			if (bish_bm) score += 1;// *center_weights[ei.phase][BISHOP];
+		}
+		if (rooks)
+		{
+			U64 rook_bm = rooks & attackers_of_big_center;
+			score += 1; //count(rook_bm);// *center_weights[ei.phase][ROOK];
+		}
 
 		//// queen weight
 		//if (queens)
