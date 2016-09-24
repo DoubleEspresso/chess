@@ -429,7 +429,7 @@ namespace
 			    //!givesCheck &&
 			    !inCheck &&
 			    //isQuiet &&
-			    depth > (pv_node ? 4 : 2))
+			    depth > (pv_node ? 6 : 4))
 			  {
 			    int R = Reduction(pv_node, improving, newdepth, moves_searched)/2;
 			    int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];

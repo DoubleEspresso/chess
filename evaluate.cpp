@@ -240,7 +240,7 @@ namespace
 			}
 
 			// knight attacks weighted by game phase, and piece being attacked.
-			U64 attacks = 0ULL;//PseudoAttacksBB(KNIGHT, from) & (c == WHITE ? ei.black_pieces : ei.white_pieces);
+			U64 attacks = PseudoAttacksBB(KNIGHT, from) & (c == WHITE ? ei.black_pieces : ei.white_pieces);
 			while (attacks)
 			{
 				int to = pop_lsb(attacks);
@@ -321,7 +321,7 @@ namespace
 				score += count(mobility) / 4;
 			}
 
-			U64 attacks = 0ULL;//mvs & (c == WHITE ? ei.black_pieces : ei.white_pieces);
+			U64 attacks = mvs & (c == WHITE ? ei.black_pieces : ei.white_pieces);
 			while (attacks)
 			{
 				int to = pop_lsb(attacks);
@@ -403,7 +403,7 @@ namespace
 			if (attackers) score -= ei.tempoBonus / 2;
 
 			// .. rook attacks
-			U64 attacks = 0ULL; //mvs & (c == WHITE ? ei.black_pieces : ei.white_pieces);
+			U64 attacks = mvs & (c == WHITE ? ei.black_pieces : ei.white_pieces);
 			while (attacks)
 			{
 				int to = pop_lsb(attacks);
@@ -463,7 +463,7 @@ namespace
 			U64 attackers = b.attackers_of(from) & (enemy_pawns | enemy_knights | enemy_bishops | enemy_rooks);
 			if (attackers) score -= ei.tempoBonus / 2;
 
-			U64 attacks = 0ULL; //mvs & (c == WHITE ? ei.black_pieces : ei.white_pieces);
+			U64 attacks = mvs & (c == WHITE ? ei.black_pieces : ei.white_pieces);
 			while (attacks)
 			{
 				int to = pop_lsb(attacks);
