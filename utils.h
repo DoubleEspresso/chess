@@ -105,6 +105,12 @@ inline int max_distance(int s1, int s2)
   return (rd > cd ? rd : cd);
 };
 
+// gets the smallest distance (row or col distance)
+inline int min_distance(int s1, int s2)
+{
+	return MIN(row_distance(s1, s2), col_distance(s1, s2));
+};
+
 // true if 2 squares are on a col, row, or diagonal
 inline bool aligned(int s1, int s2)
 {

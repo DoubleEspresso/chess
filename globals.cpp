@@ -19,6 +19,7 @@ namespace Globals
 	U64 BigCenterBB;
 	U64 CornersBB;
 	U64 LongDiagonalsBB;
+	U64 BoardEdgesBB;
 
 	// evaluation/utility bitmaps
 	U64 PawnAttacksBB[COLORS][SQUARES];          // the pawn attacks (by color)
@@ -104,7 +105,7 @@ namespace Globals
 		}
 
 		// helpful definitions for board corners/edges
-		U64 board_edge = RowBB[ROW1] | ColBB[COL1] | RowBB[ROW8] | ColBB[COL8];
+		BoardEdgesBB = RowBB[ROW1] | ColBB[COL1] | RowBB[ROW8] | ColBB[COL8];
 		CornersBB = SquareBB[A1] | SquareBB[H1] | SquareBB[H8] | SquareBB[A8];
 
 		// attack step data
@@ -189,7 +190,7 @@ namespace Globals
 				AttacksBB[1][s] = bishop_attacks;
 
 				// the trimmed bishop mask
-				U64 tmp = bishop_attacks & board_edge;
+				U64 tmp = bishop_attacks & BoardEdgesBB;
 				BishopMask[s] = bishop_attacks ^ tmp;
 			}
 
@@ -321,8 +322,8 @@ namespace Globals
 			// 5. the space behind and in front of a given square (exluding the row of the square)
 			for (int c = WHITE; c <= BLACK; ++c)
 			{
-				SpaceInFrontBB[c][s] = (c == WHITE ? BetweenBB[s][COL(s) + 7] : BetweenBB[s][COL(s)]);
-				SpaceBehindBB[c][s] = (c == WHITE ? BetweenBB[s][COL(s)] : BetweenBB[s][COL(s) + 7]);
+				SpaceInFrontBB[c][s] = (c == WHITE ? BetweenBB[s][A8 + COL(s)] : BetweenBB[s][COL(s)]) ^ SquareBB[s];
+				SpaceBehindBB[c][s] = (c == WHITE ? BetweenBB[s][COL(s)] : BetweenBB[s][A8 + COL(s)]) ^ SquareBB[s];
 			}
 
 

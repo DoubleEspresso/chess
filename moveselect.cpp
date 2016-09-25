@@ -168,7 +168,7 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 		if ((Globals::SquareBB[from] & b.checkers()) && b.dangerous_check(m, false)) score += 1;
 
 		// promotion bonus
-		//if (mt > PROMOTION && mt <= PROMOTION_CAP) score += piece_vals[(type-4)];
+		if (mt > PROMOTION && mt <= PROMOTION_CAP) score += piece_vals[(type-4)];
 
 		captures[c_sz++].score = score;
 		}
@@ -200,7 +200,7 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 			if ((Globals::SquareBB[from] & b.checkers()) && b.is_dangerous(m, false)) score += 1;
 
 			// promotion bonus
-			//if (mt <= PROMOTION) score += 1;//piece_vals[type];
+			if (mt <= PROMOTION) score += piece_vals[type];
 
 			// square score based ordering if score is unchanged.
 			if (score <= (NINF - 1))
