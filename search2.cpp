@@ -106,6 +106,7 @@ namespace Search
 			statistics.clear(); // move ordering of quiet moves
 			eval = search<ROOT>(b, alpha, beta, depth, stack + 2);
 			iter_depth++;
+
 			if (timer_thread->elapsed - last_time_ms >= 3000) ReadoutRootMoves(depth);
 
 			if (!UCI_SIGNALS.stop)
@@ -192,7 +193,7 @@ namespace
 		// 2. -- ttable lookup 
 		data = b.data_key();
 		key = b.pos_key();
-		if (hashTable.fetch(key, e) && e.depth >= depth) 
+		if (hashTable.fetch(key, e) && e.depth >= depth)
 		{
 			ttm = e.move;
 			//ttstatic_value = e.static_value;	
@@ -212,8 +213,8 @@ namespace
 				}
 				else if (e.bound == BOUND_HIGH  && e.value <= alpha) return  e.value;
 		}
-		
-		// 3. -- static evaluation of position     
+
+		// 3. -- static evaluation of position    
 		//int static_eval = Eval::evaluate(b);
 		int static_eval = (ttvalue > NINF ? ttvalue : Eval::evaluate(b));
 		//int static_eval = (ttvalue > NINF ? ttvalue : ttstatic_value > NINF ? ttstatic_value : Eval::evaluate(b));
@@ -411,7 +412,7 @@ namespace
 			    //!givesCheck &&
 			    !inCheck &&
 			    //isQuiet &&
-				depth > (pv_node ? 6 : 4))
+			    depth > (pv_node ? 6 : 4))
 			  {
 			    int R = Reduction(pv_node, improving, newdepth, moves_searched)/2;
 			    int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];
@@ -504,17 +505,17 @@ namespace
 
 		//U16 lastmove = (stack - 1)->currmove;
 		bool genChecks = (stack - 2)->givescheck && depth > -3;
-		int qsDepth = 0; // (genChecks ? -1 : 0);
+		int qsDepth = (genChecks ? -1 : 0);
 
 		// transposition table lookup    
 		data = b.data_key();
 		key = b.pos_key();
-		bool tte = hashTable.fetch(key, e);
-		if (tte && e.depth >= qsDepth)
+		if (hashTable.fetch(key, e) && e.depth >= qsDepth)
 		{
-			ttm = e.move;
-			ttval = e.value;
 			++hash_hits;
+			ttm = e.move;
+			//ttstatic_value = e.static_value;
+			ttval = e.value;
 			if (pv_node)
 			  if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta) return e.value;
 			  else if (e.bound == BOUND_LOW && e.value >= beta) return  e.value;
@@ -525,11 +526,7 @@ namespace
 		int stand_pat = Eval::evaluate(b);
 		//int stand_pat= (ttval == NINF ? Eval::evaluate(b) : ttval);    
 
-		if (stand_pat >= beta && !inCheck)
-		{
-			if (!tte) hashTable.store(key, data, qsDepth, BOUND_LOW, MOVE_NONE, adjust_score(beta, mate_dist), stand_pat, pv_node);
-			return beta;
-		}
+		if (stand_pat >= beta && !inCheck) return beta;
 		// delta pruning                 		
 		if (stand_pat < alpha - 950 && !inCheck)
 		{

@@ -375,7 +375,6 @@ namespace
 		U64 pinned = (c == WHITE ? ei.w_pinned : ei.b_pinned);
 		U64 mask = ei.all_pieces;
 		int *sqs = b.sq_of<ROOK>(c);
-		U64 our_rooks = b.get_pieces(c, ROOK); // connected rook bonus
 
 		// pinned info/ attacker info
 		U64 enemy_pawns = (c == WHITE ? ei.black_pawns : ei.white_pawns);
@@ -422,8 +421,6 @@ namespace
 			if (king_threats) score += count(king_threats);//threats_to_king_weights[ei.phase][ROOK];// *count(king_threats);
 
 			U64 connected = b.attackers_of(from) & (c == WHITE ? ei.white_pieces : ei.black_pieces);
-			if (connected & our_rooks) score += 1; // counted 2x's
-
 			score += count(connected); //connected_weights[ei.phase][ROOK]
 		}
 		if (ei.do_trace)
@@ -492,7 +489,6 @@ namespace
 	{
 		int score = 0;
 		int from = (c == WHITE ? ei.white_ks : ei.black_ks);
-		int eks = (c == WHITE ? ei.black_ks : ei.white_ks);
 		Color them = (c == WHITE ? BLACK : WHITE);
 		U64 our_pawns = (c == WHITE ? ei.white_pawns : ei.black_pawns);
 		U64 their_pawns = (c == WHITE ? ei.black_pawns : ei.white_pawns);
@@ -500,20 +496,15 @@ namespace
 		U64 mask = ei.all_pieces;
 		bool castled = b.is_castled(c);
 
-		U64 enemy_bishops = b.get_pieces(them, BISHOP);
-		U64 enemy_rooks =  b.get_pieces(them, ROOK);
-		U64 enemy_queens = b.get_pieces(them, QUEEN);
-		U64 enemy_knights = b.get_pieces(them, KNIGHT);
-		U64 enemy_king = b.get_pieces(them, KING);
-		U64 sliders = (enemy_bishops | enemy_rooks | enemy_queens);
-		U64 rank7 = (c == WHITE ? RowBB[ROW2] : RowBB[ROW6]);
+		U64 enemy_bishops = (c == WHITE ? b.get_pieces(BLACK, BISHOP) : b.get_pieces(WHITE, BISHOP));
+		U64 enemy_rooks = (c == WHITE ? b.get_pieces(BLACK, ROOK) : b.get_pieces(WHITE, ROOK));
+		U64 enemy_queens = (c == WHITE ? b.get_pieces(BLACK, QUEEN) : b.get_pieces(WHITE, QUEEN));
+		U64 enemy_knights = (c == WHITE ? b.get_pieces(BLACK, KNIGHT) : b.get_pieces(WHITE, KNIGHT));
 
 		// king safety
 		U64 mobility = PseudoAttacksBB(KING, from) & (ei.empty | b.colored_pieces(them));
-		U64 safetyZone = KingSafetyBB[c][from];
-		U64 local_attackers = safetyZone & b.colored_pieces(them);		
-		U64 defenders = safetyZone & b.colored_pieces(c);
-		
+		U64 local_attackers = KingSafetyBB[c][from] & b.colored_pieces(them);
+		U64 sliders = (enemy_bishops | enemy_rooks | enemy_queens);
 		int nb_safe = 0; int nb_attackers = 0;
 		while (mobility)
 		{
@@ -544,22 +535,6 @@ namespace
 			if (nb_safe <= 0) score -= 10;
 		}
 
-		// specialized mating net detection -- for endgame situations where enemy has large material advantage
-		// 1. enemy king in our safety zone
-		// 2. <= 2 safe squares 
-		// 3. we are positioned on the edge of the board (or near corners) (with enemies on our 7th)
-		// 4. 0 defenders in safe zone
-		bool onEdge = (SquareBB[from] & BoardEdgesBB);
-		int nb_defenders = count(defenders);
-		bool slidersOn7th = rank7 & sliders;
-		if (nb_defenders <= 0 
-			&& onEdge
-			&& ei.phase == END_GAME)
-		{
-			// min_distance returns minimum column or row separation
-			if (slidersOn7th)  score -= (7 - min_distance(from, eks)) * 250;
-		}
-
 		// pawn cover around king -- based on game phase
 		if (ei.phase == MIDDLE_GAME)
 		{
@@ -575,32 +550,32 @@ namespace
 
 		// note : speedup when these diag checks are removed for certain tactical test positions, but
 		// play is weaker (places king in danger much sooner during game).
-		//if (enemy_bishops || enemy_queens)
-		//{
-		//	U64 diags = BishopMask[from] & our_pawns & KingSafetyBB[c][from];
-		//	if (diags) score += KingExposureBonus[ei.phase];
-		//}
+		if (enemy_bishops || enemy_queens)
+		{
+			U64 diags = BishopMask[from] & our_pawns & KingSafetyBB[c][from];
+			if (diags) score += KingExposureBonus[ei.phase];
+		}
 
-		//if (enemy_rooks || enemy_queens)
-		//{
-		//	U64 cols = KingVisionBB[c][ROOK][from] & ColBB[COL(from)] & our_pawns & KingSafetyBB[c][from];
-		//	if (cols) score += KingExposureBonus[ei.phase];
+		if (enemy_rooks || enemy_queens)
+		{
+			U64 cols = KingVisionBB[c][ROOK][from] & ColBB[COL(from)] & our_pawns & KingSafetyBB[c][from];
+			if (cols) score += KingExposureBonus[ei.phase];
 
-		//	cols = KingVisionBB[c][ROOK][from] & ColBB[COL(from)] & their_pawns;
-		//	if (!cols) score -= KingExposureBonus[ei.phase];
+			cols = KingVisionBB[c][ROOK][from] & ColBB[COL(from)] & their_pawns;
+			if (!cols) score -= KingExposureBonus[ei.phase];
 
-		//	U64 colsRight = COL(from + 1) <= COL8 ? (KingVisionBB[c][ROOK][from + 1] & ColBB[COL(from + 1)] & their_pawns) : 1ULL;
-		//	if (!colsRight) score -= KingExposureBonus[ei.phase];
+			U64 colsRight = COL(from + 1) <= COL8 ? (KingVisionBB[c][ROOK][from + 1] & ColBB[COL(from + 1)] & their_pawns) : 1ULL;
+			if (!colsRight) score -= KingExposureBonus[ei.phase];
 
-		//	U64 colsRightRight = COL(from + 2) <= COL8 ? (KingVisionBB[c][ROOK][from + 2] & ColBB[COL(from + 2)] & their_pawns) : 1ULL;
-		//	if (!colsRightRight) score -= KingExposureBonus[ei.phase];
+			U64 colsRightRight = COL(from + 2) <= COL8 ? (KingVisionBB[c][ROOK][from + 2] & ColBB[COL(from + 2)] & their_pawns) : 1ULL;
+			if (!colsRightRight) score -= KingExposureBonus[ei.phase];
 
-		//	U64 colsLeft = COL(from - 1) >= COL1 ? (KingVisionBB[c][ROOK][from - 1] & ColBB[COL(from - 1)] & their_pawns) : 1ULL;
-		//	if (!colsLeft) score -= KingExposureBonus[ei.phase];
+			U64 colsLeft = COL(from - 1) >= COL1 ? (KingVisionBB[c][ROOK][from - 1] & ColBB[COL(from - 1)] & their_pawns) : 1ULL;
+			if (!colsLeft) score -= KingExposureBonus[ei.phase];
 
-		//	U64 colsLeftLeft = COL(from - 2) >= COL1 ? (KingVisionBB[c][ROOK][from - 2] & ColBB[COL(from - 2)] & their_pawns) : 1ULL;
-		//	if (!colsLeftLeft) score -= KingExposureBonus[ei.phase];
-		//}
+			U64 colsLeftLeft = COL(from - 2) >= COL1 ? (KingVisionBB[c][ROOK][from - 2] & ColBB[COL(from - 2)] & their_pawns) : 1ULL;
+			if (!colsLeftLeft) score -= KingExposureBonus[ei.phase];
+		}
 
 		// .. evaluate development and treat our "less active" pieces as dangerous to our king
 		U64 back_rank = (c == WHITE ? RowBB[ROW1] : RowBB[ROW8]);
@@ -669,6 +644,8 @@ namespace
 		U64 backward_pawns = ei.pe->backwardPawns[them];
 		U64 doubled_pawns = ei.pe->doubledPawns[them];
 		U64 chain_bases = ei.pe->chainBase[them];
+		//U64 king_pawns = ei.pe->kingPawns[them];
+		//U64 chain_pawns = ei.pe->chainPawns[them];
 		U64 undefended_pawns = ei.pe->undefended[them];
 		U64 center_pawns = all_pawns & center_mask;
 
@@ -704,13 +681,14 @@ namespace
 				if (tmp) score += count(tmp) *AttackBonus[ei.phase][ROOK][PAWN];
 			}
 
+
 		U64 king_attackers = b.attackers_of(enemy_ks) & b.colored_pieces(c);
 
 		// evaluate checks which skewer king and another piece, or check king and attack another piece/pawn
 		if (king_attackers)
 		{
 			// evaluate double checks
-			//if (more_than_one(king_attackers)) score += 2;
+			if (more_than_one(king_attackers)) score += 2;
 
 			while (king_attackers)
 			{
@@ -725,7 +703,6 @@ namespace
 					int piece = b.piece_on(from);
 					U64 attacked_squares = 0ULL;
 
-					// "safe" knight forks
 					if (piece == KNIGHT)
 					{
 						attacked_squares = PseudoAttacksBB(KNIGHT, from) & b.colored_pieces(them);
@@ -751,38 +728,19 @@ namespace
 
 		// are there any discovered check candidates in the position? These would be slider pieces that are pointed at the king,
 		// but are blocked (only once) by their own friendly pieces .. should move this to incremental updates during do-undo-move.
-		//U64 sliders = (bishops | queens | rooks);
-		//if (sliders)
-		//	while (sliders)
-		//	{
-		//		int from = pop_lsb(sliders);
-		//		U64 between_bb = BetweenBB[from][enemy_ks] & b.colored_pieces(c); // this will always include the checking piece
-
-		//		// again this is not completely accurate, the "blocking bit" could be a pawn that is unable to move out of the way
-		//		// or similar.  In this case, the bonus is incorrect .. since this should be rare (in theory) we just keep the bonus small...
-		//		if (count(between_bb) == 2) score += 1;
-		//	}
-
-		// bonus for discovered checkers 
-		U64 disc_checkers = b.discovered_checkers(c);
-		U64 disc_blockers = b.discovered_blockers(c);
-		U64 enemy_pieces = (b.colored_pieces(them));
-		if (disc_checkers)
-		{
-			while (disc_checkers)
+		U64 sliders = (bishops | queens | rooks);
+		if (sliders)
+			while (sliders)
 			{
-				int f = pop_lsb(disc_checkers);
-				U64 disc_mask = (BetweenBB[f][enemy_ks]) & enemy_pieces;
-				if (count(disc_mask) <= 1) score += 10;//80;
-			}
-			while (disc_blockers)
-			{
-				int f = pop_lsb(disc_blockers);
-				if (b.piece_on(f) >= KNIGHT) score += 15;//150;// 125;
-			}
-		}
+				int from = pop_lsb(sliders);
+				U64 between_bb = BetweenBB[from][enemy_ks] & b.colored_pieces(c); // this will always include the checking piece
 
-		// advanced passed pawns (TODO)
+				// again this is not completely accurate, the "blocking bit" could be a pawn that is unable to move out of the way
+				// or similar.  In this case, the bonus is incorrect .. since this should be rare (in theory) we just keep the bonus small...
+				if (count(between_bb) == 2) score += 1;
+			}
+
+		// advanced passed pawns
 		U64 our_passed_pawns = ei.pe->passedPawns[c];
 		if (our_passed_pawns)
 		{
@@ -790,16 +748,9 @@ namespace
 			while (our_passed_pawns)
 			{
 				// pawns close to promotion are almost always a threat
-				int s = pop_lsb(our_passed_pawns);
-				int pomoting_sq = (c == WHITE ? A8 + COL(s) : COL(s));
-				int inFront = (c == WHITE ? s + 8 : s - 8);
-				int d = row_distance(s, pomoting_sq);
-				if (d <= 3)
-				{
-					score += 20;
-					if (on_board(inFront) && b.attackers_of(inFront)) score += 5;
-					if (d <= 1) score += 50;
-				}
+				int from = pop_lsb(our_passed_pawns);
+				U64 squares_until_promotion = SpaceInFrontBB[c][from];
+				if (count(squares_until_promotion) <= 3) score += 20;
 			}
 		}
 
