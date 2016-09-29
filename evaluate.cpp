@@ -266,9 +266,6 @@ namespace
 			U64 king_threats = PseudoAttacksBB(KNIGHT, from) & KingSafetyBB[them][(them == BLACK ? ei.black_ks : ei.white_ks)];
 			if (king_threats) score += count(king_threats);//threats_to_king_weights[ei.phase][KNIGHT] * count(king_threats);
 
-			// evaluate the connected-ness of this piece (how many friendly pieces attack it)
-			U64 connected = b.attackers_of(from) & (c == WHITE ? ei.white_pieces : ei.black_pieces);
-			score += count(connected); //connected_weights[ei.phase][KNIGHT]
 		}
 
 		if (ei.do_trace)
@@ -351,9 +348,6 @@ namespace
 			U64 king_threats = mvs & PseudoAttacksBB(KING, (them == BLACK ? ei.black_ks : ei.white_ks));
 			if (king_threats) score += count(king_threats);//threats_to_king_weights[ei.phase][BISHOP] *count(king_threats);
 
-			// connected-ness of this piece (how many friendly pieces attack it)
-			U64 connected = b.attackers_of(from) & (c == WHITE ? ei.white_pieces : ei.black_pieces);
-			score += count(connected);// connected_weights[ei.phase][BISHOP]
 		}
 
 		// light + dark square bishop bonus
@@ -420,8 +414,6 @@ namespace
 			U64 king_threats = mvs & KingSafetyBB[them][(them == BLACK ? ei.black_ks : ei.white_ks)];
 			if (king_threats) score += count(king_threats);//threats_to_king_weights[ei.phase][ROOK];// *count(king_threats);
 
-			U64 connected = b.attackers_of(from) & (c == WHITE ? ei.white_pieces : ei.black_pieces);
-			score += count(connected); //connected_weights[ei.phase][ROOK]
 		}
 		if (ei.do_trace)
 		{
@@ -473,8 +465,6 @@ namespace
 			U64 king_threats = mvs & KingSafetyBB[them][(them == BLACK ? ei.black_ks : ei.white_ks)];
 			if (king_threats) score += count(king_threats);
 
-			U64 connected = b.attackers_of(from) & (c == WHITE ? ei.white_pieces : ei.black_pieces);
-			score += count(connected); 
 		}
 
 		if (ei.do_trace)
@@ -648,39 +638,6 @@ namespace
 		//U64 chain_pawns = ei.pe->chainPawns[them];
 		U64 undefended_pawns = ei.pe->undefended[them];
 		U64 center_pawns = all_pawns & center_mask;
-
-		// removed passed pawns, backward pawns and king pawns which are normally defended well.
-		U64 pawn_targets = (undefended_pawns & doubled_pawns) |
-			(undefended_pawns & backward_pawns) |
-			(undefended_pawns & isolated_pawns) |
-			(undefended_pawns & passed_pawns) |
-			(undefended_pawns & center_pawns) |
-			(undefended_pawns & chain_bases);
-
-		if (pawn_targets)
-			while (pawn_targets)
-			{
-				score += 1; // inc score just for having the target
-
-				int sq = pop_lsb(pawn_targets);
-				U64 attackers = b.attackers_of(sq);
-
-				U64 tmp = (attackers & pawns);
-				if (tmp) score += count(tmp) *AttackBonus[ei.phase][PAWN][PAWN];
-
-				tmp = (attackers & knights);
-				if (tmp) score += count(tmp) *AttackBonus[ei.phase][KNIGHT][PAWN];
-
-				tmp = (attackers & bishops);
-				if (tmp) score += count(tmp) *AttackBonus[ei.phase][BISHOP][PAWN];
-
-				tmp = (attackers & queens);
-				if (tmp) score += count(tmp) *AttackBonus[ei.phase][QUEEN][PAWN];
-
-				tmp = (attackers & rooks);
-				if (tmp) score += count(tmp) *AttackBonus[ei.phase][ROOK][PAWN];
-			}
-
 
 		U64 king_attackers = b.attackers_of(enemy_ks) & b.colored_pieces(c);
 
