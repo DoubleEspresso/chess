@@ -157,7 +157,7 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 				captures[c_sz++].score = score;
 				continue;
 			}
-		else if (piece_vals[tp] - piece_vals[fp] >= 0) score = piece_vals[tp] - piece_vals[fp];
+		//else if (piece_vals[tp] - piece_vals[fp] >= 0) score = piece_vals[tp] - piece_vals[fp]; // introduces tactical bugs
 		else if (b.is_legal(m)) score = b.see_move(m);
 		else continue;
 

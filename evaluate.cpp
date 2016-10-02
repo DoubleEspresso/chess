@@ -126,7 +126,7 @@ namespace
 		ei.white_pawns = b.get_pieces(WHITE, PAWN);
 		ei.black_pawns = b.get_pieces(BLACK, PAWN);
 		ei.pe = pawnTable.get(b, ei.phase);
-		ei.do_trace = options["trace eval"];
+		ei.do_trace = false;//options["trace eval"];
 		ei.w_pinned = b.pinned(WHITE);
 		ei.b_pinned = b.pinned(BLACK);
 
@@ -227,7 +227,7 @@ namespace
 			if ((SquareBB[from] & pinned)) score -= ei.tempoBonus / 2;
 			{
 				mobility = PseudoAttacksBB(KNIGHT, from) & ei.empty;
-
+				
 				// remove sqs attacked by enemy pawns
 				U64 tmp = ei.pe->attacks[them];
 				if (tmp)
@@ -393,8 +393,8 @@ namespace
 			if (mobility) score += count(mobility) / 4;
 
 			// penalize the rook if attacked by a knight, bishop or pawn
-			U64 attackers = b.attackers_of(from) & (enemy_pawns | enemy_knights | enemy_bishops);
-			if (attackers) score -= ei.tempoBonus / 2;
+			//U64 attackers = b.attackers_of(from) & (enemy_pawns | enemy_knights | enemy_bishops);
+			//if (attackers) score -= ei.tempoBonus / 2;
 
 			// .. rook attacks
 			U64 attacks = mvs & (c == WHITE ? ei.black_pieces : ei.white_pieces);
@@ -452,8 +452,8 @@ namespace
 			if (mobility) score += count(mobility) / 8;
 
 			// penalize the queen if attacked by a knight, bishop or pawn
-			U64 attackers = b.attackers_of(from) & (enemy_pawns | enemy_knights | enemy_bishops | enemy_rooks);
-			if (attackers) score -= ei.tempoBonus / 2;
+			//U64 attackers = b.attackers_of(from) & (enemy_pawns | enemy_knights | enemy_bishops | enemy_rooks);
+			//if (attackers) score -= ei.tempoBonus / 2;
 
 			U64 attacks = mvs & (c == WHITE ? ei.black_pieces : ei.white_pieces);
 			while (attacks)
@@ -639,6 +639,7 @@ namespace
 		U64 undefended_pawns = ei.pe->undefended[them];
 		U64 center_pawns = all_pawns & center_mask;
 
+		/*
 		U64 king_attackers = b.attackers_of(enemy_ks) & b.colored_pieces(c);
 
 		// evaluate checks which skewer king and another piece, or check king and attack another piece/pawn
@@ -682,6 +683,7 @@ namespace
 				}
 			}
 		}
+		*/
 
 		// are there any discovered check candidates in the position? These would be slider pieces that are pointed at the king,
 		// but are blocked (only once) by their own friendly pieces .. should move this to incremental updates during do-undo-move.
@@ -732,33 +734,36 @@ namespace
 		U64 rooks = (c == WHITE ? b.get_pieces(WHITE, ROOK) : b.get_pieces(BLACK, ROOK));
 
 		U64 attackers_of_big_center = 0ULL;
+		
 		while (bigCenter)
 		{
 			int s = pop_lsb(bigCenter);
 			U64 tmp = b.attackers_of(s) & b.colored_pieces(c);
 			if (tmp) attackers_of_big_center |= tmp;
 		}
+		
 		if (pawns)
 		{
-			U64 pawn_bm = pawns & attackers_of_big_center;
+		  U64 pawn_bm = pawns & attackers_of_big_center;
 			if (pawn_bm) score += count(pawn_bm) * CenterBonus[ei.phase][PAWN];
 		}
 		if (knights)
 		{
-			U64 knight_bm = knights & attackers_of_big_center;
-			if (knight_bm) score += 1;// *center_weights[ei.phase][KNIGHT];
+		  U64 knight_bm = knights & attackers_of_big_center;
+		  if (knight_bm) score += 1;// *center_weights[ei.phase][KNIGHT];
 		}
 		if (bishops)
 		{
-			U64 bish_bm = bishops & attackers_of_big_center;
-			if (bish_bm) score += 1;// *center_weights[ei.phase][BISHOP];
+		  U64 bish_bm = bishops & attackers_of_big_center;
+		  if (bish_bm) score += 1;// *center_weights[ei.phase][BISHOP];
 		}
+		
 		if (rooks)
 		{
 			U64 rook_bm = rooks & attackers_of_big_center;
 			score += 1; //count(rook_bm);// *center_weights[ei.phase][ROOK];
 		}
-
+		
 		//// queen weight
 		//if (queens)
 		//{

@@ -127,7 +127,7 @@
 // r1bq1bnr/ppppk1pp/n7/3Pp2Q/2N1P3/P7/1PP2PPP/R1B1KB1R w KQ - 2 10
 //
 // bxd8 best
-v// 3rkb1r/pQ2ppp1/7p/B1P3P1/2qn4/7P/P4P2/3RR1K1 w k - 2 24
+// 3rkb1r/pQ2ppp1/7p/B1P3P1/2qn4/7P/P4P2/3RR1K1 w k - 2 24
 //
 // recent bug (eval ~990 but down a rook)
 // position fen 1r5k/2p1qr1p/2p1N2Q/p2p2R1/3P1P1P/1P4R1/P5P1/1b4K1 w - - 1 27
@@ -146,3 +146,6 @@ v// 3rkb1r/pQ2ppp1/7p/B1P3P1/2qn4/7P/P4P2/3RR1K1 w k - 2 24
 //
 // serious bug position (seg fault)
 // 3k3r/q2Np1b1/P3p2p/1Q2P1p1/2p4B/8/1PP2PPP/5RK1 w - - 1 28
+//
+// another serious bug - plays nd4 here
+// 2kr1bnr/pppqpppp/2n5/1N3b2/8/5N2/PPPPBPPP/R1BQ1RK1 w - - 14 10

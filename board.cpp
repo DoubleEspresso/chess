@@ -833,7 +833,8 @@ void Board::clear()
 	castled[WHITE] = castled[BLACK] = false;
 	position = &start;
 }
-U64 Board::attackers_of(int s)
+// note : perf testing on linux reveals this method takes approx ~13% of execution time! (try to avoid using)
+U64 Board::attackers_of(int s) 
 {
 	U64 mask = all_pieces();
 	U64 battck = attacks<BISHOP>(mask, s);

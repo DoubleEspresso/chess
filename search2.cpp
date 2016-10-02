@@ -45,7 +45,10 @@ namespace Search
 {
 	void run(Board& b, int dpth, bool pondering)
 	{
+	  // nb: perf testing on linux reveals options[] lookup to be very slow
+	  // best to avoid queries to options[] during search/evaluation
 		// check opening table if using opening book
+	  /*
 		if (options["opening book"] && b.half_moves() <= 16)
 		{
 #ifdef WIN32
@@ -79,7 +82,7 @@ namespace Search
 				return;
 			}
 		}
-
+	  */
 		// init search params
 		int alpha = NINF;
 		int beta = INF;
@@ -505,6 +508,7 @@ namespace
 	template<NodeType type>
 	int qsearch(Board& b, int alpha, int beta, int depth, Node* stack, bool inCheck)
 	{
+ 		if (b.is_repition_draw()) return DRAW;
 		int eval = NINF;
 		int ttval = NINF;
 		//int ttstatic_value = NINF;
@@ -530,7 +534,7 @@ namespace
 
 		//U16 lastmove = (stack - 1)->currmove;
 		bool genChecks = (stack - 2)->givescheck && depth > -3;
-		int qsDepth = (genChecks ? -1 : 0);
+		int qsDepth = depth;//(genChecks ? -1 : 0);
 
 		// transposition table lookup    
 		data = b.data_key();
