@@ -11,8 +11,6 @@
 #include "search.h"
 #include "uci.h"
 
-
-// sorting using std::sort()
 struct {
 	bool operator()(const MoveList& x, const MoveList& y)
 	{
@@ -78,7 +76,7 @@ void MoveStats::update(Board& b, U16& m, U16& last, Node* stack, int d, int eval
 }
 
 // dbg
-void MoveSelect::print_list()
+void MoveSelect::print_list(Board& b)
 {
 	/*
 	  if (ttmv)
@@ -97,6 +95,7 @@ void MoveSelect::print_list()
 		  std::cout << "currmove " << s << " (killer2)" << std::endl;
 		}
 	*/
+	printf("     !!DBG moveselect-sorting :: tomove(%s), type(%s), incheck(%s)\n", (b.whos_move() == WHITE ? "white" : "black"), (type == QUIET ? "quiet" : type == CAPTURE ? "capture" : "unknown"), b.in_check() ? "yes" : "no");
 	if (captures)
 	{
 		printf("...captures...\n");
@@ -139,7 +138,8 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 		int from = int(m & 0x3f);
 		int to = int((m & 0xfc0) >> 6);
 		int mt = int((m & 0xf000) >> 12);
-		int p = b.piece_on(to);
+		int fp = b.piece_on(from);
+		int tp = b.piece_on(to);
 		bool checksKing = b.gives_check(m);
 
 		if (m == ttm) continue;
@@ -147,7 +147,7 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 
 		// build capture list -- evasions include quiet moves (fyi)
 		if (movetype == CAPTURE &&
-			(mt == CAPTURE || mt == EP || (mt <= PROMOTION_CAP && mt > PROMOTION) || (includeQsearchChecks() && checksKing) ))
+			(mt == CAPTURE || mt == EP || (mt <= PROMOTION_CAP && mt > PROMOTION) || (includeQsearchChecks() && checksKing)))
 
 		{
 			captures[c_sz].m = m;
@@ -157,11 +157,12 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 				captures[c_sz++].score = score;
 				continue;
 			}
+		else if (piece_vals[tp] - piece_vals[fp] >= 0) score = piece_vals[tp] - piece_vals[fp];
 		else if (b.is_legal(m)) score = b.see_move(m);
 		else continue;
 
 		// check bonus
-		if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move()) && b.is_dangerous(m, b.piece_on(from))))
+		if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move()) && b.is_dangerous(m, fp)))
 		{
 			score += 1;//piece_vals[b.piece_on(to)]; // almost always a good move
 		}
@@ -176,7 +177,7 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 		{
 			quiets[q_sz].m = m;
 			int score = statistics->score(m, b.whos_move());
-			//printf("...looking at %s, stats(%d)\n", UCI::move_to_string(m).c_str(), statistics->score(m, b.whos_move()));
+			//printf("   ...looking at %s, stats(%d)\n", UCI::move_to_string(m).c_str(), statistics->score(m, b.whos_move()));
 			// countermove bonus
 			if (lastmove != MOVE_NONE &&
 				m == statistics->countermoves[get_from(lastmove)][get_to(lastmove)])
@@ -188,8 +189,7 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 			// if previous bestmove attacks the from-sq, give a bonus for avoiding the capture/attack			
 			if (to_sq(lastmove) == from)
 			{
-				int diff = (piece_vals[b.piece_on(from)] - piece_vals[b.piece_on(to_sq(lastmove))]);
-				score += (diff < 0 ? -1 : 1);//-piece_vals[b.piece_on(from)] : piece_vals[b.piece_on(from)]);
+				score += 1;
 			}
 
 			// check bonus
@@ -207,9 +207,10 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 			{
 				if (Globals::SquareBB[from] && b.checkers()) score += 1;
 				score += b.see_move(m);
-				score += (square_score(b.whos_move(), p, b.phase(), to) - square_score(b.whos_move(), p, b.phase(), from))*0.1;
+				score += (square_score(b.whos_move(), fp, b.phase(), to) - square_score(b.whos_move(), fp, b.phase(), from))*0.1;
+				//printf("      ...to(%d)-from(%d) :: adj(%d)\n", square_score(b.whos_move(), fp, b.phase(), to), square_score(b.whos_move(), fp, b.phase(), from), score);
 			}
-			//printf("score=%d, q_sz=%d\n",score, q_sz);
+			//printf("   ...finalscore=%d, q_sz=%d\n",score, q_sz);
 			quiets[q_sz++].score = score;// (score < NINF - 1 ? NINF - 1 : score);
 		}
 	}
@@ -228,8 +229,7 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 		stored_csz = c_sz;
 		c_sz = 0;
 	}
-	//b.print();
-	//print_list();
+	//print_list(b);
 }
 
 // note : scores are initialized to NINF-1

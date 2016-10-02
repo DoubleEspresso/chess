@@ -94,7 +94,7 @@ namespace {
 			int row = 7 - ROW(square);
 			square = 8 * row + col;
 		}
-		if (c == 0 && p == 2 && square > 63) printf("c=%d, piece=%d, phase=%d, square=%d\n", c, p, phase, square);
+		//if (c == 0 && p == 2 && square > 63) printf("c=%d, piece=%d, phase=%d, square=%d\n", c, p, phase, square);
 		int ss = square_scores[p][square];
 		int eg = ss / 100;
 		//int rp = (eg <= 0 ? floor(ss / 100 + 0.5) : floor(ss / 100 + 0.5)); 
@@ -114,10 +114,11 @@ namespace {
 			square = 8 * row + col;
 		}
 		int ss = square_scores[p][square];
+		//printf("		c=%d, piece=%d, phase=%d, square=%d, ss=%d\n", c, p, phase, square, ss);
 		int eg = ss / 100;
-		//int rp = (eg <= 0 ? floor(ss / 100 + 0.5) : floor(ss / 100 + 0.5)); 
+		//printf("		eg=%d\n", eg);
 		int mg = ss - 100 * rounded((float)ss / (float)100);
-		//printf("2. c=%d, p=%d, sq=%d, phase=%d, ss=%d, eg=%d, mg=%d\n", c, p, square, phase, ss, eg, mg);
+		//printf("		mg=%d\n", mg);
 		return (phase == MIDDLE_GAME ? mg : eg);
 	}
 

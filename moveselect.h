@@ -95,7 +95,7 @@ public:
 	int qsize() { return stored_qsz; }
 	int csize() { return stored_csz; }
 	MoveList * get_captures() { return captures; }
-	void print_list();
+	void print_list(Board& b);
 	void load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * stack, MoveType movetype);
 	bool includeQsearchChecks() { return (type == QsearchCaptures) && genChecks; }
 };

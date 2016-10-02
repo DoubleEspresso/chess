@@ -79,7 +79,7 @@ class Board
   int phase();
 
   // do/undo move actions/helper functions
-  void do_move(BoardData& d, U16 m);
+  void do_move(BoardData& d, U16 m, bool qsMove = false);
   void undo_move(U16 m);
   void do_null_move(BoardData& d);
   void undo_null_move();
@@ -95,6 +95,8 @@ class Board
   // search data access
   inline void set_nodes_searched(int nodes);
   inline int get_nodes_searched();
+  inline int QSnodes();
+  inline int MSnodes();
   inline void inc_nodes_searched(int nodes);
   inline bool has_position();
   inline int whos_move();
@@ -173,7 +175,7 @@ class Board
   int number_of_arr[COLORS][PIECES];
   int piece_index[COLORS][PIECES][SQUARES];
   int piece_diff[PIECES - 1]; // no kings
-  int nodes_searched;
+  int nodes_searched, qsnodes, msnodes;
 
   bool castled[COLORS];
 };
@@ -205,6 +207,16 @@ inline void Board::set_nodes_searched(int nodes)
 inline int Board::get_nodes_searched()
 {
   return nodes_searched;
+}
+
+inline int Board::QSnodes()
+{
+	return qsnodes;
+}
+
+inline int Board::MSnodes()
+{
+	return msnodes;
 }
 
 inline int * Board::piece_counts(int c)

@@ -253,7 +253,7 @@ void Board::undo_null_move()
 	position = position->previous;
 }
 
-void Board::do_move(BoardData& d, U16 m)
+void Board::do_move(BoardData& d, U16 m, bool qsMove)
 {
 	int from = int(m & 0x3f);
 	int to = int((m & 0xfc0) >> 6);
@@ -271,6 +271,7 @@ void Board::do_move(BoardData& d, U16 m)
 	d.previous = position;
 	position = &d;
 	nodes_searched++;
+	(qsMove ? qsnodes++ : msnodes++);
 
 	if0(from == position->ks)
 	{
@@ -828,7 +829,7 @@ void Board::clear()
 	start.blockers[WHITE] = 0ULL;
 	start.blockers[BLACK] = 0ULL;
 	start.previous = 0;
-	nodes_searched = 0;
+	nodes_searched = qsnodes = msnodes = 0;
 	castled[WHITE] = castled[BLACK] = false;
 	position = &start;
 }
@@ -891,6 +892,11 @@ int Board::smallest_attacker(int sq, int color, int& from)
 // to determine the safety of the "to-square".
 int Board::see_move(U16& move)
 {
+	// avoid inflating nodes searched:
+	int nsearched = nodes_searched;
+	int qnsearched = qsnodes;
+	int mnsearched = msnodes;
+
 	int square = get_to(move);
 	int p = piece_on(square);
 	int value = (p != PIECE_NONE ? material.material_value(p, phase()) : 0);
@@ -899,6 +905,11 @@ int Board::see_move(U16& move)
 	do_move(pd, move);
 	value += (-see(square));
 	undo_move(move);
+
+	nodes_searched = nsearched;
+	qsnodes = qnsearched;
+	msnodes = mnsearched;
+
 	return value;
 }
 

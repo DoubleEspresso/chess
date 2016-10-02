@@ -406,10 +406,11 @@ namespace
 				eval + 650 < alpha &&
 				eval > NINF + mate_dist)
 			{
+				//printf("!!DBG futility prune move(%s) depth(%d), alpha(%d) eval(%d) beta(%d), nodes(%d), msnodes(%d), qsnodes(%d)\n", (b.whos_move() == WHITE ? "white" : "black"), depth, alpha, eval, beta, b.get_nodes_searched(), b.MSnodes(), b.QSnodes());
 				++pruned;
 				continue;
 			}
-
+			//printf("   !!DBG color(%s) domove(%s), alpha(%d) eval(%d) beta(%d), nodes(%d), msnodes(%d), qsnodes(%d)\n", (b.whos_move() == WHITE ? "white" : "black"), UCI::move_to_string(move).c_str(), alpha, eval, beta, b.get_nodes_searched(), b.MSnodes(), b.QSnodes());
 			b.do_move(pd, move);
 
 			// stack updates
@@ -439,11 +440,14 @@ namespace
 
 			if (fulldepthSearch)
 			{
+				//printf("!!DBG fulldepthSearch(true) move(%s) newdepth(%d), alpha(%d) eval(%d) beta(%d), nodes(%d), msnodes(%d), qsnodes(%d)\n", (b.whos_move() == WHITE ? "white" : "black"), newdepth, alpha, eval, beta, b.get_nodes_searched(), b.MSnodes(), b.QSnodes());
 				eval = (newdepth <= 1 ? -qsearch<NONPV>(b, -alpha - 1, -alpha, 0, stack + 1, givesCheck) : -search<NONPV>(b, -alpha - 1, -alpha, newdepth, stack + 1));
 			}
 
 			if (pvMove || eval > alpha)
 			{
+				//printf("!!DBG pvSearch(true) move(%s) newdepth(%d), alpha(%d) eval(%d) beta(%d), nodes(%d), msnodes(%d), qsnodes(%d)\n", (b.whos_move() == WHITE ? "white" : "black"), newdepth, alpha, eval, beta, b.get_nodes_searched(), b.MSnodes(), b.QSnodes());
+
 				eval = (newdepth <= 1 ? -qsearch<PV>(b, -beta, -alpha, 0, stack + 1, givesCheck) : -search<PV>(b, -beta, -alpha, newdepth, stack + 1));
 			}
 
@@ -599,7 +603,7 @@ namespace
 			}
 
 			BoardData pd;
-			b.do_move(pd, move);
+			b.do_move(pd, move, true);
 			eval = -qsearch<type>(b, -beta, -alpha, depth - 1, stack + 1, checksKing);
 			b.undo_move(move);
 			moves_searched++;
@@ -686,14 +690,17 @@ namespace
 			if (j < 2) BestMoves[j] = m;//(!pondering ? BestMoves[j] = m : PonderMoves[j] = m);
 			j++;
 		}
-		printf("info score %s %d depth %d seldepth %d nodes %d tbhits %d time %d pv ",
+		int elapsed_ms = (int)(timer_thread->elapsed <= 0 ? 1 : timer_thread->elapsed);
+		printf("info score %s %d depth %d seldepth %d nodes %d qsnodes %d msnodes %d tbhits %d time %d nps %d pv ",
 			(mate_val != 0 || mated_val != 0 ? "mate" : "cp"),
 			(mate_val != 0 ? mate_val : mated_val != 0 ? mated_val : eval),
 			depth,
 			j,
 			b.get_nodes_searched(),
+			b.QSnodes(),
+			b.MSnodes(),
 			hash_hits,
-			(int)timer_thread->elapsed);
+			elapsed_ms, (int)  ( (float) 1000 * ((float) b.get_nodes_searched() / (float)elapsed_ms)));
 		std::cout << pv_str << std::endl;
 	}
 
