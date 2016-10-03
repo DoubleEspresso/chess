@@ -206,7 +206,7 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * st
 			if (score <= (NINF - 1))
 			{
 				if (Globals::SquareBB[from] && b.checkers()) score += 1;
-				score += b.see_move(m);
+				//score += b.see_move(m);
 				score += (square_score(b.whos_move(), fp, b.phase(), to) - square_score(b.whos_move(), fp, b.phase(), from))*0.1;
 				//printf("      ...to(%d)-from(%d) :: adj(%d)\n", square_score(b.whos_move(), fp, b.phase(), to), square_score(b.whos_move(), fp, b.phase(), from), score);
 			}

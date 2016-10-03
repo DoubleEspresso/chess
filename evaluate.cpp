@@ -618,72 +618,14 @@ namespace
 	int eval_threats(Board &b, EvalInfo& ei)
 	{
 		int score = 0;
+		int them = (c == WHITE ? BLACK : WHITE);
 		U64 pawns = (c == WHITE ? ei.white_pawns : ei.black_pawns);
-		U64 knights = (c == WHITE ? b.get_pieces(WHITE, KNIGHT) : b.get_pieces(BLACK, KNIGHT));
-		U64 bishops = (c == WHITE ? b.get_pieces(WHITE, BISHOP) : b.get_pieces(BLACK, BISHOP));
-		U64 queens = (c == WHITE ? b.get_pieces(WHITE, QUEEN) : b.get_pieces(BLACK, QUEEN));
-		U64 rooks = (c == WHITE ? b.get_pieces(WHITE, ROOK) : b.get_pieces(BLACK, ROOK));
+		U64 knights = b.get_pieces(them, KNIGHT);
+		U64 bishops = b.get_pieces(them, BISHOP);
+		U64 queens = b.get_pieces(them, QUEEN);
+		U64 rooks = b.get_pieces(them, ROOK);
 		U64 center_mask = (SquareBB[D4] | SquareBB[E4] | SquareBB[E5] | SquareBB[D5]);
 		int enemy_ks = (c == WHITE ? ei.black_ks : ei.white_ks);
-
-		// pawn targets
-		int them = (c == WHITE ? BLACK : WHITE);
-		U64 all_pawns = (c == WHITE ? b.get_pieces(BLACK, PAWN) : b.get_pieces(WHITE, PAWN));
-		U64 passed_pawns = ei.pe->passedPawns[them];
-		U64 isolated_pawns = ei.pe->isolatedPawns[them];
-		U64 backward_pawns = ei.pe->backwardPawns[them];
-		U64 doubled_pawns = ei.pe->doubledPawns[them];
-		U64 chain_bases = ei.pe->chainBase[them];
-		//U64 king_pawns = ei.pe->kingPawns[them];
-		//U64 chain_pawns = ei.pe->chainPawns[them];
-		U64 undefended_pawns = ei.pe->undefended[them];
-		U64 center_pawns = all_pawns & center_mask;
-
-		/*
-		U64 king_attackers = b.attackers_of(enemy_ks) & b.colored_pieces(c);
-
-		// evaluate checks which skewer king and another piece, or check king and attack another piece/pawn
-		if (king_attackers)
-		{
-			// evaluate double checks
-			if (more_than_one(king_attackers)) score += 2;
-
-			while (king_attackers)
-			{
-				int from = pop_lsb(king_attackers);
-
-				// imperfect .. (this will exclude the case of a defended contact check with king) .. I'm trying to consider only "safe" checks
-				// for now, i.e. the checking piece is not going to be captured on the next move .. so these threats are in some sense .. serious threats.
-				U64 attackers_of_from = b.attackers_of(from) & b.colored_pieces(them);
-
-				if (!attackers_of_from)
-				{
-					int piece = b.piece_on(from);
-					U64 attacked_squares = 0ULL;
-
-					if (piece == KNIGHT)
-					{
-						attacked_squares = PseudoAttacksBB(KNIGHT, from) & b.colored_pieces(them);
-
-						// this is just a rough guess (we know there is more than one square attacked, but we could be attacking a defended pawn..)
-						// a faster/more accurate method needs a "undefended pawns/pieces bitboard" that is incrementally updated on each do-move..
-						if (more_than_one(attacked_squares)) score += 1;
-					}
-					// evaluate skewer checks and double attacks from a check (imperfect)
-					else if (piece != PAWN)
-					{
-						U64 mask = (piece == BISHOP ? BishopMask[from] : piece == ROOK ? RookMask[from] : QueenMask[from]);
-
-						// if we get here, piece is already checking the king .. if we find more than 1 attacked squares, we can flag
-						// this as either a skewer or a check+attack move...either way it is still a guess, and the attacked piece could still be defended
-						// so the bonus is quite small.
-						attacked_squares = mask & b.colored_pieces(them);
-						if (more_than_one(attacked_squares)) score += 1;
-					}
-				}
-			}
-		}
-		*/
 
 		// are there any discovered check candidates in the position? These would be slider pieces that are pointed at the king,
 		// but are blocked (only once) by their own friendly pieces .. should move this to incremental updates during do-undo-move.

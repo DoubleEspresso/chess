@@ -205,7 +205,7 @@ namespace
 		// 2. -- ttable lookup 
 		data = b.data_key();
 		key = b.pos_key();
-		if (hashTable.fetch(key, e) && e.depth >= depth)
+		if (hashTable.fetch(key, e) && e.Depth() >= depth)
 		{
 			ttm = e.move;
 			//ttstatic_value = e.static_value;	
@@ -233,7 +233,8 @@ namespace
 
 		// 4. -- drop into qsearch if we are losing
 		if (depth <= 4 &&
-			!pv_node && ttm == MOVE_NONE &&
+			!pv_node && 
+			ttm == MOVE_NONE &&
 			!stack->isNullSearch &&
 			static_eval + 650 <= alpha &&
 			!b.in_check() &&
@@ -534,12 +535,12 @@ namespace
 
 		//U16 lastmove = (stack - 1)->currmove;
 		bool genChecks = (stack - 2)->givescheck && depth > -3;
-		int qsDepth = depth;//(genChecks ? -1 : 0);
+		int qsDepth = (genChecks ? -1 : 0);
 
 		// transposition table lookup    
 		data = b.data_key();
 		key = b.pos_key();
-		if (hashTable.fetch(key, e) && e.depth >= qsDepth)
+		if (hashTable.fetch(key, e) && e.Depth() >= qsDepth)
 		{
 			++hash_hits;
 			ttm = e.move;
@@ -552,8 +553,8 @@ namespace
 		}
 
 		// stand pat lower bound -- tried using static_eval for the stand-pat value, play was weak
-		int stand_pat = Eval::evaluate(b);
-		//int stand_pat= (ttval == NINF ? Eval::evaluate(b) : ttval);    
+		//int stand_pat = (ttval > NINF && ttval > alpha && ttval < beta ? ttval : Eval::evaluate(b));
+		int stand_pat= Eval::evaluate(b);    
 
 		if (stand_pat >= beta && !inCheck) return beta;
 		// delta pruning                 		
@@ -587,8 +588,7 @@ namespace
 				!inCheck &&
 				move != ttm &&
 				!pv_node &&
-				eval + material.material_value(b.piece_on(get_to(move)), END_GAME) >= beta &&
-				b.see_move(move) >= 0)
+				eval + material.material_value(b.piece_on(get_to(move)), END_GAME) >= beta)
 			{
 				eval += material.material_value(b.piece_on(get_to(move)), END_GAME);
 				++pruned;

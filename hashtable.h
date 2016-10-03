@@ -10,14 +10,15 @@
 // notes: 5 * 16 + 16 bits = 96 bits / 8 = 12 bytes
 struct TableEntry
 {
-  U16 pkey; // higher 16 bits of poskey
-  U16 dkey; // higher 16 bits of data key
-  U16 move;
-  int16 value;
-  int16 static_value;
-  bool pvNode;
-  U8 depth;
-  U8 bound;
+	int Depth() { return depth - 1; } // adjustment for qsearch depths which can be -1
+	U16 pkey; // higher 16 bits of poskey
+	U16 dkey; // higher 16 bits of data key
+	U16 move;
+	int16 value;
+	int16 static_value;
+	bool pvNode;
+	U8 depth;
+	U8 bound;
 };
 
 // stockfish idea: make clusters of tt-entries that fill the cache-line size
@@ -27,30 +28,30 @@ const int ClusterSize = 5;
 
 struct HashCluster
 {
-  TableEntry cluster_entries[ClusterSize];
-  char padding[4];
+	TableEntry cluster_entries[ClusterSize];
+	char padding[4];
 };
 
 // the transposition table class, the hash table consists of a power of 2 of 
 // clusters each containing 5 entries.
 class HashTable
 {
- private:
-  size_t sz_kb;
-  size_t clusterCount;
-  size_t nb_elts;
-  HashCluster * entry;
+private:
+	size_t sz_kb;
+	size_t clusterCount;
+	size_t nb_elts;
+	HashCluster * entry;
 
- public:
-  HashTable();
-  ~HashTable();
-  
-  void store(U64 key, U64 data, U16 depth, Bound bound, U16 m, int score, int static_value, bool pv_node);
-  TableEntry * first_entry(U64 key);
-  bool fetch(U64 key, TableEntry& ein);
-  bool init();	
-  void clear();
-  U64 check_elts() { return nb_elts; } 
+public:
+	HashTable();
+	~HashTable();
+
+	void store(U64 key, U64 data, U8 depth, Bound bound, U16 m, int score, int static_value, bool pv_node);
+	TableEntry * first_entry(U64 key);
+	bool fetch(U64 key, TableEntry& ein);
+	bool init();
+	void clear();
+	U64 check_elts() { return nb_elts; }
 };
 
 inline TableEntry * HashTable::first_entry(U64 key)
