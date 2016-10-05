@@ -11,6 +11,7 @@
 
 namespace Eval
 {
+  struct EvalInfo;
   extern int evaluate(Board& b);
 };
 

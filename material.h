@@ -16,6 +16,7 @@ struct MaterialEntry
   U64 key;
   int value;
   GamePhase game_phase;
+  EndgameType endgame_type;
 };
 
 class MaterialTable

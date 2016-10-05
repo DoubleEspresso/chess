@@ -156,6 +156,7 @@
     <ClCompile Include="bench.cpp" />
     <ClCompile Include="board.cpp" />
     <ClCompile Include="book.cpp" />
+    <ClCompile Include="endgame.cpp" />
     <ClCompile Include="evaluate.cpp" />
     <ClCompile Include="globals.cpp" />
     <ClCompile Include="hashtable.cpp" />
@@ -178,6 +179,7 @@
     <ClInclude Include="board.h" />
     <ClInclude Include="book.h" />
     <ClInclude Include="definitions.h" />
+    <ClInclude Include="endgame.h" />
     <ClInclude Include="evaluate.h" />
     <ClInclude Include="globals.h" />
     <ClInclude Include="hashtable.h" />

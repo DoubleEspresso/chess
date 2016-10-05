@@ -178,15 +178,7 @@ namespace
 		// bishop sqs
 		sqs = b.sq_of<BISHOP>(c);
 		for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
-		  {
-		    if (from > 63)
-		      {
-			printf("...from=%d\n",from);
-			b.print();
-		      }
 		    score += square_score<c, BISHOP>(e.phase, from);
-		  }
-
 
 		// rook sqs
 		sqs = b.sq_of<ROOK>(c);
@@ -301,22 +293,20 @@ namespace
 			if (SquareBB[from] & ColoredSquaresBB[WHITE]) light_bishop = true;
 			else dark_bishop = true;
 
-
 			// mobility score
 			U64 mvs = attacks<BISHOP>(mask, from);
+			
+			if ((SquareBB[from] & pinned)) score -= ei.tempoBonus / 2;
+			U64 mobility = mvs & ei.empty;
+			// remove sqs attacked by enemy pawns
+			U64 tmp = ei.pe->attacks[them];
+			if (tmp)
 			{
-				if ((SquareBB[from] & pinned)) score -= ei.tempoBonus / 2;
-				U64 mobility = mvs & ei.empty;
-				// remove sqs attacked by enemy pawns
-				U64 tmp = ei.pe->attacks[them];
-				if (tmp)
-				{
-					if (tmp & SquareBB[from]) score -= ei.tempoBonus / 2;
-					U64 bm = mobility & tmp;
-					mobility ^= bm;
-				}
-				score += count(mobility) / 4;
+				if (tmp & SquareBB[from]) score -= ei.tempoBonus / 2;
+				U64 bm = mobility & tmp;
+				mobility ^= bm;
 			}
+			score += count(mobility) / 4;			
 
 			U64 attacks = mvs & (c == WHITE ? ei.black_pieces : ei.white_pieces);
 			while (attacks)
@@ -325,8 +315,6 @@ namespace
 				int p = b.piece_on(to);
 				score += int(AttackBonus[ei.phase][BISHOP][p]);
 			}
-
-
 			// ..positional
 			if (center_nb <= 2) score += score += (ei.phase == MIDDLE_GAME ? 4 : 6);
 
@@ -338,16 +326,9 @@ namespace
 			if (light_bishop && (our_wsq_pawns >= 3)) score -= (ei.phase == MIDDLE_GAME ? 6 : 2);
 			if (dark_bishop && (our_bsq_pawns >= 3))  score -= (ei.phase == MIDDLE_GAME ? 6 : 2);
 
-			// does the bishop block an enemy passed pawn (?)
-			//U64 blockade = (c == WHITE ? (ei.pe->backwardPawns[BLACK] >> NORTH) : (ei.pe->backwardPawns[WHITE] << NORTH));
-			//blockade |= (c == WHITE ? (ei.pe->isolatedPawns[BLACK] >> NORTH) : (ei.pe->isolatedPawns[WHITE] << NORTH));
-			////blockade &= mobility;
-			//if (blockade) score += count(blockade);
-
 			// threats to king 
 			U64 king_threats = mvs & PseudoAttacksBB(KING, (them == BLACK ? ei.black_ks : ei.white_ks));
 			if (king_threats) score += count(king_threats);//threats_to_king_weights[ei.phase][BISHOP] *count(king_threats);
-
 		}
 
 		// light + dark square bishop bonus
@@ -392,10 +373,6 @@ namespace
 			}
 			if (mobility) score += count(mobility) / 4;
 
-			// penalize the rook if attacked by a knight, bishop or pawn
-			//U64 attackers = b.attackers_of(from) & (enemy_pawns | enemy_knights | enemy_bishops);
-			//if (attackers) score -= ei.tempoBonus / 2;
-
 			// .. rook attacks
 			U64 attacks = mvs & (c == WHITE ? ei.black_pieces : ei.white_pieces);
 			while (attacks)
@@ -433,9 +410,9 @@ namespace
 		// pinned info/ attacker info
 		U64 pinned = (c == WHITE ? ei.w_pinned : ei.b_pinned);
 		U64 enemy_pawns = (c == WHITE ? ei.black_pawns : ei.white_pawns);
-		U64 enemy_knights = (c == WHITE ? b.get_pieces(BLACK, KNIGHT) : b.get_pieces(WHITE, KNIGHT));
-		U64 enemy_bishops = (c == WHITE ? b.get_pieces(BLACK, BISHOP) : b.get_pieces(WHITE, BISHOP));
-		U64 enemy_rooks = (c == WHITE ? b.get_pieces(BLACK, ROOK) : b.get_pieces(WHITE, ROOK));
+		U64 enemy_knights = b.get_pieces(them, KNIGHT);
+		U64 enemy_bishops = b.get_pieces(them, BISHOP);
+		U64 enemy_rooks = b.get_pieces(them, ROOK);
 
 		for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
 		{
@@ -451,10 +428,6 @@ namespace
 			}
 			if (mobility) score += count(mobility) / 8;
 
-			// penalize the queen if attacked by a knight, bishop or pawn
-			//U64 attackers = b.attackers_of(from) & (enemy_pawns | enemy_knights | enemy_bishops | enemy_rooks);
-			//if (attackers) score -= ei.tempoBonus / 2;
-
 			U64 attacks = mvs & (c == WHITE ? ei.black_pieces : ei.white_pieces);
 			while (attacks)
 			{
@@ -464,7 +437,6 @@ namespace
 			}
 			U64 king_threats = mvs & KingSafetyBB[them][(them == BLACK ? ei.black_ks : ei.white_ks)];
 			if (king_threats) score += count(king_threats);
-
 		}
 
 		if (ei.do_trace)
@@ -486,10 +458,10 @@ namespace
 		U64 mask = ei.all_pieces;
 		bool castled = b.is_castled(c);
 
-		U64 enemy_bishops = (c == WHITE ? b.get_pieces(BLACK, BISHOP) : b.get_pieces(WHITE, BISHOP));
-		U64 enemy_rooks = (c == WHITE ? b.get_pieces(BLACK, ROOK) : b.get_pieces(WHITE, ROOK));
-		U64 enemy_queens = (c == WHITE ? b.get_pieces(BLACK, QUEEN) : b.get_pieces(WHITE, QUEEN));
-		U64 enemy_knights = (c == WHITE ? b.get_pieces(BLACK, KNIGHT) : b.get_pieces(WHITE, KNIGHT));
+		U64 enemy_bishops = b.get_pieces(them, BISHOP);
+		U64 enemy_rooks = b.get_pieces(them, ROOK);
+		U64 enemy_queens = b.get_pieces(them, QUEEN);
+		U64 enemy_knights = b.get_pieces(them, KNIGHT);
 
 		// king safety
 		U64 mobility = PseudoAttacksBB(KING, from) & (ei.empty | b.colored_pieces(them));
@@ -619,12 +591,9 @@ namespace
 	{
 		int score = 0;
 		int them = (c == WHITE ? BLACK : WHITE);
-		U64 pawns = (c == WHITE ? ei.white_pawns : ei.black_pawns);
-		U64 knights = b.get_pieces(them, KNIGHT);
 		U64 bishops = b.get_pieces(them, BISHOP);
 		U64 queens = b.get_pieces(them, QUEEN);
 		U64 rooks = b.get_pieces(them, ROOK);
-		U64 center_mask = (SquareBB[D4] | SquareBB[E4] | SquareBB[E5] | SquareBB[D5]);
 		int enemy_ks = (c == WHITE ? ei.black_ks : ei.white_ks);
 
 		// are there any discovered check candidates in the position? These would be slider pieces that are pointed at the king,
@@ -670,10 +639,10 @@ namespace
 		U64 bigCenter = CenterMaskBB;
 
 		U64 pawns = (c == WHITE ? ei.white_pawns : ei.black_pawns);
-		U64 knights = (c == WHITE ? b.get_pieces(WHITE, KNIGHT) : b.get_pieces(BLACK, KNIGHT));
-		U64 bishops = (c == WHITE ? b.get_pieces(WHITE, BISHOP) : b.get_pieces(BLACK, BISHOP));
-		U64 queens = (c == WHITE ? b.get_pieces(WHITE, QUEEN) : b.get_pieces(BLACK, QUEEN));
-		U64 rooks = (c == WHITE ? b.get_pieces(WHITE, ROOK) : b.get_pieces(BLACK, ROOK));
+		U64 knights = b.get_pieces(c, KNIGHT);
+		U64 bishops = b.get_pieces(c, BISHOP);
+		U64 queens = b.get_pieces(c, QUEEN);
+		U64 rooks = b.get_pieces(c, ROOK);
 
 		U64 attackers_of_big_center = 0ULL;
 		
@@ -782,7 +751,7 @@ namespace
 		printf("| Rooks       |\t %d \t|\t %d \t|\t %d \t|\n", ei.s.rook_sc[WHITE], ei.s.rook_sc[BLACK], ei.s.rook_sc[WHITE] - ei.s.rook_sc[BLACK]);
 		printf("| Queens      |\t %d \t|\t %d \t|\t %d \t|\n", ei.s.queen_sc[WHITE], ei.s.queen_sc[BLACK], ei.s.queen_sc[WHITE] - ei.s.queen_sc[BLACK]);
 		printf("| Kings       |\t %d \t|\t %d \t|\t %d \t|\n", ei.s.king_sc[WHITE], ei.s.king_sc[BLACK], ei.s.king_sc[WHITE] - ei.s.king_sc[BLACK]);
-		printf("| Space       |\t %d \t|\t %d \t|\t %d \t|\n", ei.s.space_sc[WHITE], ei.s.space_sc[BLACK], ei.s.space_sc[WHITE] - ei.s.space_sc[BLACK]);
+		//printf("| Space       |\t %d \t|\t %d \t|\t %d \t|\n", ei.s.space_sc[WHITE], ei.s.space_sc[BLACK], ei.s.space_sc[WHITE] - ei.s.space_sc[BLACK]);
 		printf("| Center      |\t %d \t|\t %d \t|\t %d \t|\n", ei.s.center_sc[WHITE], ei.s.center_sc[BLACK], ei.s.center_sc[WHITE] - ei.s.center_sc[BLACK]);
 		printf("| Threats     |\t %d \t|\t %d \t|\t %d \t|\n", ei.s.threat_sc[WHITE], ei.s.threat_sc[BLACK], ei.s.threat_sc[WHITE] - ei.s.threat_sc[BLACK]);
 		printf("| Eval time   |\t -- \t|\t -- \t|\t %d \t|\n", ei.s.time);

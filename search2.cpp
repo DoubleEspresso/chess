@@ -226,10 +226,8 @@ namespace
 				else if (e.bound == BOUND_HIGH  && e.value <= alpha) return  e.value;
 		}
 
-		// 3. -- static evaluation of position    
-		//int static_eval = Eval::evaluate(b);
+		// 3. -- static evaluation of position 
 		int static_eval = (ttvalue > NINF ? ttvalue : Eval::evaluate(b));
-		//int static_eval = (ttvalue > NINF ? ttvalue : ttstatic_value > NINF ? ttstatic_value : Eval::evaluate(b));
 
 		// 4. -- drop into qsearch if we are losing
 		if (depth <= 4 &&
@@ -430,8 +428,8 @@ namespace
 				!inCheck &&
 				isQuiet &&
 				!b.pawn_on_7(b.whos_move()) &&
-				quiets_searched > 3)
-				//depth > (pv_node ? 6 : 4))
+				depth > (pv_node ? 6 : 4))
+				//quiets_searched > 3)
 			{
 				int R = Reduction(pv_node, improving, newdepth, moves_searched) / 2;
 				int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];
