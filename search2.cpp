@@ -181,7 +181,7 @@ namespace
 		U16 ttm = MOVE_NONE;
 		int ttvalue = NINF;
 		int ttstatic_value = NINF;
-		int mate_dist = stack->ply;// iter_depth - depth + 1;
+		int mate_dist = iter_depth - depth + 1; //stack->ply;
 
 		//if (UCI_SIGNALS.stop) return DRAW;
 
@@ -428,8 +428,8 @@ namespace
 				!inCheck &&
 				isQuiet &&
 				!b.pawn_on_7(b.whos_move()) &&
-				depth > (pv_node ? 6 : 4))
-				//quiets_searched > 3)
+				moves_searched > 3)
+				//depth > (pv_node ? 6 : 4 ) )
 			{
 				int R = Reduction(pv_node, improving, newdepth, moves_searched) / 2;
 				int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];
@@ -449,7 +449,6 @@ namespace
 			if (pvMove || eval > alpha)
 			{
 				//printf("!!DBG pvSearch(true) move(%s) newdepth(%d), alpha(%d) eval(%d) beta(%d), nodes(%d), msnodes(%d), qsnodes(%d)\n", (b.whos_move() == WHITE ? "white" : "black"), newdepth, alpha, eval, beta, b.get_nodes_searched(), b.MSnodes(), b.QSnodes());
-
 				eval = (newdepth <= 1 ? -qsearch<PV>(b, -beta, -alpha, 0, stack + 1, givesCheck) : -search<PV>(b, -beta, -alpha, newdepth, stack + 1));
 			}
 
@@ -461,6 +460,7 @@ namespace
 			if (eval >= beta)
 			{
 				//printf("!!DBG (search) beta cut :: depth(%d) alpha(%d),eval(%d),beta(%d), bm=%s\n", depth, alpha, eval, beta, UCI::move_to_string(move).c_str());
+				if (eval >= MATE_IN_MAXPLY && givesCheck) update_pv(stack->pv, move, (stack + 1)->pv); // mating move
 
 				if (isQuiet)
 				{
@@ -526,7 +526,7 @@ namespace
 		//if (b.is_repition_draw()) return DRAW;
 
 		int aorig = alpha;
-		int mate_dist = stack->ply;// iter_depth - depth + 1;
+		int mate_dist = iter_depth - depth; //stack->ply;
 		//bool split = (b.get_worker()->currSplitBlock != NULL);
 		//SplitBlock * split_point;
 		//if (split) split_point = b.get_worker()->currSplitBlock;

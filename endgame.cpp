@@ -17,7 +17,7 @@ namespace Endgame
 	int eval_draw(Board& b, EvalInfo& ei);
 	template<Color c> int eval_kk(Board& b, EvalInfo& ei);
 	template<Color c> int eval_knnk(Board& b, EvalInfo& ei);
-	template<Color c> int eval_knbk(Board& b, EvalInfo& ei);
+	template<Color c> int eval_kbbk(Board& b, EvalInfo& ei);
 	template<Color c> int eval_krrk(Board& b, EvalInfo& ei);
 	template<Color c> int eval_kqqk(Board& b, EvalInfo& ei);
 	template<Color c> int eval_knbk(Board& b, EvalInfo& ei);
@@ -42,7 +42,7 @@ int Endgame::evaluate(Board& b, EvalInfo& ei, int eval)
 	{
 	case KK:				score += (eval_kk<WHITE>(b, ei) - eval_kk<BLACK>(b, ei)); break;
 	case KnnK:				score += (eval_knnk<WHITE>(b, ei) - eval_knnk<BLACK>(b, ei)); break;
-	case KbbK:				score += (eval_knbk<WHITE>(b, ei) - eval_knbk<BLACK>(b, ei)); break;
+	case KbbK:				score += (eval_kbbk<WHITE>(b, ei) - eval_kbbk<BLACK>(b, ei)); break;
 	case KrrK:				score += (eval_krrk<WHITE>(b, ei) - eval_krrk<BLACK>(b, ei)); break;
 	case KqqK:				score += (eval_kqqk<WHITE>(b, ei) - eval_kqqk<BLACK>(b, ei)); break;
 	case KnbK: case KbnK:	score += (eval_knbk<WHITE>(b, ei) - eval_knbk<BLACK>(b, ei)); break;
