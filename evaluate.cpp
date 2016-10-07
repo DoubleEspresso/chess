@@ -228,7 +228,7 @@ namespace
 					U64 bm = mobility & tmp;
 					mobility ^= bm;
 				}
-				score += count(mobility);
+				score += 2*count(mobility);
 			}
 
 			// knight attacks weighted by game phase, and piece being attacked.
@@ -306,7 +306,7 @@ namespace
 				U64 bm = mobility & tmp;
 				mobility ^= bm;
 			}
-			score += count(mobility) / 4;			
+			score += count(mobility) / 2;			
 
 			U64 attacks = mvs & (c == WHITE ? ei.black_pieces : ei.white_pieces);
 			while (attacks)
@@ -435,6 +435,8 @@ namespace
 				int p = b.piece_on(to);
 				score += int(AttackBonus[ei.phase][QUEEN][p]);
 			}
+			if (b.attackers_of(from) & (enemy_pawns | enemy_knights | enemy_bishops | enemy_rooks)) score -= ei.tempoBonus;
+
 			U64 king_threats = mvs & KingSafetyBB[them][(them == BLACK ? ei.black_ks : ei.white_ks)];
 			if (king_threats) score += count(king_threats);
 		}

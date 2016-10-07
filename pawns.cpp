@@ -219,8 +219,8 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx)
 		    table[idx].chainBase[c] |= SquareBB[from];  // store the base of the pawn chain
 		  }
 		// compute those pawns whiceh are "hanging" 
-		U64 defenders = b.attackers_of(from) & b.colored_pieces(c);
-		if (!defenders) table[idx].undefended[c] |= SquareBB[from];
+		//U64 defenders = b.attackers_of(from) & b.colored_pieces(c);
+		//if (!defenders) table[idx].undefended[c] |= SquareBB[from];
 
 
 	} // end loop over sqs
