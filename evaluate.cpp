@@ -113,7 +113,7 @@ namespace
 	int eval(Board &b)
 	{
 		EvalInfo ei;
-		ei.tempoBonus = 8;//16;
+		ei.tempoBonus = 16;
 		ei.stm = b.whos_move();
 		ei.me = material.get(b);
 		ei.phase = ei.me->game_phase;
