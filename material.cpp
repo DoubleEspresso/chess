@@ -105,15 +105,14 @@ MaterialEntry * MaterialTable::get(Board& b)
 		// endgame material constellations
 		if (table[idx].game_phase == END_GAME && piece_count <= 2)
 		{
-			U8 wConstellation = U8(0);
-			U8 bConstellation = U8(0);
+			U8 Constellation = U8(0);
 
 			for (int pt = 1; pt < PIECES - 1; ++pt)
 			{
-				if (piece_count_w[pt] == 1) wConstellation |= (U8(1) << pt);
-				if (piece_count_b[pt] == 1) bConstellation |= (U8(1) << pt);
+				if (piece_count_w[pt] == 1) Constellation |= (U8(1) << 8 - pt);
+				if (piece_count_b[pt] == 1) Constellation |= (U8(1) << 4 - pt);
 			}
-			table[idx].endgame_type = EndgameType(wConstellation | (bConstellation << 8));
+			table[idx].endgame_type = EndgameType(Constellation);
 		}
 
 		int phase = table[idx].game_phase;
