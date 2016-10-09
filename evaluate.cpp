@@ -65,22 +65,22 @@ namespace
 	};
 	int AttackBonus[2][5][6] =
 	{
-	  {
-		  // pawn, knight, bishop, rook, queen, king
-		  { 2, 6, 7, 9, 11, 13 },  // pawn attcks mg
-		  { 1, 2, 3, 7, 9, 11 },  // knight attcks mg
-		  { 1, 1, 2, 6, 9, 11 },   // bishop attcks mg
-		  { 1, 1, 1, 2, 4, 11 },    // rook attcks mg
-		  { 1, 1, 1, 2, 3, 11 },    // queen attcks mg
-	  },
-	  {
-		  // pawn, knight, bishop, rook, queen, king
-		  { 2, 4, 5, 7, 9, 11 },  // pawn attcks eg
-		  { 1, 2, 3, 7, 9, 11 },  // knight attcks eg
-		  { 1, 1, 2, 6, 9, 11 },   // bishop attcks eg
-		  { 1, 1, 1, 2, 4, 11 },    // rook attcks eg
-		  { 1, 1, 1, 2, 3, 11 },    // queen attcks eg
-	   }
+		{
+			// pawn, knight, bishop, rook, queen, king
+			{ 2, 6, 7, 9, 11, 13 },  // pawn attcks mg
+			{ 1, 2, 3, 7, 9, 11 },  // knight attcks mg
+			{ 1, 1, 2, 6, 9, 11 },   // bishop attcks mg
+			{ 1, 1, 1, 2, 4, 11 },    // rook attcks mg
+			{ 1, 1, 1, 2, 3, 11 },    // queen attcks mg
+		},
+		{
+			// pawn, knight, bishop, rook, queen, king
+			{ 2, 4, 5, 7, 9, 11 },  // pawn attcks eg
+			{ 1, 2, 3, 7, 9, 11 },  // knight attcks eg
+			{ 1, 1, 2, 6, 9, 11 },   // bishop attcks eg
+			{ 1, 1, 1, 2, 4, 11 },    // rook attcks eg
+			{ 1, 1, 1, 2, 3, 11 },    // queen attcks eg
+		}
 	};
 
 	int KingExposureBonus[2] = { 5, 2 };
@@ -113,7 +113,7 @@ namespace
 	int eval(Board &b)
 	{
 		EvalInfo ei;
-		ei.tempoBonus = 16;
+		ei.tempoBonus = 10;
 		ei.stm = b.whos_move();
 		ei.me = material.get(b);
 		ei.phase = ei.me->game_phase;
@@ -178,7 +178,7 @@ namespace
 		// bishop sqs
 		sqs = b.sq_of<BISHOP>(c);
 		for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
-		    score += square_score<c, BISHOP>(e.phase, from);
+			score += square_score<c, BISHOP>(e.phase, from);
 
 		// rook sqs
 		sqs = b.sq_of<ROOK>(c);
@@ -219,7 +219,7 @@ namespace
 			if ((SquareBB[from] & pinned)) score -= ei.tempoBonus / 2;
 			{
 				mobility = PseudoAttacksBB(KNIGHT, from) & ei.empty;
-				
+
 				// remove sqs attacked by enemy pawns
 				U64 tmp = ei.pe->attacks[them];
 				if (tmp)
@@ -228,7 +228,7 @@ namespace
 					U64 bm = mobility & tmp;
 					mobility ^= bm;
 				}
-				score += 2*count(mobility);
+				score += 2 * count(mobility);
 			}
 
 			// knight attacks weighted by game phase, and piece being attacked.
@@ -248,10 +248,10 @@ namespace
 			if (blockade) score += count(blockade);
 
 			// outpost bonus
-			if ((c == WHITE ? ROW(from) >= ROW3 : ROW(from) <= ROW6))
+			if ((c == WHITE ? ROW(from) > ROW3 : ROW(from) < ROW6))
 			{
 				U64 outpost = (mobility | SquareBB[from]) & (c == WHITE ? ei.pe->attacks[WHITE] : ei.pe->attacks[BLACK]) & blockade;
-				if (outpost) score += 1;//count(outpost);
+				if (outpost) score += 2;//count(outpost);
 			}
 
 			// evaluate threats to king 
@@ -295,7 +295,7 @@ namespace
 
 			// mobility score
 			U64 mvs = attacks<BISHOP>(mask, from);
-			
+
 			if ((SquareBB[from] & pinned)) score -= ei.tempoBonus / 2;
 			U64 mobility = mvs & ei.empty;
 			// remove sqs attacked by enemy pawns
@@ -306,7 +306,7 @@ namespace
 				U64 bm = mobility & tmp;
 				mobility ^= bm;
 			}
-			score += count(mobility) / 2;			
+			score += count(mobility) / 2;
 
 			U64 attacks = mvs & (c == WHITE ? ei.black_pieces : ei.white_pieces);
 			while (attacks)
@@ -357,7 +357,8 @@ namespace
 		U64 enemy_bishops = b.get_pieces(them, BISHOP);
 		U64 pawns = (ei.white_pawns | ei.black_pawns);
 		U64 rank7 = (c == WHITE ? RowBB[ROW7] : RowBB[ROW2]);
-
+		U64 rooks = 0ULL;
+		int rank = -1; int file = -1;
 		for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
 		{
 			U64 mvs = attacks<ROOK>(mask, from);
@@ -382,9 +383,20 @@ namespace
 				score += int(AttackBonus[ei.phase][ROOK][p]);
 			}
 
+			// bonus for doubled rooks (mask)
+			rooks |= SquareBB[from];
+			rank = ROW(from);
+			file = COL(from);
+
 			// open file bonus for the rook
 			U64 file_closed = ColBB[COL(from)] & pawns;
-			if (!file_closed) score += 1;
+			if (!file_closed) score += 4;
+
+			if (ColBB[COL(from)] & ei.pe->undefended[c == WHITE ? BLACK : WHITE])
+			{
+				U64 semiClosed = (ColBB[COL(from)] & (c == WHITE ? ei.white_pawns : ei.black_pawns));
+				if (!semiClosed) score += 2; // on semi-open file with weak pawns
+			}
 
 			if (SquareBB[from] & rank7) score += 1;
 
@@ -392,6 +404,15 @@ namespace
 			if (king_threats) score += count(king_threats);//threats_to_king_weights[ei.phase][ROOK];// *count(king_threats);
 
 		}
+		U64 sameRank = 0ULL; U64 sameFile = 0ULL; U64 queenSameFile = 0ULL;
+		if (rank >= 0) sameRank = rooks & RowBB[rank];
+		if (file >= 0) sameFile = rooks & ColBB[file];
+		if (file >= 0) queenSameFile = ColBB[file] & b.get_pieces(c, QUEEN);
+
+		if (sameRank && count(sameRank) >= 2) score += 1;
+		if (sameFile && count(sameFile) >= 2) score += 3;
+		if (queenSameFile) score += 4;
+
 		if (ei.do_trace)
 		{
 			(c == WHITE ? ei.s.rook_sc[WHITE] = score : ei.s.rook_sc[BLACK] = score);
@@ -413,6 +434,7 @@ namespace
 		U64 enemy_knights = b.get_pieces(them, KNIGHT);
 		U64 enemy_bishops = b.get_pieces(them, BISHOP);
 		U64 enemy_rooks = b.get_pieces(them, ROOK);
+		U64 pawns = (ei.white_pawns | ei.black_pawns);
 
 		for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
 		{
@@ -436,6 +458,10 @@ namespace
 				score += int(AttackBonus[ei.phase][QUEEN][p]);
 			}
 			if (b.attackers_of(from) & (enemy_pawns | enemy_knights | enemy_bishops | enemy_rooks)) score -= ei.tempoBonus;
+
+			// open file bonus for the rook
+			U64 file_closed = ColBB[COL(from)] & pawns;
+			if (!file_closed) score += 2;
 
 			U64 king_threats = mvs & KingSafetyBB[them][(them == BLACK ? ei.black_ks : ei.white_ks)];
 			if (king_threats) score += count(king_threats);
@@ -503,7 +529,7 @@ namespace
 		if (ei.phase == MIDDLE_GAME)
 		{
 			U64 pawn_cover = KingSafetyBB[c][from] & our_pawns;
-			if (pawn_cover) score += count(pawn_cover);
+			if (pawn_cover) score += 3 * count(pawn_cover);
 		}
 
 		// piece cover around king
@@ -607,22 +633,50 @@ namespace
 				int from = pop_lsb(sliders);
 				U64 between_bb = BetweenBB[from][enemy_ks] & b.colored_pieces(c); // this will always include the checking piece
 
-				// again this is not completely accurate, the "blocking bit" could be a pawn that is unable to move out of the way
-				// or similar.  In this case, the bonus is incorrect .. since this should be rare (in theory) we just keep the bonus small...
+																				  // again this is not completely accurate, the "blocking bit" could be a pawn that is unable to move out of the way
+																				  // or similar.  In this case, the bonus is incorrect .. since this should be rare (in theory) we just keep the bonus small...
 				if (count(between_bb) == 2) score += 1;
 			}
 
 		// advanced passed pawns
+
 		U64 our_passed_pawns = ei.pe->passedPawns[c];
 		if (our_passed_pawns)
 		{
-			score += 4;
+			score += 1;
 			while (our_passed_pawns)
 			{
 				// pawns close to promotion are almost always a threat
 				int from = pop_lsb(our_passed_pawns);
+				int infrontSq = (c == WHITE ? from + 8 : from - 8);
 				U64 squares_until_promotion = SpaceInFrontBB[c][from];
-				if (count(squares_until_promotion) <= 3) score += 20;
+				U64 blockers = (squares_until_promotion & b.all_pieces());
+				if (!blockers) score += 2;
+				int sqs_togo = count(squares_until_promotion);
+				if (on_board(infrontSq) && ei.phase == END_GAME)
+				{
+					/*
+					U64 supporters = b.attackers_of(infrontSq) & b.colored_pieces(c);
+					if (supporters && sqs_togo <= 5)
+					{
+					score += count(supporters);
+					}
+					*/
+					score += (6 - sqs_togo) * 10;
+
+					U64 our_rooks = b.get_pieces(c, ROOK);
+					if (our_rooks)
+					{
+						int frook = pop_lsb(our_rooks);
+						int rook_file = COL(frook);
+						if (rook_file == COL(from))
+						{
+							if (c == WHITE && ROW(frook) < ROW(from)) score += 2;
+							if (c == BLACK && ROW(frook) > ROW(from)) score += 2;
+						}
+					}
+				}
+				if (sqs_togo <= 3) score += 20;
 			}
 		}
 
@@ -647,36 +701,36 @@ namespace
 		U64 rooks = b.get_pieces(c, ROOK);
 
 		U64 attackers_of_big_center = 0ULL;
-		
+
 		while (bigCenter)
 		{
 			int s = pop_lsb(bigCenter);
 			U64 tmp = b.attackers_of(s) & b.colored_pieces(c);
 			if (tmp) attackers_of_big_center |= tmp;
 		}
-		
+
 		if (pawns)
 		{
-		  U64 pawn_bm = pawns & attackers_of_big_center;
+			U64 pawn_bm = pawns & attackers_of_big_center;
 			if (pawn_bm) score += count(pawn_bm) * CenterBonus[ei.phase][PAWN];
 		}
 		if (knights)
 		{
-		  U64 knight_bm = knights & attackers_of_big_center;
-		  if (knight_bm) score += 1;// *center_weights[ei.phase][KNIGHT];
+			U64 knight_bm = knights & attackers_of_big_center;
+			if (knight_bm) score += 1;// *center_weights[ei.phase][KNIGHT];
 		}
 		if (bishops)
 		{
-		  U64 bish_bm = bishops & attackers_of_big_center;
-		  if (bish_bm) score += 1;// *center_weights[ei.phase][BISHOP];
+			U64 bish_bm = bishops & attackers_of_big_center;
+			if (bish_bm) score += 1;// *center_weights[ei.phase][BISHOP];
 		}
-		
+
 		if (rooks)
 		{
 			U64 rook_bm = rooks & attackers_of_big_center;
 			score += 1; //count(rook_bm);// *center_weights[ei.phase][ROOK];
 		}
-		
+
 		//// queen weight
 		//if (queens)
 		//{

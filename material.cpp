@@ -131,7 +131,7 @@ MaterialEntry * MaterialTable::get(Board& b)
 		// 2. encourage to trade when up material
 		// 3. rook/queen redundant penalties according GM Larry Kaufman's "principle of the redundancy of major pieces"
 		float w1 = (phase == MIDDLE_GAME ? weights_mg[0] : weights_eg[0]);
-		//float w2 = (phase == MIDDLE_GAME ? weights_mg[1] : weights_eg[1]);
+		float w2 = (phase == MIDDLE_GAME ? weights_mg[1] : weights_eg[1]);
 		//float w3 = (phase == MIDDLE_GAME ? weights_mg[2] : weights_eg[2]);
 		//float w4 = (phase == MIDDLE_GAME ? weights_mg[3] : weights_eg[3]);
 
@@ -143,10 +143,10 @@ MaterialEntry * MaterialTable::get(Board& b)
 
 		//// 2. encourage to trade when up material, in endgame, there are fewer pieces by default and
 		//// we don't necessarily want to trade there
-		//if (base != 0 && piece_count > 0 && phase != END_GAME)
-		//{
-		//	corr += w2 * 1 / piece_count * base;
-		//}
+		if (base != 0 && piece_count > 0 && phase != END_GAME)
+		{
+			corr += w2 * 1 / piece_count * base;
+		}
 
 		// 3. rook/queen redundant penalties according GM Larry Kaufman's "principle of the redundancy of major pieces"
 		//corr -= w3 * (piece_count_w[ROOK] - piece_count_b[ROOK]);

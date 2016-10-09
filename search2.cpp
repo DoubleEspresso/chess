@@ -39,6 +39,8 @@ namespace
 	void store_pv(Board& b, U16 * pv, int depth);
 	void print_pv_info(Board& b, int depth, int eval, U16 * pv);
 	void ReadoutRootMoves(int depth);
+	/*margins*/
+	float RazorMargin(float base, int depth);
 };
 
 namespace Search
@@ -102,11 +104,12 @@ namespace Search
 
 		// main entry point for the fail-hard alpha-beta search
 		// the main iterative deepening loop
+		statistics.clear(); // move ordering of quiet moves
 		for (int depth = 1; depth <= dpth; depth += 1)
 		{
 			if (UCI_SIGNALS.stop) break; hash_hits = 0;
 			//else if (UCI_SIGNALS.timesUp) checkMoreTime(b, stack + 2);
-			statistics.clear(); // move ordering of quiet moves
+			
 			(stack + 2)->ply = (stack + 1)->ply = (stack)->ply = 0;
 			eval = search<ROOT>(b, alpha, beta, depth, stack + 2);
 			iter_depth++;
@@ -139,6 +142,11 @@ namespace
 	bool RootsContain(U16& root_mv)
 	{
 		return std::find(RootMoves.begin(), RootMoves.end(), root_mv) != RootMoves.end();
+	}
+
+	float RazorMargin(float base, int depth)
+	{
+		return base * ( -0.333333 * log((float)((float)depth / 40.0)));
 	}
 
 	template<NodeType type>
@@ -230,6 +238,7 @@ namespace
 		int static_eval = (ttvalue > NINF ? ttvalue : Eval::evaluate(b));
 
 		// 4. -- drop into qsearch if we are losing
+		//float rm = RazorMargin(650, depth);
 		if (depth <= 4 &&
 			!pv_node && 
 			ttm == MOVE_NONE &&
