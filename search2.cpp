@@ -606,7 +606,7 @@ namespace
 				&& !pv_node
 				&& !checksKing
 				&& move != ttm
-				&& b.see_move(move) < 0)
+				&& b.see_sign(move) < 0)
 			{
 				++pruned;
 				continue;

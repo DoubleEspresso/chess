@@ -889,6 +889,19 @@ int Board::smallest_attacker(int sq, int color, int& from)
 	return minv;
 }
 
+int Board::see_sign(U16& move)
+{
+	if (get_movetype(move) == CAPTURE &&
+		material.material_value(piece_on(get_from(move)), phase()) <=
+		material.material_value(piece_on(get_to(move)), phase()))
+	{
+		return material.material_value(piece_on(get_to(move)), phase()) -
+			material.material_value(piece_on(get_from(move)), phase());
+	}
+
+	return see_move(move);
+}
+
 // see_move will compute see() on any type of move, quiet or capture
 // to determine the safety of the "to-square".
 int Board::see_move(U16& move)
