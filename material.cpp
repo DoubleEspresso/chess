@@ -143,11 +143,12 @@ MaterialEntry * MaterialTable::get(Board& b)
 
 		//// 2. encourage to trade when up material, in endgame, there are fewer pieces by default and
 		//// we don't necessarily want to trade there
+		/*
 		if (base != 0 && piece_count > 0 && phase != END_GAME)
 		{
 			corr += w2 * 1 / piece_count * base;
 		}
-
+		*/
 		// 3. rook/queen redundant penalties according GM Larry Kaufman's "principle of the redundancy of major pieces"
 		//corr -= w3 * (piece_count_w[ROOK] - piece_count_b[ROOK]);
 		//corr -= w4 * (piece_count_w[QUEEN] - piece_count_b[QUEEN]);

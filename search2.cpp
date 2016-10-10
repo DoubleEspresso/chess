@@ -101,15 +101,13 @@ namespace Search
 		timer_thread->searching = true;
 		timer_thread->elapsed = 0;
 		timer_thread->sleep_condition.signal();
-
 		// main entry point for the fail-hard alpha-beta search
 		// the main iterative deepening loop
-		statistics.clear(); // move ordering of quiet moves
 		for (int depth = 1; depth <= dpth; depth += 1)
 		{
 			if (UCI_SIGNALS.stop) break; hash_hits = 0;
 			//else if (UCI_SIGNALS.timesUp) checkMoreTime(b, stack + 2);
-			
+			statistics.clear(); // move ordering of quiet moves
 			(stack + 2)->ply = (stack + 1)->ply = (stack)->ply = 0;
 			eval = search<ROOT>(b, alpha, beta, depth, stack + 2);
 			iter_depth++;
@@ -436,6 +434,7 @@ namespace
 				!givesCheck &&
 				!inCheck &&
 				isQuiet &&
+			        depth > 2 &&
 				!b.pawn_on_7(b.whos_move()) &&
 				moves_searched > 3)
 				//depth > (pv_node ? 6 : 4 ) )
