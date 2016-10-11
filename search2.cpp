@@ -304,7 +304,7 @@ namespace
 
 		// 7. -- probcut from stockfish
 		if (!pv_node &&
-			depth >= 6 &&
+			depth >= 600 &&
 			!b.in_check() &&
 			!stack->isNullSearch &&
 			beta < MATE_IN_MAXPLY &&
@@ -331,11 +331,12 @@ namespace
 
 		// 7. -- internal iterative deepening
 		if (ttm == MOVE_NONE &&
-			depth >= (pv_node ? 6 : 8) &&
+			depth >= (pv_node ? 8 : 6) &&
 			(pv_node || static_eval + 250 >= beta) &&
 			!b.in_check())
 		{
-			int iid = depth - 2 - (pv_node ? 0 : depth / 4);
+			int R = (depth >= 8 ? depth / 2 : 2);
+			int iid = depth - R;// depth - 2 - (pv_node ? 0 : depth / 4);
 
 			stack->isNullSearch = true;
 			if (pv_node)
@@ -434,9 +435,9 @@ namespace
 				!givesCheck &&
 				!inCheck &&
 				isQuiet &&
-			        depth > 2 &&
-				!b.pawn_on_7(b.whos_move()) &&
-				moves_searched > 3)
+			    depth > 2 &&
+				!b.pawn_on_7(b.whos_move()))// &&
+				//moves_searched > 3)
 				//depth > (pv_node ? 6 : 4 ) )
 			{
 				int R = Reduction(pv_node, improving, newdepth, moves_searched) / 2;
