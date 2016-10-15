@@ -21,6 +21,8 @@ pgn_io::pgn_io(char * db_fname) :
   if (db_fname)
     {
       ofile = new std::fstream(db_fname, std::ios::in | std::ios::out | std::ios::binary | std::ios::ate);
+      if (ofile->is_open())
+	printf("...opened database file %s\n", db_fname);
     }
   book = new Book();
 }
@@ -519,6 +521,7 @@ std::string pgn_io::find(const char * fen)
   if (!book->compute_key(fen)) return "";
   int stm = book->whos_move;
   U64 k = book->key();
+  k = k >> 32;
   size_t offset = 0; size_t sz = ofile->tellg();
   db_entry * e = new db_entry();
   size_t low = 0; size_t high = sz / sizeof(db_entry); 
