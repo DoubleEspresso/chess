@@ -25,13 +25,12 @@ struct pgn_data
 
 // attributed packed for win/unix see e.g. 
 // http://stackoverflow.com/questions/1537964/visual-c-equivalent-of-gccs-attribute-packed
-//PACK( struct db_entry
-struct __attribute__ ((packed))
-db_entry
+PACK( 
+struct db_entry
 {
   U32 key;
   U16 move;
-};
+});
 
 class pgn_io
 {
