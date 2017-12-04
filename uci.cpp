@@ -1,414 +1,316 @@
-#include <cmath>
-#include <stdio.h>
+/*
+  Stockfish, a UCI chess playing engine derived from Glaurung 2.1
+  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+
+  Stockfish is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Stockfish is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#include <cassert>
 #include <iostream>
-#include <cstring>
+#include <sstream>
+#include <string>
 
-#include "uci.h"
-#include "bench.h"
-#include "board.h"
-#include "move.h"
-#include "search.h"
-#include "threads.h"
 #include "evaluate.h"
-#include "hashtable.h"
-#include "pawns.h"
-#include "material.h"
-#include "utils.h"
-#include "globals.h"
-#include "opts.h"
+#include "movegen.h"
+#include "position.h"
+#include "search.h"
+#include "thread.h"
+#include "tt.h"
+#include "timeman.h"
+#include "uci.h"
+#include "syzygy/tbprobe.h"
 
-using namespace UCI;
+using namespace std;
 
-Board b;
+extern vector<string> setup_bench(const Position&, istream&);
 
-//std::vector<EPDTest> TestSuite;
+namespace {
 
-void UCI::cmd_loop()
-{
-	int GAME_FINISHED = 0;
-	std::string user_input;
-	while (!GAME_FINISHED)
-	{
-		while (std::getline(std::cin, user_input))
-		{
-			uci_command(user_input, GAME_FINISHED);
-			if (GAME_FINISHED) break;
-		}
-	}
+  // FEN string of the initial position, normal chess
+  const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+
+  // position() is called when engine receives the "position" UCI command.
+  // The function sets up the position described in the given FEN string ("fen")
+  // or the starting position ("startpos") and then makes the moves given in the
+  // following move list ("moves").
+
+  void position(Position& pos, istringstream& is, StateListPtr& states) {
+
+    Move m;
+    string token, fen;
+
+    is >> token;
+
+    if (token == "startpos")
+    {
+        fen = StartFEN;
+        is >> token; // Consume "moves" token if any
+    }
+    else if (token == "fen")
+        while (is >> token && token != "moves")
+            fen += token + " ";
+    else
+        return;
+
+    states = StateListPtr(new std::deque<StateInfo>(1)); // Drop old and create a new one
+    pos.set(fen, Options["UCI_Chess960"], &states->back(), Threads.main());
+
+    // Parse move list (if any)
+    while (is >> token && (m = UCI::to_move(pos, token)) != MOVE_NONE)
+    {
+        states->emplace_back();
+        pos.do_move(m, states->back());
+    }
+  }
+
+
+  // setoption() is called when engine receives the "setoption" UCI command. The
+  // function updates the UCI option ("name") to the given value ("value").
+
+  void setoption(istringstream& is) {
+
+    string token, name, value;
+
+    is >> token; // Consume "name" token
+
+    // Read option name (can contain spaces)
+    while (is >> token && token != "value")
+        name += string(" ", name.empty() ? 0 : 1) + token;
+
+    // Read option value (can contain spaces)
+    while (is >> token)
+        value += string(" ", value.empty() ? 0 : 1) + token;
+
+    if (Options.count(name))
+        Options[name] = value;
+    else
+        sync_cout << "No such option: " << name << sync_endl;
+  }
+
+
+  // go() is called when engine receives the "go" UCI command. The function sets
+  // the thinking time and other parameters from the input string, then starts
+  // the search.
+
+  void go(Position& pos, istringstream& is, StateListPtr& states) {
+
+    Search::LimitsType limits;
+    string token;
+    bool ponderMode = false;
+
+    limits.startTime = now(); // As early as possible!
+
+    while (is >> token)
+        if (token == "searchmoves")
+            while (is >> token)
+                limits.searchmoves.push_back(UCI::to_move(pos, token));
+
+        else if (token == "wtime")     is >> limits.time[WHITE];
+        else if (token == "btime")     is >> limits.time[BLACK];
+        else if (token == "winc")      is >> limits.inc[WHITE];
+        else if (token == "binc")      is >> limits.inc[BLACK];
+        else if (token == "movestogo") is >> limits.movestogo;
+        else if (token == "depth")     is >> limits.depth;
+        else if (token == "nodes")     is >> limits.nodes;
+        else if (token == "movetime")  is >> limits.movetime;
+        else if (token == "mate")      is >> limits.mate;
+        else if (token == "perft")     is >> limits.perft;
+        else if (token == "infinite")  limits.infinite = 1;
+        else if (token == "ponder")    ponderMode = true;
+
+    Threads.start_thinking(pos, states, limits, ponderMode);
+  }
+
+
+  // bench() is called when engine receives the "bench" command. Firstly
+  // a list of UCI commands is setup according to bench parameters, then
+  // it is run one by one printing a summary at the end.
+
+  void bench(Position& pos, istream& args, StateListPtr& states) {
+
+    string token;
+    uint64_t num, nodes = 0, cnt = 1;
+
+    vector<string> list = setup_bench(pos, args);
+    num = count_if(list.begin(), list.end(), [](string s) { return s.find("go ") == 0; });
+
+    TimePoint elapsed = now();
+
+    for (const auto& cmd : list)
+    {
+        istringstream is(cmd);
+        is >> skipws >> token;
+
+        if (token == "go")
+        {
+            cerr << "\nPosition: " << cnt++ << '/' << num << endl;
+            go(pos, is, states);
+            Threads.main()->wait_for_search_finished();
+            nodes += Threads.nodes_searched();
+        }
+        else if (token == "setoption")  setoption(is);
+        else if (token == "position")   position(pos, is, states);
+        else if (token == "ucinewgame") Search::clear();
+    }
+
+    elapsed = now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
+
+    dbg_print(); // Just before exiting
+
+    cerr << "\n==========================="
+         << "\nTotal time (ms) : " << elapsed
+         << "\nNodes searched  : " << nodes
+         << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
+  }
+
+} // namespace
+
+
+/// UCI::loop() waits for a command from stdin, parses it and calls the appropriate
+/// function. Also intercepts EOF from stdin to ensure gracefully exiting if the
+/// GUI dies unexpectedly. When called with some command line arguments, e.g. to
+/// run 'bench', once the command is executed the function returns immediately.
+/// In addition to the UCI ones, also some additional debug commands are supported.
+
+void UCI::loop(int argc, char* argv[]) {
+
+  Position pos;
+  string token, cmd;
+  StateListPtr states(new std::deque<StateInfo>(1));
+  auto uiThread = std::make_shared<Thread>(0);
+
+  pos.set(StartFEN, false, &states->back(), uiThread.get());
+
+  for (int i = 1; i < argc; ++i)
+      cmd += std::string(argv[i]) + " ";
+
+  do {
+      if (argc == 1 && !getline(cin, cmd)) // Block here waiting for input or EOF
+          cmd = "quit";
+
+      istringstream is(cmd);
+
+      token.clear(); // Avoid a stale if getline() returns empty or blank line
+      is >> skipws >> token;
+
+      // The GUI sends 'ponderhit' to tell us the user has played the expected move.
+      // So 'ponderhit' will be sent if we were told to ponder on the same move the
+      // user has played. We should continue searching but switch from pondering to
+      // normal search. In case Threads.stopOnPonderhit is set we are waiting for
+      // 'ponderhit' to stop the search, for instance if max search depth is reached.
+      if (    token == "quit"
+          ||  token == "stop"
+          || (token == "ponderhit" && Threads.stopOnPonderhit))
+          Threads.stop = true;
+
+      else if (token == "ponderhit")
+          Threads.ponder = false; // Switch to normal search
+
+      else if (token == "uci")
+          sync_cout << "id name " << engine_info(true)
+                    << "\n"       << Options
+                    << "\nuciok"  << sync_endl;
+
+      else if (token == "setoption")  setoption(is);
+      else if (token == "go")         go(pos, is, states);
+      else if (token == "position")   position(pos, is, states);
+      else if (token == "ucinewgame") Search::clear();
+      else if (token == "isready")    sync_cout << "readyok" << sync_endl;
+
+      // Additional custom non-UCI commands, mainly for debugging
+      else if (token == "flip")  pos.flip();
+      else if (token == "bench") bench(pos, is, states);
+      else if (token == "d")     sync_cout << pos << sync_endl;
+      else if (token == "eval")  sync_cout << Eval::trace(pos) << sync_endl;
+      else
+          sync_cout << "Unknown command: " << cmd << sync_endl;
+
+  } while (token != "quit" && argc == 1); // Command line args are one-shot
 }
 
 
-void UCI::uci_command(std::string cmd, int& GAME_OVER)
-{
-	std::istringstream uci_instream(cmd);
-	std::string command;
-	while (uci_instream >> std::skipws >> command)
-	{
-		//-------------- start dbg commands -----------------//  
-		if (command == "fen")
-		{
-			//b.from_fen(uci_instream);
-		}
-		else if (command == "d" || command == "print")
-		{
-			b.print();
-			int count = 0;
-			int size = 0;
-			for (MoveGenerator mvs(b); !mvs.end(); ++mvs)
-			{
-				U16 m = mvs.move();
-				std::cout << move_to_string(m) << " ";
-				if (b.is_legal(m)) count++;
-				size++;
-			}
-			std::cout << (b.whos_move() == WHITE ? "\nwhite " : "\nblack ") << "to move" << std::endl;
-			std::cout << "castle state white : (" << (b.can_castle(W_KS) ? "k.side" : "") << (b.can_castle(W_QS) ? " q.side" : "") << ")"
-				<< " black : (" << (b.can_castle(B_KS) ? "k.side" : "") << (b.can_castle(B_QS) ? " q.side" : "") << ")" << std::endl;
-			std::cout << "Zobrist key: " << b.pos_key() << std::endl;
-			std::cout << "Evaluation: " << Eval::evaluate(b) << std::endl;
-			std::cout << "Fen: " << b.to_fen() << std::endl;
-		}
+/// UCI::value() converts a Value to a string suitable for use with the UCI
+/// protocol specification:
+///
+/// cp <x>    The score from the engine's point of view in centipawns.
+/// mate <y>  Mate in y moves, not plies. If the engine is getting mated
+///           use negative values for y.
 
+string UCI::value(Value v) {
 
-		else if (command == "caps" || command == "captures")
-		{
-			for (MoveGenerator mvs(b, CAPTURE); !mvs.end(); ++mvs)
-			{
-				U16 m = mvs.move();
-				std::cout << move_to_string(m) << " ";
-			}
-			std::cout << "" << std::endl;
-		}
-		else if (command == "checks")
-		{
-			MoveGenerator mvs;
-			mvs.generate_qsearch_caps_checks(b);
-			for (; !mvs.end(); ++mvs)
-			{
-				U16 m = mvs.move();
-				std::cout << move_to_string(m) << " ";
-			}
-			std::cout << "" << std::endl;
-		}
-		else if (command == "pseudo_mvs")
-		{
-			int count = 0;
-			int size = 0;
-			printf(".....quiet pseudo legal moves......\n");
-			MoveGenerator mvs; mvs.generate_pseudo_legal(b, QUIET);
-			for (; !mvs.end(); ++mvs)
-			{
-				U16 m = mvs.move();
-				std::string smv = move_to_string(m);
-				std::cout << smv << " ";
-				if (b.is_legal(m)) count++;
-				size++;
-			}
-			printf("\n.....capture pseudo legal moves......\n");
-			MoveGenerator mvs2; mvs2.generate_pseudo_legal(b, CAPTURE);
-			for (; !mvs2.end(); ++mvs2)
-			{
-				U16 m = mvs2.move();
-				std::string smv = move_to_string(m);
-				std::cout << smv << " ";
-				if (b.is_legal(m)) count++;
-				size++;
-			}
-			printf("\n...%d moves total, %d are legal\n", size, count);
-		}
-		else if (command == "bench_pawns")
-		{
-			//Benchmark bench(PAWN_POS, 1000000);
-		}
-		else if (command == "bench_minors")
-		{
-			//Benchmark bench(MINORS, 1000000);
-		}
-		else if (command == "bench" && uci_instream >> command)
-		{
-			Benchmark bench(BENCH, atoi(command.c_str()));
-		}
-		else if (command == "divide" && uci_instream >> command)
-		{
-			Benchmark bench;
-			bench.divide(b, atoi(command.c_str()));
-		}
-		else if (command == "material")
-		{
-			//MaterialEntry * me = NULL;
-			//material.get(b);
-			//if (me != NULL)
-			//{
-			//	printf("..(dbg) material = %d\n", me->value);
-			//}
-		}
-		else if (command == "pawns")
-		{
-			//printf("<===== MIDDLE GAME PAWNS =====>\n");
-			//pawnTable.get(b, MIDDLE_GAME);
+  assert(-VALUE_INFINITE < v && v < VALUE_INFINITE);
 
-			//printf("<===== END GAME PAWNS =====>\n");
-			//pawnTable.get(b, END_GAME);
-		}
-		else if (command == "eval")
-		{
-			int score = Eval::evaluate(b);
-			printf("Score = %d\n", score);
-		}
-		else if (command == "search" && uci_instream >> command)
-		{
-			//if (!b.has_position()) { printf("..no position loaded\n"); return; }
-			//ROOT_BOARD = b;
-			//ROOT_DEPTH = atoi(uci_str.c_str());
-			//Threads.start_thinking(ROOT_BOARD);
-		}
-		else if (command == "see" && uci_instream >> command)
-		{
-			MoveGenerator mvs(b);
-			U16 move = MOVE_NONE;
-			for (; !mvs.end(); ++mvs)
-			{
-				U16 m = mvs.move();
-				if (move_to_string(m) == command)
-				{
-					move = m;
-					break;
-				}
-			}
-			if (move != MOVE_NONE)
-			{
-				int val = b.see_move(move);
-				std::cout << " (dbg) See score:  " << val << std::endl;
-			}
-			else std::cout << " (dbg) See : error, illegal move." << std::endl;
+  stringstream ss;
 
+  if (abs(v) < VALUE_MATE - MAX_PLY)
+      ss << "cp " << v * 100 / PawnValueEg;
+  else
+      ss << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
 
-
-			//int square = SQUARE_NONE;
-			//for (int j = 0; SanSquares[j] != command && j < SQUARES; ++j) square = j + 1;
-
-			//if (square != SQUARE_NONE && b.piece_on(square) != PIECE_NONE)
-			//{
-			//	int val = b.see(square);
-			//	std::cout << " (dbg) See score:  " << val << std::endl;
-			//}
-			//else std::cout << " (dbg) See : error, illegal or unoccupied square." << std::endl;
-		}
-		//-------------- end dbg commands -----------------//
-
-		//-------------- UCI commands ---------------------//
-		else if (command == "uci")
-		{
-			UCI_SIGNALS.stop = true;
-			timer_thread->searching = false;
-
-			hashTable.clear();
-			material.clear();
-			pawnTable.clear();
-			RootMoves.clear();
-
-			std::cout << "id name " << ENGINE_NAME << std::endl;
-			std::cout << "uciok" << std::endl;
-		}
-		else if (command == "isready")
-		{
-			UCI_SIGNALS.stop = true;
-			timer_thread->searching = false;
-	
-			hashTable.clear();
-			material.clear();
-			pawnTable.clear();
-			RootMoves.clear();
-
-			std::cout << "readyok" << std::endl;
-		}
-		else if (command == "candidates")
-		{
-			b.print();
-			printf("----discovered candidates for side to move---\n");
-			b.compute_discovered_candidates(b.whos_move());
-			U64 dc = b.discovered_checkers(b.whos_move());
-			U64 db = b.discovered_blockers(b.whos_move());
-			display(dc); display(db);
-			printf("----discovered candidates for side *NOT* to move---\n");
-			b.compute_discovered_candidates(b.whos_move() ^ 1);
-			dc = b.discovered_checkers(b.whos_move() ^ 1);
-			db = b.discovered_blockers(b.whos_move() ^ 1);
-			display(dc); display(db);
-		}
-		else if (command == "ucinewgame")
-		{
-			UCI_SIGNALS.stop = true;
-			timer_thread->searching = false;
-
-			hashTable.clear();
-			material.clear();
-			pawnTable.clear();
-			RootMoves.clear();
-		}
-		else if (command == "help")
-		{
-			// command menu here.
-		}
-		else if (command == "force")
-		{
-			UCI_SIGNALS.stop = true;
-			timer_thread->searching = false;
-		}
-		else if (command == "go")
-		{
-			// in case we are pondering
-			//if (options["pondering"])
-			//{
-			//	UCI_SIGNALS.stop = true;
-			//	timer_thread->searching = false;
-			//}
-
-			if (!b.has_position()) { printf("..no position loaded\n"); return; }
-			Limits limits;
-			memset(&limits, 0, sizeof(limits));
-
-			while (uci_instream >> command)
-			{
-				if (command == "wtime" && uci_instream >> command) limits.wtime = atoi(command.c_str());
-				else if (command == "btime" && uci_instream >> command) limits.btime = atoi(command.c_str());
-				else if (command == "winc" && uci_instream >> command) limits.winc = atoi(command.c_str());
-				else if (command == "binc" && uci_instream >> command) limits.binc = atoi(command.c_str());
-				else if (command == "movestogo" && uci_instream >> command) limits.movestogo = atoi(command.c_str());
-				else if (command == "nodes" && uci_instream >> command) limits.nodes = atoi(command.c_str());
-				else if (command == "movetime" && uci_instream >> command) limits.movetime = atoi(command.c_str());
-				else if (command == "mate" && uci_instream >> command) limits.mate = atoi(command.c_str());
-				else if (command == "depth" && uci_instream >> command) limits.depth = atoi(command.c_str());
-				else if (command == "infinite") limits.infinite = (command == "infinite" ? true : false);
-				else if (command == "ponder") limits.ponder = atoi(command.c_str());
-			}
-
-			hashTable.clear();
-			material.clear();
-			pawnTable.clear();
-			RootMoves.clear();
-			timer_thread->search_limits = &limits;
-
-			ROOT_BOARD = b;
-			ROOT_DEPTH = (limits.depth == 0 ? MAXDEPTH : limits.depth);
-			ROOT_DEPTH = (ROOT_DEPTH > MAXDEPTH ? MAXDEPTH : ROOT_DEPTH <= 0 ? MAXDEPTH : ROOT_DEPTH);
-			UCI_SIGNALS.stop = false;
-			Threads.start_thinking(ROOT_BOARD);
-		}
-		else if (command == "position" && uci_instream >> command)
-		{
-			std::string tmp;
-
-			if (command == "startpos")
-			{
-				getline(uci_instream, tmp);
-				std::istringstream fen(START_FEN);
-				b.from_fen(fen);
-				load_position(tmp);
-			}
-			else
-			{
-				std::string sfen = "";
-				while ((uci_instream >> command) && command != "moves") sfen += command + " ";
-				getline(uci_instream, tmp);
-				tmp = "moves " + tmp;
-
-				std::istringstream fen(sfen);
-				b.from_fen(fen);
-				load_position(tmp);
-			}
-		}
-		else if (command == "stop" || command == "exit" || command == "quit")
-		{
-			UCI_SIGNALS.stop = true;
-			timer_thread->searching = false;
-			if (command == "exit" || command == "quit") GAME_OVER = 1;
-		}
-		else std::cout << "..unknown command " << command << std::endl;
-	}
+  return ss.str();
 }
 
-void UCI::analyze(Board& b)
-{
-	Limits limits;
-	memset(&limits, 0, sizeof(limits));
-	limits.infinite = true;
 
-	hashTable.clear();
-	material.clear();
-	pawnTable.clear();
-	RootMoves.clear();
+/// UCI::square() converts a Square to a string in algebraic notation (g1, a7, etc.)
 
-	timer_thread->search_limits = &limits;
-
-	//std::memcpy(&ROOT_BOARD, &b, sizeof(Board));
-	ROOT_BOARD = b;
-	ROOT_DEPTH = 64;
-	UCI_SIGNALS.stop = false;
-	//ttable.clear(); 
-	Threads.start_thinking(ROOT_BOARD);
-	Threads.wait_for_search_finished();
+std::string UCI::square(Square s) {
+  return std::string{ char('a' + file_of(s)), char('1' + rank_of(s)) };
 }
 
-void UCI::load_position(std::string& pos)
-{
-	std::string token;
-	std::istringstream ss(pos);
 
-	ss >> token; // eat the moves token
-	while (ss >> token)
-	{
-		move_from_string(token);
-	}
+/// UCI::move() converts a Move to a string in coordinate notation (g1f3, a7a8q).
+/// The only special case is castling, where we print in the e1g1 notation in
+/// normal chess mode, and in e1h1 notation in chess960 mode. Internally all
+/// castling moves are always encoded as 'king captures rook'.
+
+string UCI::move(Move m, bool chess960) {
+
+  Square from = from_sq(m);
+  Square to = to_sq(m);
+
+  if (m == MOVE_NONE)
+      return "(none)";
+
+  if (m == MOVE_NULL)
+      return "0000";
+
+  if (type_of(m) == CASTLING && !chess960)
+      to = make_square(to > from ? FILE_G : FILE_C, rank_of(from));
+
+  string move = UCI::square(from) + UCI::square(to);
+
+  if (type_of(m) == PROMOTION)
+      move += " pnbrqk"[promotion_type(m)];
+
+  return move;
 }
 
-U16 UCI::get_move(std::string& move)
-{
-	MoveGenerator mvs(b);
 
-	for (; !mvs.end(); ++mvs)
-	{
-		U16 m = mvs.move();
-		if (move_to_string(m) == move)
-		{
-			return m;
-		}
-	}
-	return MOVE_NONE;
-}
-void UCI::move_from_string(std::string& move)
-{
-	MoveGenerator mvs(b);
+/// UCI::to_move() converts a string representing a move in coordinate notation
+/// (g1f3, a7a8q) to the corresponding legal Move, if any.
 
-	for (; !mvs.end(); ++mvs)
-	{
-		U16 m = mvs.move();
-		if (move_to_string(m) == move)
-		{
-			BoardData * pd = new BoardData();
-			b.do_move(*pd, m);
-			break;
-		}
-	}
-}
+Move UCI::to_move(const Position& pos, string& str) {
 
-std::string UCI::move_to_string(U16& m)
-{
-	int from = int(m & 0x3f);
-	int to = int((m & 0xfc0) >> 6);
-	int type = get_movetype(m); // int((m & 0xf000) >> 12);
+  if (str.length() == 5) // Junior could send promotion piece in uppercase
+      str[4] = char(tolower(str[4]));
 
-	std::string fromto = SanSquares[from] + SanSquares[to];
+  for (const auto& m : MoveList<LEGAL>(pos))
+      if (str == UCI::move(m, pos.is_chess960()))
+          return m;
 
-	if (type != MOVE_NONE && type <= PROMOTION)
-	{
-		Piece pp = Piece(type);
-		fromto += SanPiece[pp + 6];
-	}
-	else if (type <= PROMOTION_CAP && type > PROMOTION)
-	{
-		Piece pp = Piece(type - 4);
-		fromto += SanPiece[pp + 6];
-	}
-	return fromto;
+  return MOVE_NONE;
 }

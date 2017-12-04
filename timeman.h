@@ -18,38 +18,31 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <iostream>
+#ifndef TIMEMAN_H_INCLUDED
+#define TIMEMAN_H_INCLUDED
 
-#include "bitboard.h"
-#include "position.h"
+#include "misc.h"
 #include "search.h"
 #include "thread.h"
-#include "tt.h"
-#include "uci.h"
-#include "syzygy/tbprobe.h"
 
-namespace PSQT {
-  void init();
-}
+/// The TimeManagement class computes the optimal time to think depending on
+/// the maximum available time, the game move number and other parameters.
 
-int main(int argc, char* argv[]) {
+class TimeManagement {
+public:
+  void init(Search::LimitsType& limits, Color us, int ply);
+  int optimum() const { return optimumTime; }
+  int maximum() const { return maximumTime; }
+  int elapsed() const { return int(Search::Limits.npmsec ? Threads.nodes_searched() : now() - startTime); }
 
-  std::cout << engine_info() << std::endl;
+  int64_t availableNodes; // When in 'nodes as time' mode
 
-  UCI::init(Options);
-  PSQT::init();
-  Bitboards::init();
-  Position::init();
-  Bitbases::init();
-  Search::init();
-  Pawns::init();
-  Tablebases::init(Options["SyzygyPath"]);
-  TT.resize(Options["Hash"]);
-  Threads.init(Options["Threads"]);
-  Search::clear(); // After threads are up
+private:
+  TimePoint startTime;
+  int optimumTime;
+  int maximumTime;
+};
 
-  UCI::loop(argc, argv);
+extern TimeManagement Time;
 
-  Threads.exit();
-  return 0;
-}
+#endif // #ifndef TIMEMAN_H_INCLUDED

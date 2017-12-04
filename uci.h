@@ -1,49 +1,80 @@
-#pragma once
+/*
+  Stockfish, a UCI chess playing engine derived from Glaurung 2.1
+  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
-#ifndef HEDWIG_UCI_H
-#define HEDWIG_UCI_H
+  Stockfish is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-#include <vector>
+  Stockfish is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#ifndef UCI_H_INCLUDED
+#define UCI_H_INCLUDED
+
+#include <map>
 #include <string>
-#include <sstream>
 
-#include "board.h"
+#include "types.h"
 
-namespace UCI
-{
-  void cmd_loop();
-  void uci_command(std::string cmd, int& GAME_OVER);
-  //void PrintBest(Board b);
-  void load_position(std::string& pos);
-  void move_from_string(std::string& move);
-  //void run_testing(int fixed_time, int fixed_depth);
-  std::string move_to_string(U16& m);
-  U16 get_move(std::string& move);
-  void analyze(Board& b);
-  //std::string move_to_san(U16& m);
+class Position;
+
+namespace UCI {
+
+class Option;
+
+/// Custom comparator because UCI options should be case insensitive
+struct CaseInsensitiveLess {
+  bool operator() (const std::string&, const std::string&) const;
 };
 
-// for testing / debugging 
-typedef struct
-{
-  std::string fen;
-  std::string bestmove;
-  std::string scores;
-} TestPosition;
+/// Our options container is actually a std::map
+typedef std::map<std::string, Option, CaseInsensitiveLess> OptionsMap;
 
-typedef struct
-{
-  std::string desc;
-  std::vector<TestPosition> tests;
+/// Option class implements an option as defined by UCI protocol
+class Option {
 
-  // stats
-  float total;
-  float mean;
-} EPDTest;
+  typedef void (*OnChange)(const Option&);
 
+public:
+  Option(OnChange = nullptr);
+  Option(bool v, OnChange = nullptr);
+  Option(const char* v, OnChange = nullptr);
+  Option(int v, int minv, int maxv, OnChange = nullptr);
 
+  Option& operator=(const std::string&);
+  void operator<<(const Option&);
+  operator int() const;
+  operator std::string() const;
 
-//extern std::vector<EPDTest> TestSuite;
+private:
+  friend std::ostream& operator<<(std::ostream&, const OptionsMap&);
 
-#endif
+  std::string defaultValue, currentValue, type;
+  int min, max;
+  size_t idx;
+  OnChange on_change;
+};
 
+void init(OptionsMap&);
+void loop(int argc, char* argv[]);
+std::string value(Value v);
+std::string square(Square s);
+std::string move(Move m, bool chess960);
+std::string pv(const Position& pos, Depth depth, Value alpha, Value beta);
+Move to_move(const Position& pos, std::string& str);
+
+} // namespace UCI
+
+extern UCI::OptionsMap Options;
+
+#endif // #ifndef UCI_H_INCLUDED
