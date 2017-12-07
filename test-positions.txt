@@ -1,0 +1,339 @@
+// -- Bug Positions --
+//
+// na3 bm, will play ne5 and eval to 0 at depths > 10.  Seems sensitive to hash table size (larger the better).
+// removing all eval routines (except material count) helps it find bm.
+// position fen r1b1kb1r/2p1pppp/p1n2n2/1p1q4/2Np4/1P3N2/PBPPPPPP/R2QKB1R w KQkq b6 0 8 
+//
+// bishop should pin knight here, white's next move can easily lose control of the center, was playing NxN and
+// losing a piece quite quickly afterward
+// position fen r1bqkb1r/pp3ppp/2n2n2/2P1p3/3pN3/5N2/PPPBPPPP/R2QKB1R w KQkq - 4 9 
+//
+// na4 here obviously...but eventually gets stuck with ne2 instead (eval diff of ~1!)
+// position fen 3q1rk1/3bb1p1/prp1p3/2p1Qp2/7p/PPNP3P/2P2PPB/1R3RK1 w - - 1 21
+//
+// white can save the knight + bishop here, was losing a piece in this position
+// position fen 8/1p2kpp1/5n1p/1N1p4/1n2pNB1/4P3/3PKPPP/7r w - - 0 24 
+//
+// common qgd position (white takes pawn and loses game)
+// rnbqkb1r/pp2pppp/8/2pp4/3PnB2/2N2N2/PPP1PPPP/R2QKB1R w KQkq - 2 5 
+//
+// white should not play qd3 (like in game) pawn forks --> lost piece are common bugs
+// rnbqkb1r/pp2p1pp/5p2/2Pp4/5B2/2P2N2/P1P1PPPP/R2QKB1R w KQkq - 0 7 
+//
+// bd6 here as black? -- should always be avoided..
+// r1bqkb1r/pppp1ppp/2n2n2/4p3/4P3/P1N2N2/1PPP1PPP/R1BQKB1R b KQkq e3 0 4 
+//
+// can white avoid mate for > 10 moves here?
+// 8/pp2kp1p/1r2p1b1/8/r1pP1R2/P1P5/K1P1B1PP/4R3 w - - 21 29 
+//
+// previously played rc1 here and quickly mated...avoid mate in 10??
+// 8/1p3p2/4p2p/1N1p2k1/1P1P2P1/P2r1p1P/2rb1P2/1R1R2K1 w - - 3 33 
+//
+// plays nb5 here, then qe6 wins immediately
+// r3r1k1/pbp2ppp/3p1q2/2p5/3Nn3/2P1BQ2/PPP2PPP/2KR3R w - - 0 17
+//
+// white should evaluate a loss in this position (mate or material loss unavoidable..nxf3)
+// 1r2r1k1/1Qpq1ppp/p2b1n2/8/3n4/2NP1B2/PP1B1PPP/R4RK1 w - - 1 18 
+//
+// white plays qe2 here and loses bishop (and game) immediately (only seems to happen in arena vs. other engines..)
+// r1bqkb1r/ppp1nppp/8/4p3/4B3/5N2/PPPP1PPP/R1BQK2R w KQkq - 1 8
+//
+// white plays ne5 and loses piece ???
+// rn1qkbnr/pp1bpppp/8/1Bp5/3pP3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 2 5 
+// 
+// white plays qc4 here...drops piece and loses
+// 2r1kb1r/pp2n1pp/2q1N3/2p2p2/Q3p3/2P5/PP1P1PPP/R1B2RK1 w k - 1 16 
+//
+// white plays bc2 here and loses game .. currently takes 20sec to find g2g3 .. :-/ 
+// r1bq1rk1/1p2bppp/p1n1p3/3n4/3p4/2PB1N2/PP1PQPPP/RNB2RK1 w - - 1 12 
+//
+// win game as white from here
+// 6k1/2p2pp1/p1N4p/P3PP1P/2P5/6PK/r2bR3/8 w - - 1 46 
+//
+// as black, find better .. played a5 ... ended up losing knight in game after a few moves, stockfish prefers OOO
+// r3kb1r/2p3p1/ppnq3p/3pp3/4P2P/2PB1P2/P1PB1P2/RQ2K2R b KQkq - 1 15 
+//
+// white goes after h8 rook and eventually gets a terrible position (more difficult positional eval), stockfish likes f3 with ~ even score
+// does not see black knight to h6 at all
+// r3k1nr/1p2pN1p/2p2np1/p5b1/2B3b1/2N5/PPP2PPP/R2R2K1 w kq - 2 15 
+//
+// do not play b8a8 here as white, stockfish likes 00, followed by bf4 ..
+// 1R3b1r/p2kpp1p/N1prb1pn/q2p2N1/3P4/2P2P2/1P2Q1PP/2B1K2R w K - 2 20
+// 
+// don't stalemate!
+// 2k5/2P5/N6p/3K3p/1P5P/6P1/8/8 w - - 1 51
+//
+// engine outputs garbage .. and struggles with Bf4 for 7 seconds, before realizing it drops piece
+// r1b1kb1r/1p2q1pp/p2pp2n/1Np1n1N1/4P3/8/PPP1BPPP/R1BQK2R w KQkq - 0 10
+//
+// should find qxd3 for black easily .. does not
+// position fen r2r2k1/p1p2pp1/1pn2n1p/3qp3/2P5/3P1N2/PP3PPP/R1BQR1K1 b - - 0 18
+//
+// should find rd5 as black, rh5 threat
+// 3rr1k1/ppp1bppp/2p5/2P5/3P1Q2/4B1Pq/PP3P1P/2R2RK1 b - - 2 19
+// 
+// find nd5 (qa4) here as white, followed by strong k attack
+// 1r2bbnr/3kpppp/3p1q2/8/2Q5/P1N1B3/1PP2PPP/R4K1R w - - 0 18
+//
+// find qa4+ here as white
+// 1r2bb1r/3kpppp/3p1q1n/8/2Q5/P1N1B3/1PP2PPP/R5KR w - - 2 19
+//
+// find qa4 here (winning) stockfish eval ~1.3
+// 1r2bb1r/3kpppp/3p3q/8/2Q5/P1N5/1PP2PPP/R5KR w - - 0 20
+//
+// find better than c1c3 .. white tries to save a-pawn, drops 2 pieces for rook .. fail. (e5f6, d1e1, d1d3(best))
+// 3rrn2/1pk1p1b1/1pn1bp1p/1B1pP1p1/NB1P4/5N1P/PP3PP1/2RR2K1 w - - 4 18
+//
+// find something other than rf3 ? loses endgame from this position (b5b6 best?)
+// r3qbk1/1pp2rpp/4p2B/1P2P3/6Q1/pP5R/P4PPP/3R2K1 w - - 1 28
+//
+// find c6 here..stop trading queens in attacking positions..
+// r2k1b1r/ppp2Q1p/6p1/3Bp1q1/3n4/5PP1/PPbP3P/RNB1K2R b - - 1 13
+//
+// candidate position for draw by rep (play as black see if white skips the q checks)
+// 7Q/1p6/6k1/p1P3p1/8/5qN1/8/6K1 w - - 0 54
+//
+// candidate for rep draw (play as black with nd2+ first move), get white to avoid draw and win...
+// 8/8/4NB2/1p1k1P2/2n5/1p3K2/1P6/8 b - - 15 55
+//
+// find rc2 here as fast as possible
+// 1r3b1r/pNp3pp/B1k1pp2/3n1q2/3P4/7Q/PPbR1PPP/R1B3K1 w - - 13 25
+//
+// avoid taking the pawn Na6 .. trapped knight .. Nb3 best ** stockfish struggles with that too **
+// 2kr1b1r/2p2pp1/p1p1p3/2N1Pb1p/3B2n1/8/PPP1NPPP/R1K4R w - - 0 17
+//
+// find e5e6 asap
+// rn1qkb1r/pp2pppp/2p3bn/3pP1N1/2PP4/3B1Q2/PP3PPP/RNB1K2R w KQkq - 8 9
+// 
+// (endgame) black wins with a4 .. detect asap
+// 8/2b1B3/8/p2k3p/1p3p2/PP6/6PP/7K b - - 0 39
+//
+// find b2b4 idea in this position
+// 1nk2b1r/pqr1p2p/2p1p1p1/2PpPn2/Q2P4/3B4/1P2NPPP/R1B2RK1 w - - 1 18
+//
+// make sure it continues attacking (doesn't exchange all pieces on e6) stockfish : qf4
+// 2qnkb1r/r3p1pp/2p5/p1NpQbN1/3P4/8/PP3PPP/R1B1R1K1 w k - 0 20
+//
+// don't take h7 pawn .. best move ne6!
+// 2k1rb1r/pp1b2pp/1q1p1p1n/n1pP2N1/8/1PNQ4/P1P1BPPP/R1B2RK1 w - - 0 14
+//
+// find qa6 (not nxc6) huge difference in evals
+// 3r1b1r/N1k2pp1/1pqpb2p/Q2n4/5B2/8/PP2BPPP/R3R1K1 w - - 0 23
+//
+// don't take pawn (nxe5), stockfish likes f2f4 (~+1)
+// r1bq1bnr/ppppk1pp/n7/3Pp2Q/2N1P3/P7/1PP2PPP/R1B1KB1R w KQ - 2 10
+//
+// bxd8 best
+// 3rkb1r/pQ2ppp1/7p/B1P3P1/2qn4/7P/P4P2/3RR1K1 w k - 2 24
+//
+// recent bug (eval ~990 but down a rook)
+// position fen 1r5k/2p1qr1p/2p1N2Q/p2p2R1/3P1P1P/1P4R1/P5P1/1b4K1 w - - 1 27
+//
+// don't exchange passed pawn here!!
+// position fen 1k5r/1p2rpp1/p3p2n/P1RPP2p/4b3/R4N1P/NP3PP1/6K1 w - - 1 26
+//
+// current bug position
+// r3k1nr/2pqppbp/p1p3p1/3pPb2/3P4/2N2N2/PPP2PPP/R1BQ1RK1 w kq - 4 9
+//
+// nxp loses knight! 
+// r4r2/7p/2pk3p/p2pN3/6p1/8/1PP2P1P/4RRK1 w - - 0 25
+//
+// endgame position - queen a pawn asap!
+// position fen 8/8/P3p1k1/4P1p1/2p1R3/6P1/1K2P3/4r3 w - - 1 43
+//
+// serious bug position (seg fault)
+// 3k3r/q2Np1b1/P3p2p/1Q2P1p1/2p4B/8/1PP2PPP/5RK1 w - - 1 28
+//
+// another serious bug - plays nd4 here
+// 2kr1bnr/pppqpppp/2n5/1N3b2/8/5N2/PPPPBPPP/R1BQ1RK1 w - - 14 10
+//
+// find ndf3 as best move here
+// 3q1rk1/r4ppp/1pp5/3pp1n1/1P1n4/P6P/BBPP1PP1/R2Q1RK1 b - - 1 20
+//
+// king tactic: bf6 followed by rf6
+// 2br2k1/p2pb1pp/p1p1pn2/P1P1N1B1/1qNPP3/1r4P1/1P5P/2RQ1RK1 w - - 1 25 
+//
+// find kd7 asap <1s kd6 loses (endgame)
+// 8/2k5/p7/5P1p/r7/4K3/5R2/8 b - - 0 74 
+//
+// king tactic (bug position) - make sure it doesn't check Re8+
+// 1qrk1r2/Q3R2p/1np5/3p4/3P4/8/1PP2PPP/3NR1K1 w - - 1 29 
+
+
+
+// alternative squares.h
+#pragma once
+#ifndef HEDWIG_SQS_H
+#define HEDWIG_SQS_H
+
+#include <cmath>
+#include "definitions.h"
+
+namespace {
+
+	static const int square_scores2[2][6][SQUARES] =
+	{
+		{
+			//whitepawns
+			{
+				0, 0, 0, 0, 0, 0, 0, 0,
+				10, 10, 10, 4, 4, 10, 10, 10,
+				10, 12, 10, 4, 4, 10, 12, 10,
+				10, 10, 20, 20, 20, 10, 10, 10,
+				20, 20, 40, 40, 40, 40, 20, 20,
+				20, 20, 40, 40, 40, 40, 20, 20,
+				0, 0, 0, 0, 0, 0, 0, 0,
+				0, 0, 0, 0, 0, 0, 0, 0
+			},
+			//whiteknights
+			{
+				-10, -10, -10, -10, -10, -10, -10, -10,
+				-10, 0, 0, 4, 4, 0, 0, -10,
+				-10, 0, 8, 4, 4, 8, 0, -10,
+				-10, 6, 10, 10, 10, 10, 6, -10,
+				-10, 15, 15, 15, 15, 15, 15, -10,
+				-10, 20, 30, 35, 35, 30, 20, -10,
+				-10, 0, 0, 0, 0, 0, 0, -10,
+				-10, -10, -10, -10, -10, -10, -10, -10
+			},
+			//whitebishops
+			{
+				2, 0, 0, 0, 0, 0, 0, 2,
+				0, 4, 4, 4, 4, 4, 4, 0,
+				0, 2, 2, 2, 2, 2, 2, 0,
+				0, 6, 15, 15, 15, 15, 6, 0,
+				0, 6, 20, 30, 30, 20, 6, 0,
+				0, 6, 30, 35, 35, 30, 6, 0,
+				0, 2, 2, 2, 2, 2, 2, 0,
+				0, 0, 0, 0, 0, 0, 0, 0
+			},
+			//whiterooks
+			{
+				0, 0, 2, 4, 4, 2, 0, 0,
+				0, 0, 2, 4, 4, 2, 0, 0,
+				0, 0, 2, 4, 4, 2, 0, 0,
+				0, 0, 2, 4, 4, 2, 0, 0,
+				0, 0, 2, 4, 4, 2, 0, 0,
+				0, 0, 2, 4, 4, 2, 0, 0,
+				8, 8, 8, 8, 8, 8, 8, 8,
+				0, 0, 2, 4, 4, 2, 0, 0
+			},
+			//whitequeens
+			{
+				0, 0, 2, 4, 4, 2, 0, 0,
+				0, 0, 2, 4, 4, 2, 0, 0,
+				0, 0, 2, 4, 4, 2, 0, 0,
+				0, 0, 4, 8, 8, 4, 2, 0,
+				0, 2, 4, 12, 12, 4, 2, 0,
+				0, 2, 4, 8, 8, 4, 2, 0,
+				0, 2, 2, 4, 4, 2, 0, 0,
+				0, 0, 2, 4, 4, 2, 0, 0
+			},
+			//whiteking
+			{
+				0, 0, 8, -4, -4, -4, 8, 0,
+				-4, -4, -4, -4, -4, -4, -4, -4,
+				-6, -6, -6, -6, -6, -6, -6, -6,
+				-8, -8, -8, -8, -8, -8, -8, -8,
+				-10, -10, -10, -10, -10, -10, -10, -10,
+				-10, -10, -10, -10, -10, -10, -10, -10,
+				-10, -10, -10, -10, -10, -10, -10, -10,
+				-10, -10, -10, -10, -10, -10, -10, -10
+			}
+		},
+		//endgame
+		{
+			//whitepawns
+			{
+				0, 0, 0, 0, 0, 0, 0, 0,
+				5, 5, 5, 2, 2, 5, 5, 5,
+				10, 10, 10, 2, 2, 10, 10, 10,
+				10, 10, 25, 25, 25, 10, 10, 10,
+				25, 25, 45, 45, 45, 45, 25, 25,
+				25, 25, 45, 45, 45, 45, 25, 25,
+				0, 0, 0, 0, 0, 0, 0, 0,
+				0, 0, 0, 0, 0, 0, 0, 0
+			},
+			//whiteknights
+			{
+				-10, -10, -10, -10, -10, -10, -10, -10,
+				-10, 0, 0, 4, 4, 0, 0, -10,
+				-10, 0, 8, 4, 4, 8, 0, -10,
+				-10, 6, 10, 10, 10, 10, 6, -10,
+				-10, 15, 15, 15, 15, 15, 15, -10,
+				-10, 20, 30, 35, 35, 30, 20, -10,
+				-10, 0, 0, 0, 0, 0, 0, -10,
+				-10, -10, -10, -10, -10, -10, -10, -10
+			},
+			//whitebishops
+			{
+				2, 0, 0, 0, 0, 0, 0, 2,
+				0, 4, 4, 4, 4, 4, 4, 0,
+				0, 2, 2, 2, 2, 2, 2, 0,
+				0, 6, 15, 15, 15, 15, 6, 0,
+				0, 6, 20, 30, 30, 20, 6, 0,
+				0, 6, 30, 35, 35, 30, 6, 0,
+				0, 2, 2, 2, 2, 2, 2, 0,
+				0, 0, 0, 0, 0, 0, 0, 0
+			},
+			//whiterooks
+			{
+				0, 0, 2, 4, 4, 2, 0, 0,
+				0, 0, 2, 4, 4, 2, 0, 0,
+				0, 0, 2, 4, 4, 2, 0, 0,
+				0, 0, 2, 4, 4, 2, 0, 0,
+				0, 0, 2, 4, 4, 2, 0, 0,
+				0, 0, 2, 4, 4, 2, 0, 0,
+				8, 8, 8, 8, 8, 8, 8, 8,
+				0, 0, 2, 4, 4, 2, 0, 0
+			},
+			//whitequeens
+			{
+				0, 0, 2, 4, 4, 2, 0, 0,
+				0, 0, 2, 4, 4, 2, 0, 0,
+				0, 0, 2, 4, 4, 2, 0, 0,
+				0, 0, 4, 8, 8, 4, 2, 0,
+				0, 2, 4, 8, 8, 4, 2, 0,
+				0, 2, 4, 8, 8, 4, 2, 0,
+				0, 2, 2, 4, 4, 2, 0, 0,
+				0, 0, 2, 4, 4, 2, 0, 0
+			},
+			//whiteking
+			{
+				0, 0, 0, 0, 0, 0, 0, 0,
+				4, 4, 4, 4, 4, 4, 4, 4,
+				6, 6, 6, 6, 6, 6, 6, 6,
+				8, 8, 8, 8, 8, 8, 8, 8,
+				10, 10, 10, 10, 10, 10, 10, 10,
+				11, 11, 11, 11, 11, 11, 11, 11,
+				12, 12, 12, 12, 12, 12, 12, 12,
+				12, 12, 12, 12, 12, 12, 12, 12
+			}
+		}
+	};
+
+
+	template<Color c, Piece p>
+	inline int square_score(int phase, int square)
+	{
+		if (c == BLACK)
+		{
+			square = 56 - 8 * ROW(square) + COL(square);
+		}
+		return square_scores2[phase][p][square]; 
+	}
+
+	// non-templated version (drops the const color and piece requirements)
+	inline int square_score(int c, int p, int phase, int square)
+	{
+		if (c == BLACK)
+		{
+			square = 56 - 8 * ROW(square) + COL(square);
+		}
+		return square_scores2[phase][p][square];
+	}
+
+
+}; // end namespace
+
+#endif
