@@ -8,7 +8,6 @@
 *.idb
 *.suo
 *.log
-*.o
 
 #misc
 *.tar
