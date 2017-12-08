@@ -26,8 +26,8 @@ namespace
       float weights_mg[4] = { bpWeightMG, 1.50, rrWeightMG, qrWeightMG };
       float weights_eg[4] = { bpWeightEG, 3.00, rrWeightEG, qrWeightEG };*/
 
-  float weights_mg[4] = { 8.0, 1.50, 3, 0.5 };
-  float weights_eg[4] = { 10.0, 3.00, 1.15, 0.25 };
+  float weights_mg[4] = { 8.0, 1.50, 3, 0.25 };
+  float weights_eg[4] = { 10.0, 3.00, 1.15, 0.125 };
 }
 
 MaterialTable::MaterialTable() : table_size(0), table(0) { };
@@ -127,8 +127,8 @@ MaterialEntry * MaterialTable::get(Board& b)
       // 3. rook/queen redundant penalties according GM Larry Kaufman's "principle of the redundancy of major pieces"
       float w1 = (phase == MIDDLE_GAME ? weights_mg[0] : weights_eg[0]);
       float w2 = (phase == MIDDLE_GAME ? weights_mg[1] : weights_eg[1]);
-      //float w3 = (phase == MIDDLE_GAME ? weights_mg[2] : weights_eg[2]);
-      //float w4 = (phase == MIDDLE_GAME ? weights_mg[3] : weights_eg[3]);
+      float w3 = (phase == MIDDLE_GAME ? weights_mg[2] : weights_eg[2]);
+      float w4 = (phase == MIDDLE_GAME ? weights_mg[3] : weights_eg[3]);
 
       // corrections
       float corr = 0.0;
@@ -140,8 +140,8 @@ MaterialEntry * MaterialTable::get(Board& b)
       corr += w2 * base * 0.5 / piece_count;
 
       // 3. rook/queen redundant penalties according GM Larry Kaufman's "principle of the redundancy of major pieces"
-      //corr -= w3 * (piece_count_w[ROOK] - piece_count_b[ROOK]);
-      //corr -= w4 * (piece_count_w[QUEEN] - piece_count_b[QUEEN]);
+      corr -= w3 * (piece_count_w[ROOK] - piece_count_b[ROOK]);
+      corr -= w4 * (piece_count_w[QUEEN] - piece_count_b[QUEEN]);
 
       table[idx].value = (int)(base + corr);
     }

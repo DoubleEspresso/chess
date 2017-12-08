@@ -1,6 +1,7 @@
 #visual studio related
 *.filters
 *.obj
+*.o
 *.exe
 *.ilk
 *.pdb
