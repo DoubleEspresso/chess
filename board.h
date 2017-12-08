@@ -106,6 +106,7 @@ class Board
 
   // piece access
   template<Piece> inline int * sq_of(int c);
+  template<Piece> inline bool has_any(int c);
   inline int * piece_deltas();
   int * piece_counts(int c);
   U64 non_pawn_material(int c);
@@ -291,6 +292,12 @@ inline int Board::get_ep_sq()
 inline Piece Board::piece_on(int s)
 {
   return Piece(piece_on_arr[s]);
+}
+
+template<Piece p>
+inline bool Board::has_any(int c)
+{
+  return number_of_arr[c][p] > 0;
 }
 
 template<Piece p>
