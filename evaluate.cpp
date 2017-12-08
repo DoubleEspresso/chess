@@ -658,7 +658,7 @@ namespace
 	kingScores->numAttackers++;
 	kingScores->attackedSquareBB |= king_threats;
       }
-    if (kingScores->numAttackers > 1)
+    if (kingScores->numAttackers >= 1)
       {
 	int attack_score = 0;
 	for (int p = KNIGHT; p <= KING; ++p) attack_score += kingScores->attackScore[p];
