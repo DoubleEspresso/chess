@@ -49,7 +49,7 @@
 #define MATED_IN_MAXPLY MATED_VAL+MAXPLY
 
 // chess definitions
-const std::string START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+  const std::string START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 enum Color { WHITE, BLACK, COLORS, COLOR_NONE };
 
@@ -73,65 +73,65 @@ enum MoveType
 
 
 enum MaterialValue
-{
-	PawnValueMG = 90,
-	KnightValueMG = 320,
-	BishopValueMG = 360,
-	RookValueMG = 550,
-	QueenValueMG = 990,
+  {
+    PawnValueMG = 90,
+    KnightValueMG = 320,
+    BishopValueMG = 360,
+    RookValueMG = 550,
+    QueenValueMG = 990,
 
-	PawnValueEG = 100,
-	KnightValueEG = 355,
-	BishopValueEG = 395,
-	RookValueEG = 595,
-	QueenValueEG = 1045
-};
+    PawnValueEG = 100,
+    KnightValueEG = 335,
+    BishopValueEG = 395,
+    RookValueEG = 595,
+    QueenValueEG = 1045
+  };
 
 /*
-endgame material encoding reference : kxxk where xx is given by the following encodings
+  endgame material encoding reference : kxxk where xx is given by the following encodings
 
-NBRQ  nbrq
-0000  0000 (kk)  0
-1000  1000 (nn)  136
-1000  0100 (nb)  132
-1000  0010 (nr)  130
-1000  0001 (nq)  129
-0100  1000 (bn)  72
-0100  0100 (bb)  68
-0100  0010 (br)  66
-0100  0001 (bq)  65
-0010  1000 (rn)  40
-0010  0100 (rb)  36
-0010  0010 (rr)  34
-0010  0001 (rq)  33
-0001  0001 (qq)  17
-0001  1000 (qn)  24
-0001  0100 (qb)  20
-0001  0010 (qr)  18
+  NBRQ  nbrq
+  0000  0000 (kk)  0
+  1000  1000 (nn)  136
+  1000  0100 (nb)  132
+  1000  0010 (nr)  130
+  1000  0001 (nq)  129
+  0100  1000 (bn)  72
+  0100  0100 (bb)  68
+  0100  0010 (br)  66
+  0100  0001 (bq)  65
+  0010  1000 (rn)  40
+  0010  0100 (rb)  36
+  0010  0010 (rr)  34
+  0010  0001 (rq)  33
+  0001  0001 (qq)  17
+  0001  1000 (qn)  24
+  0001  0100 (qb)  20
+  0001  0010 (qr)  18
 
-note that color does not matter
+  note that color does not matter
 */
 enum EndgameType
-{
-	KxK = -1,
-	KK = 0, 
-	KnnK = 136, 
-	KnbK = 132, 
-	KnrK = 130, 
-	KnqK = 129,
-	KbnK = 72, 
-	KbbK = 68, 
-	KbrK = 66, 
-	KbqK = 65, 
-	KrnK = 40, 
-	KrbK = 36, 
-	KrrK = 34, 
-	KrqK = 33, 
-	KqqK = 17, 
-	KqnK = 24, 
-	KqbK = 20, 
-	KqrK = 18
-};
+  {
+    KxK = -1,
+    KK = 0, 
+    KnnK = 136, 
+    KnbK = 132, 
+    KnrK = 130, 
+    KnqK = 129,
+    KbnK = 72, 
+    KbbK = 68, 
+    KbrK = 66, 
+    KbqK = 65, 
+    KrnK = 40, 
+    KrbK = 36, 
+    KrrK = 34, 
+    KrqK = 33, 
+    KqqK = 17, 
+    KqnK = 24, 
+    KqbK = 20, 
+    KqrK = 18
+  };
 
 
 enum Square
@@ -214,6 +214,6 @@ enum BenchType
 
 inline float rounded(float number)
 {
-	return number < 0.0 ? ceil(number - 0.5) : floor(number + 0.5);
+  return number < 0.0 ? ceil(number - 0.5) : floor(number + 0.5);
 }
 #endif
