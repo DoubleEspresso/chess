@@ -32,11 +32,11 @@ void MoveStats::update(Board& b,
   int t = get_to(m);
   int type = int((m & 0xf000) >> 12);
   int c = b.whos_move();
-
   if (type == QUIET) history[c][f][t] += pow(2, d);
   
   // if we get here, eval >= beta, so last move is most likely a blunder, reduce the history score of it
   if (last != MOVE_NONE) {
+    
     int type = int((last & 0xf000) >> 12);
     if (type == QUIET) {
       int f = get_from(last);
@@ -72,9 +72,7 @@ void MoveStats::update(Board& b,
   }
 }
 
-// dbg
-void MoveSelect::print_list(Board& b)
-{
+void MoveSelect::print_list(Board& b) {
   /*
     if (ttmv)
     {
@@ -93,115 +91,116 @@ void MoveSelect::print_list(Board& b)
     }
   */
   printf("     !!DBG moveselect-sorting :: tomove(%s), type(%s), incheck(%s)\n", (b.whos_move() == WHITE ? "white" : "black"), ((int)type == (int)QUIET ? "quiet" : (int)type == (int)CAPTURE ? "capture" : "unknown"), b.in_check() ? "yes" : "no");
-  if (captures)
-    {
-      printf("...captures...\n");
-      MoveList * ml = captures;
-      for (; ; ml++)
-	{
-	  if (ml->m == MOVE_NONE) break;
-	  std::string s = UCI::move_to_string(ml->m);
-	  std::cout << "currmove " << s << " " << ml->score << std::endl;
-	}
+  if (captures) {
+    printf("...captures...\n");
+    MoveList * ml = captures;
+    for (; ; ml++) {
+      if (ml->m == MOVE_NONE) break;
+      std::string s = UCI::move_to_string(ml->m);
+      std::cout << "currmove " << s << " " << ml->score << std::endl;
     }
-  if (quiets)
-    {
-      printf("...quiets...\n");
-      MoveList * ml = quiets;
-      for (; ; ml++)
-	{
-	  if (ml->m == MOVE_NONE) break;
-	  std::string s = UCI::move_to_string(ml->m);
-	  std::cout << "currmove " << s << " " << ml->score << std::endl;
-	}
+  }
+  if (quiets) {
+    printf("...quiets...\n");
+    MoveList * ml = quiets;
+    for (; ; ml++) {
+      if (ml->m == MOVE_NONE) break;
+      std::string s = UCI::move_to_string(ml->m);
+      std::cout << "currmove " << s << " " << ml->score << std::endl;
     }
+  }
   printf(".....end....\n\n");
 
 }
 
-void MoveSelect::load_and_sort(MoveGenerator& mvs, Board& b, U16& ttm, Node * stack, MoveType movetype)
-{
+void MoveSelect::load_and_sort(MoveGenerator& mvs,
+			       Board& b,
+			       U16& ttm,
+			       Node * stack,
+			       MoveType movetype) {
   U16 killer1 = stack->killer[0];
   U16 killer2 = stack->killer[1];
   U16 mate1 = stack->killer[2];
   U16 mate2 = stack->killer[3];
   U16 lastmove = (stack - 1)->currmove;
+  
+  for (; !mvs.end(); ++mvs) {
+    U16 m = mvs.move();
+    int mt = int((m & 0xf000) >> 12);
+    bool checks = b.gives_check(m);
 
-  for (; !mvs.end(); ++mvs)
-    {
-      U16 m = mvs.move();
-      int mt = int((m & 0xf000) >> 12);
-      bool checksKing = b.gives_check(m);
+    if (m == ttm) continue;
+    if (m == killer1 || m == killer2 || m == mate1 || m == mate2) continue;
 
-      if (m == ttm) continue;
-      if (m == killer1 || m == killer2 || m == mate1 || m == mate2) continue;
+    // build capture list -- evasions include quiet moves (fyi)
+    if (movetype == CAPTURE &&
+	(mt == CAPTURE || mt == EP ||
+	 (mt <= PROMOTION_CAP && mt > PROMOTION) ||
+	 (includeQsearchChecks() && checks))) {
+      captures[c_sz].m = m;
+      int score = 0;
+      
+      if (mt == EP) {
+	captures[c_sz++].score = score;
+	continue;
+      }
+      
+      score = b.see_sign(m);
 
-      // build capture list -- evasions include quiet moves (fyi)
-      if (movetype == CAPTURE &&
-	  (mt == CAPTURE || mt == EP || (mt <= PROMOTION_CAP && mt > PROMOTION) || (includeQsearchChecks() && checksKing)))
+      // check bonus
+      //if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move()) && b.is_dangerous(m, fp)))
+      //{
+      //	score += 2;//piece_vals[b.piece_on(to)]; // almost always a good move
+      //}
+      //if ((Globals::SquareBB[from] & b.checkers()) && b.dangerous_check(m, false)) score += 1;
 
-	{
-	  captures[c_sz].m = m;
-	  int score = 0;
-	  if (mt == EP)
-	    {
-	      captures[c_sz++].score = score;
-	      continue;
-	    }
-	  score = b.see_sign(m);//b.see2(m);
+      // promotion bonus
+      //if (mt > PROMOTION && mt <= PROMOTION_CAP) score += piece_vals[(type-4)];
 
-	  // check bonus
-	  //if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move()) && b.is_dangerous(m, fp)))
-	  //{
-	  //	score += 2;//piece_vals[b.piece_on(to)]; // almost always a good move
-	  //}
-	  //if ((Globals::SquareBB[from] & b.checkers()) && b.dangerous_check(m, false)) score += 1;
-
-	  // promotion bonus
-	  //if (mt > PROMOTION && mt <= PROMOTION_CAP) score += piece_vals[(type-4)];
-
-	  captures[c_sz++].score = score;
-	}
-      else if ((mt == QUIET || mt == CASTLE_KS || mt == CASTLE_QS || mt <= PROMOTION)) // build quiet list
-	{
-	  quiets[q_sz].m = m;
-	  int score = statistics->score(m, b.whos_move());
-
-	  // countermove bonus
-	  if (lastmove != MOVE_NONE &&
-	      m == statistics->countermoves[get_from(lastmove)][get_to(lastmove)])
-	    score += 15;
-
-	  // bonus for avoiding the capture from the threat move (from null search)
-	  // for quiet threat moves there is no bonus scheme yet .. they are difficult to detect 
-	  //if (threat != MOVE_NONE && from == get_to(threat)) score += 15; //piece_vals[b.piece_on(from)] / 2;
-
-	  // if previous bestmove attacks the from-sq, give a bonus for avoiding the capture/attack			
-	  //if (get_to(lastmove) == from)
-	  //{
-	  //	score += 1;
-	  //}
-
-	  // check bonus
-	  //if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move())) && b.piece_on(from) > PAWN)
-	  //{
-	  //	score += 1; // keep small (many not dangerous moves satisfy criteria)			
-	  //}
-	  //if ((Globals::SquareBB[from] & b.checkers()) && b.is_dangerous(m, false)) score += 2;
-
-	  // promotion bonus
-	  //if (mt <= PROMOTION) 
-	  //	score += piece_vals[mt];
-
-	  // square score based ordering if score is unchanged.
-	  //if (score <= (NINF - 1))
-	  //{
-	  //	//if (Globals::SquareBB[from] && b.checkers()) score += 1;
-	  //	score += (square_score(b.whos_move(), fp, b.phase(), to) - square_score(b.whos_move(), fp, b.phase(), from))*0.1;
-	  //}
-	  quiets[q_sz++].score = score;
-	}
+      captures[c_sz++].score = score;
     }
+    else if ((mt == QUIET || mt == CASTLE_KS || mt == CASTLE_QS || mt <= PROMOTION)) {
+      
+      quiets[q_sz].m = m;
+      
+      int score = statistics->score(m, b.whos_move());
+
+      // countermove bonus
+      if (lastmove != MOVE_NONE &&
+	  m == statistics->countermoves[get_from(lastmove)][get_to(lastmove)])
+	score += 15;
+      
+      
+      // bonus for avoiding the capture from the threat move (from null search)
+      // for quiet threat moves there is no bonus scheme yet .. they are difficult to detect 
+      //if (threat != MOVE_NONE && from == get_to(threat)) score += 15; //piece_vals[b.piece_on(from)] / 2;
+
+      // if previous bestmove attacks the from-sq, give a bonus for avoiding the capture/attack			
+      //if (get_to(lastmove) == from)
+      //{
+      //	score += 1;
+      //}
+
+      // check bonus
+      //if ((Globals::SquareBB[from] & b.discovered_blockers(b.whos_move())) && b.piece_on(from) > PAWN)
+      //{
+      //        score += 1; // keep small (many not dangerous moves satisfy criteria)			
+      //}
+      //if ((Globals::SquareBB[from] & b.checkers()) && b.is_dangerous(m, false)) score += 2;
+
+      // promotion bonus
+      //if (mt <= PROMOTION) 
+      //	score += piece_vals[mt];
+
+      // square score based ordering if score is unchanged.
+      //if (score <= (NINF - 1))
+      //{
+      //	//if (Globals::SquareBB[from] && b.checkers()) score += 1;
+      //	score += (square_score(b.whos_move(), fp, b.phase(), to) - square_score(b.whos_move(), fp, b.phase(), from))*0.1;
+      //}
+      quiets[q_sz++].score = score;
+    }
+  }
 
   // insertion sort based on score
   stored_qsz = stored_csz = 0;
@@ -289,17 +288,16 @@ bool MoveSelect::nextmove(Board &b, Node * stack, U16& ttm, U16& out, bool split
       return true;
 
     case GoodCaptures:
-      if (stored_csz == 0)
-	{
-	  MoveGenerator mvs;
-	  if (type == MainSearch) mvs.generate_pseudo_legal(b, CAPTURE);
-	  else if (type == QsearchCaptures) mvs.generate_qsearch_mvs(b, CAPTURE, genChecks); // only generates checks if givesCheck == true
-	  load_and_sort(mvs, b, ttm, stack, CAPTURE);
-	}
-      if (captures[c_sz].score >= 0 && captures[c_sz].m != MOVE_NONE)
-	{
-	  out = captures[c_sz].m; c_sz++; return true;
-	}
+      if (stored_csz == 0) {
+	MoveGenerator mvs;
+	if (type == MainSearch) mvs.generate_pseudo_legal(b, CAPTURE);
+	else if (type == QsearchCaptures) mvs.generate_qsearch_mvs(b, CAPTURE, genChecks); // only generates checks if givesCheck == true
+	load_and_sort(mvs, b, ttm, stack, CAPTURE);
+      }
+      if (captures[c_sz].score >= 0 &&
+	  captures[c_sz].m != MOVE_NONE) {
+	out = captures[c_sz].m; c_sz++; return true;
+      }
       phase++;
       break;
 

@@ -9,30 +9,27 @@
 #include "board.h"
 #include "search.h"
 
-struct MoveStats
-{
+struct MoveStats {
   int history[2][SQUARES][SQUARES];
   U16 countermoves[SQUARES][SQUARES];
 
   void update(Board& b, U16& m, U16& last, Node* stack, int d, int eval, U16* quiets);
 
-  int score(U16& m, int c)
-  {
+  int score(U16& m, int c) {
     int f = get_from(m);
     int t = get_to(m);
     return history[c][f][t];
   }
-  void clear()
-  {
+  
+  void clear() {
     for (int c = 0; c < 2; ++c)
       for (int i = 0; i < SQUARES; ++i)
 	for (int j = 0; j < SQUARES; ++j)
 	  history[c][i][j] = NINF - 1;
-
+    
     for (int s1 = 0; s1 < SQUARES; ++s1)
       for (int s2 = 0; s2 < SQUARES; ++s2)
 	countermoves[s1][s2] = MOVE_NONE;
-
   }
 };
 
@@ -50,9 +47,6 @@ class MoveSelect
   int phase;
   MoveList captures[MAX_MOVES];
   MoveList quiets[MAX_MOVES];
-  //MoveList checks[MAX_MOVES];
-  //MoveList promotions[MAX_MOVES];
-  //MoveList evasions[MAX_MOVES];
   MoveStats * statistics;
   SearchType type;
   bool genChecks;
@@ -84,7 +78,6 @@ class MoveSelect
   void sort(MoveList * ml, int length);
   bool nextmove(Board &b, Node * stack, U16& ttm, U16& out, bool split);
 
-  // dbg
   MoveList * get_quites() { return quiets; }
   int qsize() { return stored_qsz; }
   int csize() { return stored_csz; }
