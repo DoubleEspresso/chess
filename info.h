@@ -1,7 +1,7 @@
 #pragma once
 
-#ifndef HEDWIG_INFO_H
-#define HEDWIG_INFO_H
+#ifndef SBC_INFO_H
+#define SBC_INFO_H
 
 #include <stdio.h>
 #include <time.h>

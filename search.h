@@ -1,6 +1,6 @@
 #pragma once
-#ifndef HEDWIG_SEARCH_H
-#define HEDWIG_SEARCH_H
+#ifndef SBC_SEARCH_H
+#define SBC_SEARCH_H
 
 #ifdef WIN32
 #define NOMINMAX

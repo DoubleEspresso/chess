@@ -19,4 +19,4 @@ fi
 dt=$(date "+%F-%T" | sed -e "s/://g")
 sf=$(printf "$e2-%s.pgn" "$dt")
 
-xboard -fUCI -fcp ./hedwig.exe -scp $e2 -tc $tc -mg $mg -sgf $sf -inc 0
+xboard -fUCI -fcp ./sbchess.exe -scp $e2 -tc $tc -mg $mg -sgf $sf -inc 0

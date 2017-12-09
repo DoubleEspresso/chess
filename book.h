@@ -1,6 +1,6 @@
 // start of polyglot hashing 
-#ifndef HEDWIG_BOOK_H
-#define HEDWIG_BOOK_H
+#ifndef SBC_BOOK_H
+#define SBC_BOOK_H
 
 #include "types.h"
 #include "utils.h"

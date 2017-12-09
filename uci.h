@@ -1,7 +1,7 @@
 #pragma once
 
-#ifndef HEDWIG_UCI_H
-#define HEDWIG_UCI_H
+#ifndef SBC_UCI_H
+#define SBC_UCI_H
 
 #include <vector>
 #include <string>

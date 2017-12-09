@@ -89,8 +89,7 @@ class Board
 
   // sequential exchange evaluation during search (quality of captures)
   int see(int to);
-  int see2(const U16& move);
-  int see_move(U16& move);
+  int see_move(const U16& move);
   int see_sign(U16& move);
   int smallest_attacker(int sq, int enemy_color, int& from); // returns ordered list from least to greatest value.
 

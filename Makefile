@@ -14,7 +14,7 @@ EXE_OS =
 THREADED =
 GIT_VERSION =
 # build info
-SRC := main.cpp threads.cpp globals.cpp magic.cpp uci.cpp move.cpp board.cpp bench.cpp material.cpp pawns.cpp search2.cpp hashtable.cpp moveselect.cpp zobrist.cpp book.cpp opts.cpp pgnio.cpp evaluate.cpp
+SRC := main.cpp threads.cpp globals.cpp magic.cpp uci.cpp move.cpp board.cpp bench.cpp material.cpp pawns.cpp search.cpp hashtable.cpp moveselect.cpp zobrist.cpp book.cpp opts.cpp pgnio.cpp evaluate.cpp
 
 TUNESRC := tune.cpp
 
@@ -59,7 +59,7 @@ ifeq ($(OS),Linux )
 endif
 
 # executable
-EXE = hedwig.exe
+EXE = sbchess.exe
 TUNE_EXE = tune.exe
 
 # git version info

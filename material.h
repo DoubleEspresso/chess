@@ -1,12 +1,12 @@
 #pragma once
-#ifndef HEDWIG_MATERIAL_H
-#define HEDWIG_MATERIAL_H
+#ifndef SBC_MATERIAL_H
+#define SBC_MATERIAL_H
 
 #include <math.h>
 #include "definitions.h"
 #include "types.h"
 
-// material hash table for hedwig.  The methods/organization of the code
+// material hash table for sbchess.  The methods/organization of the code
 // follow stockfish conventions
 
 class Board;

@@ -1,6 +1,6 @@
 #pragma once
-#ifndef HEDWIG_HASHTABLE_H
-#define HEDWIG_HASHTABLE_H
+#ifndef SBC_HASHTABLE_H
+#define SBC_HASHTABLE_H
 
 #include "definitions.h"
 #include "utils.h"

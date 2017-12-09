@@ -3,8 +3,8 @@
 // the global definitions/enums for squares/colors
 // pieces etc.
 
-#ifndef HEDWIG_DEFINITIONS_H
-#define HEDWIG_DEFINITIONS_H
+#ifndef SBC_DEFINITIONS_H
+#define SBC_DEFINITIONS_H
 
 
 #include <iostream>
@@ -17,7 +17,7 @@
 #define VERSION "v.2.0"
 #endif
 
-#define ENGINE_NAME "Hedwig"
+#define ENGINE_NAME "Sandbox Chess"
 #define AUTHOR "M.Glatzmaier"
 
 

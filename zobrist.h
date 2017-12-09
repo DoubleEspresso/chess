@@ -1,6 +1,6 @@
 #pragma once
-#ifndef HEDWIG_ZOBRIST_H
-#define HEDWIG_ZOBRIST_H
+#ifndef SBC_ZOBRIST_H
+#define SBC_ZOBRIST_H
 
 #include <stdio.h>
 

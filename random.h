@@ -1,6 +1,6 @@
 #pragma once
-#ifndef HEDWIG_RANDOM_H
-#define HEDWIG_RANDOM_H
+#ifndef SBC_RANDOM_H
+#define SBC_RANDOM_H
 
 #include "stdint.h"
 
