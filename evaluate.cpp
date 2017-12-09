@@ -190,10 +190,10 @@ namespace
     score += (eval_rooks<WHITE>(b, ei) - eval_rooks<BLACK>(b, ei));
     score += (eval_queens<WHITE>(b, ei) - eval_queens<BLACK>(b, ei));
     score += (eval_kings<WHITE>(b, ei) - eval_kings<BLACK>(b, ei));
-    score += (eval_center<WHITE>(b, ei) - eval_center<BLACK>(b, ei));
+    //score += (eval_center<WHITE>(b, ei) - eval_center<BLACK>(b, ei));
     score += (eval_space<WHITE>(b, ei) - eval_space<BLACK>(b, ei));
     score += (eval_threats<WHITE>(b, ei) - eval_threats<BLACK>(b, ei));
-    //score += (eval_pawn_levers<WHITE>(b, ei) - eval_pawn_levers<BLACK>(b, ei));
+    score += (eval_pawn_levers<WHITE>(b, ei) - eval_pawn_levers<BLACK>(b, ei));
 
     // debug specialized endgame eval
     if (ei.phase == END_GAME && ei.me->endgame_type != KxK)
