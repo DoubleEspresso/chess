@@ -1,7 +1,7 @@
 #pragma once
 
-#ifndef HEDWIG_BITS_H
-#define HEDWIG_BITS_H
+#ifndef SBC_BITS_H
+#define SBC_BITS_H
 
 #include "types.h"
 #include "definitions.h"

@@ -1,6 +1,6 @@
 #pragma once
-#ifndef HEDWIG_MOVE_H
-#define HEDWIG_MOVE_H
+#ifndef SBC_MOVE_H
+#define SBC_MOVE_H
 
 #include <stdio.h>
 
@@ -47,43 +47,44 @@ class Board;
 // and contains a score used exclusively for move ordering purposes
 struct MoveList
 {
-	U16 m;
-	int score;
+  U16 m;
+  int score;
 };
 
 class MoveGenerator
 {
-private:
-	int it, last;
-	MoveList list[MAX_MOVES];
-	int legal_i[MAX_MOVES];
+ private:
+  int it, last;
+  MoveList list[MAX_MOVES];
+  int legal_i[MAX_MOVES];
 
-public:
-	MoveGenerator() : it(0), last(0) { }
-	MoveGenerator(Board &b) : it(0), last(0) { generate(b, LEGAL); }
-	MoveGenerator(Board& b, MoveType mt) : it(0), last(0) { generate(b, mt); }
-	MoveGenerator(Board& b, MoveType mt, bool legal) : it(0), last(0)
-	{
-		if (legal) generate(b, mt);
-		else generate_pseudo_legal(b, mt);
-	}
-	~MoveGenerator() { };
-
-	inline U64 move_pawns(int c, int d, U64& b);
-	MoveList * generate(Board &b, MoveType mt);
-	template<MoveType> inline void append(U16 m);
-	MoveList operator++() { return list[legal_i[it++]]; }
-	bool end() { return it == last; }
-	U16 move() { return list[legal_i[it]].m; }
-	int size() const { return last; }
-	template<MoveType> void serialize(U64 &b, const U8& from);
-	template<MoveType> void serialize(U64 &b, const Direction& d);
-	template<MoveType> void serialize_promotion(U64 &b, const Direction& d);
-	MoveList * generate_pawn_moves(Board &b, MoveType mt);
-	MoveList * generate_piece_moves(Board &b, MoveType mt);
-	MoveList * generate_evasions(Board& board, MoveType mt);
-	MoveList * generate_qsearch_mvs(Board& b, MoveType mt, bool checksKing);
-	MoveList * generate_pseudo_legal(Board& b, MoveType mt);
-	MoveList * generate_legal_castle_moves(Board& b);
+ public:
+ MoveGenerator() : it(0), last(0) { }
+ MoveGenerator(Board &b) : it(0), last(0) { generate(b, LEGAL); }
+ MoveGenerator(Board& b, MoveType mt) : it(0), last(0) { generate(b, mt); }
+ MoveGenerator(Board& b, MoveType mt, bool legal) : it(0), last(0)
+    {
+      if (legal) generate(b, mt);
+      else generate_pseudo_legal(b, mt);
+    }
+  ~MoveGenerator() { };
+  
+  void print_mvlist();
+  inline U64 move_pawns(int c, int d, U64& b);
+  MoveList * generate(Board &b, MoveType mt);
+  template<MoveType> inline void append(U16 m);
+  MoveList operator++() { return list[legal_i[it++]]; }
+  bool end() { return it == last; }
+  U16 move() { return list[legal_i[it]].m; }
+  int size() const { return last; }
+  template<MoveType> void serialize(U64 &b, const U8& from);
+  template<MoveType> void serialize(U64 &b, const Direction& d);
+  template<MoveType> void serialize_promotion(U64 &b, const Direction& d);
+  MoveList * generate_pawn_moves(Board &b, MoveType mt);
+  MoveList * generate_piece_moves(Board &b, MoveType mt);
+  MoveList * generate_evasions(Board& board, MoveType mt);
+  MoveList * generate_qsearch_mvs(Board& b, MoveType mt, bool checksKing);
+  MoveList * generate_pseudo_legal(Board& b, MoveType mt);
+  MoveList * generate_legal_castle_moves(Board& b);
 };
 #endif

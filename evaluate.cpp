@@ -17,13 +17,15 @@ namespace
   Clock timer;
 
   /* bonuses section */
+  /*
   int CenterBonus[2][5] =
     {
       // pawn, knight, bishop, rook, queen
       { 5,4,3,2,1 },
       { 5,4,3,2,1 }
     };
-
+  */
+  
   // [pinning piece][pinned piece]
   int PinPenalty[5][5] =
     {
@@ -35,9 +37,7 @@ namespace
     };
 
   int DevelopmentBonus[5] = { 0, 8, 6, 0, 0 }; // pawn, knight, bishop, rook, queen
-  int BishopTargetPenalty[2] = { 2 , 4 };
   int TrappedPenalty[5] = { 0, 2, 3, 4, 5 }; // pawn, knight, bishop, rook, queen penalties for being imobile
-  int BishopColorPenalty[2] = { 6 , 2 };
   int BishopCenterBonus[2] = { 4 , 6 };
   int DoubleBishopBonus[2] = { 16 , 22 };
   int RookOpenFileBonus[2] = { 6, 8 };
@@ -60,12 +60,11 @@ namespace
 	{ 1, 1, 1, 2, 3, 12 },    // queen attcks eg
       }
     };
-  int BishopLongDiagonalsBonus[2] = { 1, 2 }; // bishop long-diagonals bonus
-  //  { 12, 18, 12, 28, 24, 26 };
+
   int KingAttackBonus[6] = { 2, 14, 10, 20, 22, 24 }; // pawn, knight, bishop, rook, queen, king
   int KingExposureBonus[2] = { 2, 0 };
   int CastleBonus[2] = { 6, 1 };
-  int SpaceBonus[2] = { 2, 1 };
+  /*
   int KnightOutpostBonus[2][64] =
     {
       // white
@@ -91,7 +90,7 @@ namespace
 	0, 0, 0, 0, 0, 0, 0, 0
       }
     };
-
+  */
   int PawnLeverScore[64] =
     {
       1, 2, 3, 4, 4, 3, 2, 1,
@@ -310,18 +309,18 @@ namespace
 	// ..positional
 	//if (pawn_cnt >= 13 && ei.position_type == POSITION_CLOSED) score += Value( 50 );
 	/*
-	U64 blockade = (c == WHITE ? (ei.pe->backwardPawns[BLACK] >> NORTH) : (ei.pe->backwardPawns[WHITE] << NORTH));
-	blockade |= (c == WHITE ? (ei.pe->isolatedPawns[BLACK] >> NORTH) : (ei.pe->isolatedPawns[WHITE] << NORTH));
-	blockade &= (mobility | SquareBB[from]);
-	if (blockade) score += count(blockade);
+	  U64 blockade = (c == WHITE ? (ei.pe->backwardPawns[BLACK] >> NORTH) : (ei.pe->backwardPawns[WHITE] << NORTH));
+	  blockade |= (c == WHITE ? (ei.pe->isolatedPawns[BLACK] >> NORTH) : (ei.pe->isolatedPawns[WHITE] << NORTH));
+	  blockade &= (mobility | SquareBB[from]);
+	  if (blockade) score += count(blockade);
 	*/
 	
 	// outpost bonus : TODO
 	/*
-	if ((c == WHITE ? ROW(from) > ROW4 : ROW(from) < ROW5))
+	  if ((c == WHITE ? ROW(from) > ROW4 : ROW(from) < ROW5))
 	  {
-	    U64 outpost = (mobility | SquareBB[from]) & ei.pe->attacks[c];// &blockade;
-	    if (outpost) score += KnightOutpostBonus[c][from];
+	  U64 outpost = (mobility | SquareBB[from]) & ei.pe->attacks[c];// &blockade;
+	  if (outpost) score += KnightOutpostBonus[c][from];
 	  }
 	*/
 	
@@ -358,10 +357,6 @@ namespace
     int eks = ei.kingsq[them];
 
     // pawn info 
-    U64 enemy_wsq_pawns = ei.pawns[them] & ColoredSquaresBB[WHITE];
-    U64 enemy_bsq_pawns = ei.pawns[them] & ColoredSquaresBB[BLACK];
-    U64 our_wsq_pawns = ei.pawns[c] & ColoredSquaresBB[WHITE];
-    U64 our_bsq_pawns = ei.pawns[c] & ColoredSquaresBB[BLACK];
     U64 center_pawns = ei.all_pawns & CenterMaskBB;
     int center_nb = count(center_pawns);
 
@@ -446,6 +441,7 @@ namespace
   template<Color c> int eval_rooks(Board& b, EvalInfo& ei)
   {
     int score = 0;
+    U64 our_pawns = ei.pawns[c];
     //if (!b.has_any<ROOK>(c)) return score;
     
     int *sqs = b.sq_of<ROOK>(c);
@@ -459,13 +455,8 @@ namespace
     KingSafety * kingScores = &ei.ks[c];
     int eks = ei.kingsq[them];
     // pinned info/ attacker info
-    U64 enemy_pawns = ei.pawns[them];
-    U64 enemy_knights = b.get_pieces(them, KNIGHT);
-    U64 enemy_bishops = b.get_pieces(them, BISHOP);
     U64 pawns = (ei.pawns[WHITE] | ei.pawns[BLACK]);
-    U64 our_pawns = ei.pawns[c];
     U64 rank7 = (c == WHITE ? RowBB[ROW7] : RowBB[ROW2]);
-    U64 rooks = 0ULL;
     int ranks[2]; int files[2]; int idx = 0;
     for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
       {
@@ -644,7 +635,6 @@ namespace
     int score = 0;
     int from = ei.kingsq[c];
     int them = (c ^ 1);
-    U64 our_pawns = ei.pawns[c];
     U64 their_pawns = ei.pawns[them];
     bool castled = b.is_castled(c);
     U64 mvs = PseudoAttacksBB(KING, from);
@@ -744,7 +734,6 @@ namespace
     int score = 0;
 
     // compute the number of squares behind pawns
-    int them = (c == WHITE ? BLACK : WHITE);
     U64 pawn_bm = ei.pawns[c];
 
     // only connected pawns.
@@ -777,7 +766,6 @@ namespace
     U64 bishops = b.get_pieces(them, BISHOP);
     U64 queens = b.get_pieces(them, QUEEN);
     U64 rooks = b.get_pieces(them, ROOK);
-    int enemy_ks = ei.kingsq[them];
 
     // are there any discovered check candidates in the position? These would be slider pieces that are pointed at the king,
     // but are blocked (only once) by their own friendly pieces & (friends | enemies)
@@ -905,7 +893,6 @@ namespace
 
     // central weaknesses
     U64 doubled_pawns = ei.pe->doubledPawns[them];
-    U64 undefended_pawns = ei.pe->undefended[them];
     U64 weaknesses = (doubled_pawns) & bigCenter;// | undefended_pawns) & bigCenter;
     if (ei.phase == MIDDLE_GAME && weaknesses != 0ULL)
       {

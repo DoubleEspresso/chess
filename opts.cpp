@@ -25,7 +25,7 @@ Options::~Options()
 
 bool Options::load()
 {
-  std::ifstream settings("hedwig.ini");
+  std::ifstream settings("sbchess.ini");
   if (!settings) 
     {
       //dbg(Log::write("..[Settings] Error loading settings file\n"););

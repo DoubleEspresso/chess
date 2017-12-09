@@ -1,5 +1,5 @@
-#ifndef HEDWIG_PGNIO_H
-#define HEDWIG_PGNIO_H
+#ifndef SBC_PGNIO_H
+#define SBC_PGNIO_H
 
 #include <string.h>
 #include <vector>
@@ -45,8 +45,8 @@ class pgn_io
   int collision_count;
   
   public:
-  pgn_io(char * db_fname);
-  pgn_io(char * pgn_fname, char * db_fname, size_t size_mb);
+  pgn_io(const char * db_fname);
+  pgn_io(const char * pgn_fname, const char * db_fname, size_t size_mb);
   ~pgn_io();
   
   bool load(Board& b);

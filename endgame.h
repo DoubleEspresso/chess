@@ -1,6 +1,6 @@
 #pragma once
-#ifndef HEDWIG_ENDGAME_H
-#define HEDWIG_ENDGAME_H
+#ifndef SBC_ENDGAME_H
+#define SBC_ENDGAME_H
 
 #include "evaluate.h"
 

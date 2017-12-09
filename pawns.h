@@ -1,6 +1,6 @@
 #pragma once
-#ifndef HEDWIG_PAWNS_H
-#define HEDWIG_PAWNS_H
+#ifndef SBC_PAWNS_H
+#define SBC_PAWNS_H
 
 #include "board.h"
 

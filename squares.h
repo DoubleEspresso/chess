@@ -1,6 +1,6 @@
 #pragma once
-#ifndef HEDWIG_SQS_H
-#define HEDWIG_SQS_H
+#ifndef SBC_SQS_H
+#define SBC_SQS_H
 
 #include <cmath>
 #include "definitions.h"

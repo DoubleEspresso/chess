@@ -90,61 +90,57 @@ MaterialEntry * MaterialTable::get(Board& b)
   float piece_count = 0.0;
 
   if (table[idx].key == k) return &table[idx];
-  else
-    {
-      table[idx].key = k;
-      for (int pt = 1; pt < PIECES - 1; ++pt)
-	{
-	  piece_count += (piece_count_w[pt] + piece_count_b[pt]);
-	}
-
-      // game phase
-      table[idx].game_phase = (piece_count > 6 ? MIDDLE_GAME : END_GAME);
-      table[idx].endgame_type = KxK; // generic endgame (used to guard against specialized evaluations)
-      // endgame material constellations
-      if (table[idx].game_phase == END_GAME && piece_count <= 2)
-	{
-	  U8 Constellation = U8(0);
-			
-	  for (int pt = 1; pt < PIECES - 1; ++pt)
-	    {
-	      if (piece_count_w[pt] == 1) Constellation |= (U8(1) << 8 - pt);
-	      if (piece_count_b[pt] == 1) Constellation |= (U8(1) << 4 - pt);
-	    }
-	  table[idx].endgame_type = EndgameType(Constellation);
-	}
-
-      int phase = table[idx].game_phase;
-
-      // compute the base material score (just a counting of each piece type multiplied by the value definition).
-      for (int pt = 0; pt < PIECES - 1; ++pt) base += (phase == MIDDLE_GAME ? piece_vals_mg[pt] : piece_vals_eg[pt]) * piece_diffs[pt]; 
-
-
-      // TODO : evaluate for specific endgames.
-      // Material evaluation scheme -- adjust the score based on 3 principles
-      // 1. encourage keeping bishop pair
-      // 2. encourage to trade when up material
-      // 3. rook/queen redundant penalties according GM Larry Kaufman's "principle of the redundancy of major pieces"
-      float w1 = (phase == MIDDLE_GAME ? weights_mg[0] : weights_eg[0]);
-      float w2 = (phase == MIDDLE_GAME ? weights_mg[1] : weights_eg[1]);
-      float w3 = (phase == MIDDLE_GAME ? weights_mg[2] : weights_eg[2]);
-      float w4 = (phase == MIDDLE_GAME ? weights_mg[3] : weights_eg[3]);
-
-      // corrections
-      float corr = 0.0;
-
-      // 1. encourage keeping bishop pair
-      corr += w1 * piece_diffs[BISHOP];
-
-      // 2. encourage to trade when up material, in endgame, there are fewer pieces by default and
-      corr += w2 * base * 0.5 / piece_count;
-
-      // 3. rook/queen redundant penalties according GM Larry Kaufman's "principle of the redundancy of major pieces"
-      corr -= w3 * (piece_count_w[ROOK] - piece_count_b[ROOK]);
-      corr -= w4 * (piece_count_w[QUEEN] - piece_count_b[QUEEN]);
-
-      table[idx].value = (int)(base + corr);
+  else {
+    table[idx].key = k;
+    for (int pt = 1; pt < PIECES - 1; ++pt) {
+      piece_count += (piece_count_w[pt] + piece_count_b[pt]);
     }
+
+    // game phase
+    table[idx].game_phase = (piece_count > 6 ? MIDDLE_GAME : END_GAME);
+    table[idx].endgame_type = KxK; // generic endgame (used to guard against specialized evaluations)
+    // endgame material constellations
+    if (table[idx].game_phase == END_GAME && piece_count <= 2) {
+      U8 Constellation = U8(0);
+	
+      for (int pt = 1; pt < PIECES - 1; ++pt) {
+	if (piece_count_w[pt] == 1) Constellation |= (U8(1) << (8 - pt));
+	if (piece_count_b[pt] == 1) Constellation |= (U8(1) << (4 - pt));
+      }
+      table[idx].endgame_type = EndgameType(Constellation);
+    }
+      
+    int phase = table[idx].game_phase;
+
+    // compute the base material score (just a counting of each piece type multiplied by the value definition).
+    for (int pt = 0; pt < PIECES - 1; ++pt) base += (phase == MIDDLE_GAME ? piece_vals_mg[pt] : piece_vals_eg[pt]) * piece_diffs[pt]; 
+
+
+    // TODO : evaluate for specific endgames.
+    // Material evaluation scheme -- adjust the score based on 3 principles
+    // 1. encourage keeping bishop pair
+    // 2. encourage to trade when up material
+    // 3. rook/queen redundant penalties according GM Larry Kaufman's "principle of the redundancy of major pieces"
+    float w1 = (phase == MIDDLE_GAME ? weights_mg[0] : weights_eg[0]);
+    float w2 = (phase == MIDDLE_GAME ? weights_mg[1] : weights_eg[1]);
+    float w3 = (phase == MIDDLE_GAME ? weights_mg[2] : weights_eg[2]);
+    float w4 = (phase == MIDDLE_GAME ? weights_mg[3] : weights_eg[3]);
+
+    // corrections
+    float corr = 0.0;
+
+    // 1. encourage keeping bishop pair
+    corr += w1 * piece_diffs[BISHOP];
+
+    // 2. encourage to trade when up material, in endgame, there are fewer pieces by default and
+    //corr += w2 * base * 0.5 / piece_count;
+
+    // 3. rook/queen redundant penalties according GM Larry Kaufman's "principle of the redundancy of major pieces"
+    //corr -= w3 * (piece_count_w[ROOK] - piece_count_b[ROOK]);
+    //corr -= w4 * (piece_count_w[QUEEN] - piece_count_b[QUEEN]);
+
+    table[idx].value = (int)(base + corr);
+  }
   return &table[idx];
 }
 

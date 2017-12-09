@@ -1,3 +1,8 @@
+#include <cstring>
+#ifdef DEBUG
+#include <cassert>
+#endif
+
 #include "search.h"
 #include "hashtable.h"
 #include "material.h"
@@ -6,930 +11,811 @@
 #include "move.h"
 #include "moveselect.h"
 #include "uci.h"
+#include "opts.h"
+#include "book.h"
+#include "pgnio.h"
 
 // globals
 SignalsType UCI_SIGNALS;
 std::vector<U16> RootMoves;
 
-
 namespace
 {
-	int iter_depth = 0;
-	int min_split_depth = 0;
-	int splits_per_thread = 0;
-	int nb_time_allocs = 0; // idea == to measure large shifts in eval from one depth to the next, to adjust time allocation during search..
-	MoveStats statistics;
-	U16 pv_line[MAXDEPTH];
-	std::vector<int> searchEvals;
+  int iter_depth = 0;
+  U64 last_time_ms = 0; // print pv frequently
+  MoveStats statistics;
+  int hash_hits = 0;
 
-	template<NodeType type>
-	int search(Board& b, int alpha, int beta, int depth, Node* stack);
+  template<NodeType type>
+  int search(Board& b, int alpha, int beta, int depth, Node* stack);
 
-	template<NodeType type>
-	int qsearch(Board& b, int alpha, int beta, int depth, Node* stack, bool inCheck);
+  template<NodeType type>
+  int qsearch(Board& b, int alpha, int beta, int depth, Node* stack, bool inCheck);
 
-	int adjust_score(int bestScore, int ply);
-	void write_pv_to_tt(Board& b, U16 * pv, int depth);
-	void update_pv(U16* pv, U16& move, U16* child_pv);
-	void checkMoreTime(Board& b, Node * stack);
+  int adjust_score(int bestScore, int ply);
+  //void write_pv_to_tt(Board& b, U16 * pv, int depth);
+  void update_pv(U16* pv, U16& move, U16* child_pv);
+  void pv_from_tt(Board b, int eval, int d, U16 * pv);
+  void ReadoutRootMoves(int depth);
 };
 
 namespace Search
 {
-  void run(Board& b, int dpth)
+  void run(Board& b, int dpth, bool pondering)
   {
-    min_split_depth = 4;// opts["MinSplitDepth"];
-    splits_per_thread = 8;// opts["MaxSplitsPerThread"];
-    
-    iter_depth = 1;
-    
+    // nb: perf testing on linux reveals options[] lookup to be very slow
+    // best to avoid queries to options[] during search/evaluation
+    // check opening table if using opening book
+    /*
+      if (options["opening book"] && b.half_moves() <= 16)
+      {
+      #ifdef WIN32
+      pgn_io pgn("A:\\software\\chess\\engine\\sbchess-git\\chess\\x64\\Release\\testdb.bin");
+      #else
+      pgn_io pgn("/home/mjg/projects/chess-code/sbchess-git/chess/testdb.bin");
+      #endif
+      printf("...using opening book \n");
+      std::string bookmove = pgn.find(b.to_fen().c_str());
+      if (bookmove != "")
+      {
+      U16 m = UCI::get_move(bookmove);
+      if (m != MOVE_NONE)
+      {
+      BestMoves[0] = m; BestMoves[1] = MOVE_NONE;
+      return;
+      }
+      }
+      }
+      else printf("..not using opening book\n");
+
+      // catch ponder hit
+      if (options["pondering"] && !pondering && PonderMoves[0] != MOVE_NONE)
+      {
+      // fixme .. did the opponent make the predicted bestmove
+      if (b.piece_on(get_from(BestMoves[1])) == PIECE_NONE &&
+      b.piece_on(get_to(BestMoves[1])) != PIECE_NONE)
+      {
+      BestMoves[0] = PonderMoves[0]; BestMoves[1] = MOVE_NONE;
+      PonderMoves[0] = MOVE_NONE; PonderMoves[1] = MOVE_NONE;
+      return;
+      }
+      }
+    */
     // init search params
     int alpha = NINF;
     int beta = INF;
     int eval = NINF;
-    
-    // search info stack
-    Node stack[128 + 4];
-    std::memset(stack, 0, (128 + 4) * sizeof(Node));
-    
-    // time allocation stats - used to decide if the search should be extended
-    // in critical situations
-    searchEvals.clear();
-    nb_time_allocs = 0;
-    
+
+    // search nodes init
+    Node stack[64 + 4];
+    std::memset(stack, 0, (64 + 4) * sizeof(Node));
+
+    // clear search data
+    iter_depth = 1;
+
     // start the timer thread now
     timer_thread->searching = true;
     timer_thread->elapsed = 0;
     timer_thread->sleep_condition.signal();
-    
     // main entry point for the fail-hard alpha-beta search
     // the main iterative deepening loop
-    for (int depth = 1; depth <= dpth; depth += 1)
-      {
+    int delta = 65;
+    for (int depth = 1; depth <= dpth; depth += 1) {      
+      statistics.clear(); 
+
+      while (true) {
+	
 	if (UCI_SIGNALS.stop) break;
-	//else if (UCI_SIGNALS.timesUp) checkMoreTime(b, stack + 2);
-	
+
+	hash_hits = 0;
+
+	(stack + 2)->ply = (stack + 1)->ply = (stack)->ply = 0;
+
+	if (depth >= 4) {
+	  alpha = MAX(eval - delta, NINF);
+	  beta = MIN(eval + delta, INF);
+	}
+
 	eval = search<ROOT>(b, alpha, beta, depth, stack + 2);
-	
 	iter_depth++;
-	
-			// print UCI info at the end of each search.
-			if (!UCI_SIGNALS.stop)
-			{
-				// output the pv-line to the UI
-				std::string pv_str = "";
-				int j = 0;
-				while (U16 m = (stack + 2)->pv[j])
-				{
-					if (m == MOVE_NONE) break;
-					pv_str += UCI::move_to_string(m) + " ";// SanSquares[get_from(m)] + SanSquares[get_to(m)] + " ";
-					if (j < 2) BestMoves[j] = m;
-					j++;
-				}
-				searchEvals.push_back(eval);
 
-				printf("info score cp %d depth %d seldepth %d nodes %d time %d pv ",
-					eval,
-					depth,
-					j,
-					b.get_nodes_searched(),
-					(int)timer_thread->elapsed);
-				std::cout << pv_str << std::endl;
-			}
+	if (timer_thread->elapsed - last_time_ms >= 3000) ReadoutRootMoves(depth);
 
-			// write the pv to the tt in case it was overwritten during the 
-			// search
-			//write_pv_to_tt(b, (stack+2)->pv, depth);
-		}
-
+	if (eval <= alpha) {
+	  alpha -= delta;
+	  delta += delta / 2;
 	}
-
-	void from_thread(Board& b, int alpha, int beta, int depth, Node& node)
-	{
-		search<SPLIT>(b, alpha, beta, depth, NULL);
+	else if (eval >= beta) {
+	  beta += delta;
+	  delta += delta / 2;
 	}
+	else break;
+      }
+
+      if (!UCI_SIGNALS.stop) {
+	pv_from_tt(b, eval, depth, (stack + 2)->pv);
+	last_time_ms = timer_thread->elapsed;
+	RootMoves.clear();
+      }
+    }
+  }
+
+  void from_thread(Board& b, int alpha, int beta, int depth, Node& node)
+  {
+    search<SPLIT>(b, alpha, beta, depth, NULL);
+  }
 };
+
 
 namespace
 {
-	//int MTDF(Board& b, int guess, int depth, Node * stack)
-	//{
-	//	// initialize mtdf parameters   
-	//	int alpha = NINF;
-	//	int beta = INF;
-	//	int delta = INF;
-	//	do
-	//	{
-	//		beta = (guess == alpha ? guess + 1 : guess);
-	//		delta = 1;//(beta - alpha)/2;
-
-	//		guess = search<ROOT>(b, beta - delta, beta, depth, stack);
-
-	//		if (guess < beta) beta = guess;
-	//		else alpha = guess;
-
-	//	} while (alpha < beta);
-
-	//	return guess;
-	//}
-
-	template<NodeType type>
-	int search(Board& b, int alpha, int beta, int depth, Node* stack)
-	{
-		// initialize this node
-		int eval = NINF;
-		int aorig = alpha;
-
-		// the node type
-		bool split_node = (type == SPLIT);
-		bool root_node = (type == ROOT);
-		bool pv_node = (type == ROOT || type == PV);
-
-		U16 quiets[MAXDEPTH];
-		int moves_searched = 0;
-		int quiets_searched = 0;
-
-		// update the search stack at this depth
-		stack->ply = (stack - 1)->ply++;
-		U16 lastmove = (stack - 1)->currmove;
-
-		// update the move history (counters/follow ups)
-		U16 bestmove = MOVE_NONE;
-		U16 threat = MOVE_NONE;
-
-		// initialize the transposition table entries
-		TableEntry e;
-		U64 key = 0ULL;
-		U64 data = 0ULL;
-		U16 ttm = MOVE_NONE;
-		int ttvalue = NINF;
-		int ttstatic_value = NINF;
-
-		// split data for parallel search
-		Thread* worker = b.get_worker();
-		SplitBlock * split_point = NULL;
-
-		// check first if we are out of time or need to stop the search
-		if (UCI_SIGNALS.stop) return DRAW;
-		//else if (UCI_SIGNALS.timesUp) checkMoreTime(b, stack);
-
-
-		if (split_node)
-		{
-			split_point = stack->sb;
-			bestmove = split_point->bestmove;
-			alpha = split_point->alpha;
-			//aorig = split_point->alpha;
-			//child->sb = NULL;
-		}
-
-
-		// transposition table lookup for this node
-		if (!split_node)
-		{
-			data = b.data_key();
-			key = b.pos_key();
-
-			if (hashTable.fetch(key, e) && e.depth >= depth)
-			{
-				ttm = e.move;
-				ttstatic_value = e.static_value;
-
-				if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta)
-				{
-					stack->currmove = e.move;
-					return e.value;
-				}
-
-				else if (e.bound == BOUND_LOW && !pv_node) return e.value;
-
-				else if (e.bound == BOUND_HIGH && !pv_node) return e.value;
-
-				if (alpha >= beta) return (int)beta;
-				ttvalue = e.value;
-			}
-		}
-		//if (type==ROOT && ttm == MOVE_NONE && stack->pv[0] != MOVE_NONE) ttm = stack->pv[0];
-
-
-		// mate distance pruning
-		int mate_val = INF - stack->ply;
-		if (mate_val < beta)
-		{
-			beta = mate_val;
-			if (alpha >= mate_val) return mate_val;
-		}
-
-		int mated_val = NINF + stack->ply;
-		if (mated_val > alpha)
-		{
-			alpha = mated_val;
-			if (beta <= mated_val) return mated_val;
-		}
-		if (alpha >= beta) return alpha;
-
-
-		int static_eval = (ttvalue > NINF ? ttvalue : ttstatic_value > NINF ? ttstatic_value : Eval::evaluate(b));
-
-
-		// stockfish style razoring	 -- if we are losing
-		if (!pv_node &&
-			depth <= 4 &&
-			!b.in_check() &&
-			ttm == MOVE_NONE &&
-			!stack->isNullSearch &&
-			!split_node &&
-			static_eval + 600 <= alpha)
-		{
-			int ralpha = alpha - 600;
-			int v = qsearch<NONPV>(b, ralpha, ralpha + 1, 1, stack, false);
-			if (v <= ralpha)
-				return v;
-		}
-
-		// stockfish style futility pruning	-- if we are winning			
-		if (!pv_node &&
-			depth <= 4 &&
-			static_eval - 200 * depth >= beta &&
-			!stack->isNullSearch &&
-			beta < INF - stack->ply &&
-			!b.in_check() &&
-			!split_node)
-			return beta;// fail hard
-
-
-		// null move pruning
-		if (!pv_node &&
-			depth >= 2 &&
-			!stack->isNullSearch &&
-			static_eval >= beta &&
-			!split_node &&
-			!b.in_check() &&
-			b.non_pawn_material(b.whos_move()))
-		{
-			int R = depth >= 8 ? depth / 2 : 2;  // really aggressive depth reduction
-
-			BoardData pd;
-
-			(stack + 1)->isNullSearch = true;
-
-			b.do_null_move(pd);
-			int null_eval = (depth - R <= 1 ? -qsearch<NONPV>(b, -beta, -beta + 1, depth - R, stack + 1, false) : -search<NONPV>(b, -beta, -beta + 1, depth - R, stack + 1));
-			b.undo_null_move();
-
-			(stack + 1)->isNullSearch = false;
-
-
-			if (null_eval >= beta)
-			{
-				if (null_eval >= INF - stack->ply) null_eval = beta; // avoid returning unproven mates
-				return beta; // fail hard
-			}
-
-			// the null move search failed low - which means we may be faced with threat ..
-			// record the "to" square and record the move as a possible threat (bonus to those moves attack/evading to square)			
-			if ((stack + 1)->bestmove != MOVE_NONE &&
-				!b.is_quiet((stack + 1)->bestmove) &&
-				null_eval < alpha &&
-				null_eval > NINF + stack->ply)
-			{
-				stack->threat = (stack + 1)->bestmove;
-				stack->threat_gain = null_eval - static_eval;
-			}
-		}
-
-		// internal iterative deepening		
-		if (ttm == MOVE_NONE &&
-			depth >= (pv_node ? 6 : 8) &&
-			(pv_node || static_eval >= beta) &&
-			!stack->isNullSearch &&
-			!split_node &&
-			!b.in_check())
-		{
-			int iid = depth - 2 - (pv_node ? 0 : depth / 4);
-			(stack + 1)->isNullSearch = true;
-			int v = 0;
-			if (pv_node) v = search<PV>(b, alpha, beta, iid, stack + 1);
-			else v = search<NONPV>(b, alpha, beta, iid, stack + 1);
-			(stack + 1)->isNullSearch = false;
-
-			if (hashTable.fetch(key, e)) ttm = e.move;
-		}
-
-
-		BoardData pd;
-		MoveSelect ms;
-		if (split_node) ms = *worker->currSplitBlock->ms;
-		else
-		{
-			MoveGenerator mvs(b, PSEUDO_LEGAL);
-
-			// draw by repetition and stalemate -- TODO : detect draw by repetition .. currently broken.
-			if (b.is_draw(mvs.size())) return DRAW;
-
-			ms.load(mvs, b, ttm, statistics, stack->killer1, stack->killer2, lastmove, stack->threat, stack->threat_gain);
-		}
-
-		U16 move;
-		while (ms.nextmove(*stack, move, split_node))
-		{
-			// TODO : check if this slows down the search ... 
-			if (UCI_SIGNALS.stop) return DRAW;
-			//else if (UCI_SIGNALS.timesUp) checkMoreTime(b, stack);
-
-
-			if (split_node) split_point->split_mutex.unlock();
-
-
-			if (move == MOVE_NONE || !b.is_legal(move))
-			{
-				if (split_node) split_point->split_mutex.lock();
-				continue;
-			}
-
-
-			// check data for move (piece is needed for calls to b.is_dangerous)...
-			int piece = b.piece_on(get_from(move));
-			bool givesCheck = b.checks_king(move);
-
-			// move extensions
-			int extension = 0;
-			if (b.in_check()) //|| get_movetype(move) == CAPTURE)// || b.is_dangerous(move,piece)) // check if not mate ?
-			{
-				extension = 1;
-			}
-
-			// move reductions
-			int reduction = 0;
-
-			if (moves_searched >= 5 &&
-				depth >= 10 &&
-				!b.in_check() &&
-				!givesCheck &&
-				move != ttm &&
-				move != stack->killer1 &&
-				move != stack->killer2 &&
-				b.is_quiet(move))
-			{
-				reduction = 1;
-				if (depth > 10 && !pv_node) reduction += 1;
-			}
-
-			// adjust search depth based on reduction/extensions
-			int newdepth = depth + extension - reduction - 1;
-
-			// futility pruning
-			if (newdepth <= 1 &&
-				move != ttm &&
-				move != stack->killer1 &&
-				move != stack->killer2 &&
-				!b.in_check() &&
-				!givesCheck &&
-				b.is_quiet(move) &&
-				//!pv_node &&
-				eval + 450 < alpha &&
-				eval > NINF + stack->ply &&
-				!b.is_dangerous(move, piece))
-			{
-				continue;
-			}
-
-
-			// exchange pruning at shallow depths - same thing done in qsearch...		    			
-			//if (depth <= 1 &&
-			//	!b.in_check() &&
-			//	!givesCheck &&
-			//	move != ttm &&
-			//	move != stack->killer1 &&
-			//	move != stack->killer2 &&
-			//	//!pv_node &&
-			//	eval < alpha && 
-			//	get_movetype(move) == CAPTURE &&
-			//	b.see_move(move) <= 0) continue;
-
-			bool pvMove = (moves_searched == 0 && pv_node);
-			b.do_move(pd, move);
-
-			stack->currmove = move;
-			stack->givescheck = givesCheck;
-
-			if (split_node) alpha = split_point->alpha;
-
-			if (pvMove)
-				eval = (newdepth <= 1 ? -qsearch<PV>(b, -beta, -alpha, newdepth, stack + 1, givesCheck) : -search<PV>(b, -beta, -alpha, newdepth, stack + 1));
-			else
-			{
-				int R = newdepth;// -1;
-
-				// entry point for pv-nodes to be passed to search as nonpv nodes
-				if (move != ttm &&
-					move != stack->killer1 &&
-					move != stack->killer2 &&
-					//eval < alpha &&
-					static_eval < alpha &&
-					!b.in_check() &&
-					!givesCheck &&
-					b.piece_on(get_from(move)) != PAWN  &&
-					R > 8)
-				{
-					R -= R / 4;// +(alpha - eval) / 110);
-
-					eval = (R <= 1 ? -qsearch<NONPV>(b, -alpha - 1, -alpha, R, stack + 1, givesCheck) : -search<NONPV>(b, -alpha - 1, -alpha, R, stack + 1));
-				}
-				else
-				{
-					if (move != ttm && move != stack->killer1 && (b.is_quiet(move) && !b.in_check() && !givesCheck))
-					{
-						R -= 1;
-						// hedwig will find certain tactical sequences faster with this uncommented, but play is weaker overall (TODO: more testing..)
-						if (static_eval < alpha && (statistics.score(move, b.whos_move()) < 0 || !pv_node || quiets_searched > 0)) R -= 1;
-						//if (moves_searched >= 17 && static_eval < alpha) R -= 1;
-
-					}
-
-					// null window searches for pv & non-pv nodes.
-					{
-						//if (pv_node)
-							eval = (R <= 1 ? -qsearch<PV>(b, -alpha - 1, -alpha, R, stack + 1, givesCheck) : -search<PV>(b, -alpha - 1, -alpha, R, stack + 1));
-						//else
-						//	eval = (R <= 1 ? -qsearch<NONPV>(b, -alpha - 1, -alpha, R, stack + 1, givesCheck) : -search<NONPV>(b, -alpha - 1, -alpha, R, stack + 1));
-					}
-
-				}
-				// if eval raised alpha after null window search, research with full window, at full depth
-				if ((eval > alpha && eval < beta))
-				{
-					eval = (newdepth <= 1 ? -qsearch<PV>(b, -beta, -alpha, newdepth, stack + 1, givesCheck) : -search<PV>(b, -beta, -alpha, newdepth, stack + 1));
-				}
-			}
-
-			b.undo_move(move);
-
-
-
-			if (split_node)
-			{
-				split_point->split_mutex.lock();
-				alpha = split_point->alpha;
-			}
-
-			moves_searched++;
-
-			if (UCI_SIGNALS.stop || (worker->found_cutoff() && split_node))
-			{
-				//printf("..found cutoff at thread-id(%d) (after search-call), returning 0\n", b.get_worker()->idx);
-				return DRAW;
-				//break;
-			}
-			//else if (UCI_SIGNALS.timesUp) checkMoreTime(b, stack);
-
-			// update limits/besteval and bestmove
-			if (eval >= beta)
-			{
-				if (split_node)
-				{
-					//printf("..found cutoff at thread-id(%d) normal search eval(%d), beta(%d), returning 0\n", b.get_worker()->idx, eval, beta );
-					split_point->cut_occurred = true;
-				}
-				statistics.update(move, lastmove, stack, depth, b.whos_move(), quiets);
-				hashTable.store(key, data, depth, BOUND_LOW, move, adjust_score(beta, stack->ply), static_eval, iter_depth);
-				return beta;
-			}
-
-			if (eval > alpha)
-			{
-				if (split_node && eval > split_point->besteval)
-				{
-					//split_point->alpha = alpha;
-					split_point->besteval = eval;
-					split_point->bestmove = move;
-				}
-				stack->bestmove = move;
-				alpha = eval;
-				bestmove = move;
-
-				// update the stored pv (used to force entries into the tt-table)
-				update_pv(stack->pv, move, (stack + 1)->pv);
-			}
-
-			// move statistics - full search of quiet move
-			if (get_movetype(move) == QUIET && quiets_searched < MAXDEPTH - 1 && move != bestmove)
-			{
-				quiets[quiets_searched++] = move;
-				quiets[quiets_searched] = MOVE_NONE;
-			}
-
-			// idea is to flag moves which escape captures
-			/*
-			if (depth>=3 &&
-			stack->currmove != MOVE_NONE && (stack-1)->currmove != MOVE_NONE &&
-			stack->isNullSearch && moves_searched > 2 &&
-			get_to((stack-1)->currmove) == get_from(stack->currmove) )//)
-			{
-			b.print();
-			std::cout << UCI::move_to_string(stack->currmove) << " and " << UCI::move_to_string((stack-1)->currmove) << " reltated? " << std::endl;
-			}
-			*/
-
-
-			// ybw split..
-			if (depth >= min_split_depth + 10000
-				&& !split_node
-				&& stack->type == CUT
-				&& Threads.size() >= 2
-				&& (!worker->currSplitBlock
-					|| !worker->currSplitBlock->allSlavesSearching)
-				&& worker->nb_splits < SPLITS_PER_THREAD)
-			{
-				//printf("..splitting at thread-id(%d), depth(%d), alpha(%d), eval(%d), beta(%d), bestmove ",b.get_worker()->idx, depth, alpha, eval, beta);
-				//std::cout << UCI::move_to_string(bestmove) << std::endl;
-				if (!worker->split(b, &bestmove, stack, alpha, beta, &alpha, depth, &ms, stack->type == CUT))
-				{
-					dbg(Log::write(" .. split request failed\n"););
-				}
-				//printf("  after split : thread-id(%d), depth(%d), alpha(%d), eval(%d), beta(%d), bestmove ",b.get_worker()->idx,depth, alpha, eval, beta);
-				//std::cout << UCI::move_to_string(bestmove) << std::endl;
-
-				//printf("..found cutoff at thread-id(%d) (after split), returning 0\n", b.get_worker()->idx);
-				if (UCI_SIGNALS.stop || worker->found_cutoff()) { return DRAW; }
-				//printf("..found cutoff at thread-id(%d) (after split), returning 0\n", b.get_worker()->idx);
-
-				// break here?
-				if (alpha >= beta) { (stack + 1)->type = CUT;  return beta; }
-			}
-
-		} // end loop over mvs
-
-		if (split_node) return split_point->besteval; //{ alpha =  split_point->besteval; bestmove = split_point->bestmove; } //return split_point->besteval;
-
-
-		// mate detection
-		//if (!moves_searched)
-		//{
-		//	if (b.in_check())
-		//	{
-		//		alpha = NINF + stack->ply;
-		//	}
-		//	else alpha = DRAW; // stalemate
-		//}
-
-
-		if (!split_node) // && !stack->isNullSearch && bestmove != MOVE_NONE)		
-		{
-			Bound ttb = BOUND_NONE;
-			if (alpha <= aorig)
-			{
-				ttb = BOUND_HIGH;
-			}
-			else if (alpha >= beta)
-			{
-				ttb = BOUND_LOW;
-			}
-			else ttb = BOUND_EXACT;
-
-			if (ttb != BOUND_NONE) hashTable.store(key, data, depth, ttb, bestmove, adjust_score(alpha, stack->ply), static_eval, iter_depth);
-		}
-		return alpha;
+  int Reduction(bool pv_node, bool improving, int d, int mc)
+  {
+    return Globals::SearchReductions[(int)pv_node][(int)improving][MAX(0, MIN(d, MAXDEPTH - 1))][MAX(0, MIN(mc, MAXDEPTH - 1))];
+  }
+  bool RootsContain(U16& root_mv)
+  {
+    return std::find(RootMoves.begin(), RootMoves.end(), root_mv) != RootMoves.end();
+  }
+
+  float RazorMargin(int depth)
+  {
+    return 330 + 200 * log( (float)depth );
+  }
+
+  template<NodeType type>
+  int search(Board& b, int alpha, int beta, int depth, Node* stack)
+  {
+    //if (b.is_repition_draw()) return DRAW;
+    int eval = NINF;
+    int aorig = alpha;
+
+    // node type
+    //bool split_node = (type == SPLIT);
+    //bool root_node = (type == ROOT);
+    bool pv_node = (type == ROOT || type == PV);
+
+    U16 quiets[MAXDEPTH];
+    for (int j = 0; j < MAXDEPTH; ++j) quiets[j] = MOVE_NONE;
+    int moves_searched = 0;
+    int quiets_searched = 0;
+    U16 bestmove = MOVE_NONE;
+    //U16 threat = MOVE_NONE;
+    bool threat_extension = false;
+    bool singular_extension = false;
+
+    // update stack info
+    (stack + 1)->excludedMove = MOVE_NONE;
+    U16 excluded_move = stack->excludedMove;
+    stack->ply = (stack - 1)->ply++;
+    stack->currmove = stack->bestmove = (stack + 2)->killer[0] = (stack + 2)->killer[1] = (stack + 2)->killer[2] = (stack + 2)->killer[3] = MOVE_NONE;
+    stack->givescheck = false;
+
+    // clear pv
+    //for (int j = 0; j < MAX_MOVES; ++j) stack->pv[j] = MOVE_NONE;
+
+    // reductions array specific
+    bool improving = false;
+
+    // update last move info
+    U16 lastmove = (stack - 1)->currmove;
+    //U16 lastbest = (stack - 1)->bestmove;
+
+    // init ttable entries
+    TableEntry e;
+    U64 key = 0ULL;
+    U64 data = 0ULL;
+    U16 ttm = MOVE_NONE;
+    int ttvalue = NINF;
+    //int ttstatic_value = NINF;
+    int mate_dist = iter_depth - depth + 1; //stack->ply;
+
+    //if (UCI_SIGNALS.stop) return DRAW;
+
+    // 1. -- mate distance pruning    
+    int mate_val = INF - mate_dist;
+    beta = MIN(mate_val, beta);
+    if (alpha >= mate_val)
+      {
+	//printf("!!DBG (search-mate) mate distance pruning :: depth(%d) alpha(%d),mate_val(%d),beta(%d), bm=%s\n", depth, alpha, mate_val, beta, UCI::move_to_string(stack->bestmove).c_str());
+	return mate_val;
+      }
+
+    int mated_val = NINF + mate_dist;
+    alpha = MAX(mated_val, alpha);
+    if (beta <= mated_val)
+      {
+	//printf("!!DBG (search-mated) mate distance pruning :: depth(%d) alpha(%d),mated_val(%d),beta(%d), bm=%s\n", depth, alpha, mated_val, beta, UCI::move_to_string(stack->bestmove).c_str());
+	return mated_val;
+      }
+
+    // 2. -- ttable lookup 
+    data = b.data_key();
+    key = b.pos_key();
+    if (hashTable.fetch(key, e)) // excluded_move == MOVE_NONE && 
+      {
+	ttm = e.move;
+	//ttstatic_value = e.static_value;	
+	ttvalue = e.value;
+	++hash_hits;
+
+	if (pv_node && e.Depth() >= depth) { 	  
+	  if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta) {
+	    stack->currmove = stack->bestmove = e.move;
+	    return e.value;
+	  }
+	  else if (e.bound == BOUND_LOW && e.value >= beta) {
+	    if (ttm != MOVE_NONE) statistics.update(b, ttm, lastmove, stack, depth, eval, quiets);
+	    return e.value;
+	  }
+	  else if (e.bound == BOUND_HIGH  && e.value <= alpha) return e.value;
 	}
+      }
+    
+    // 3. -- static evaluation of position 
+    // note - ttvalue is used if we are currently in a pv_node but have stored
+    // a result from a null window search for this position .. e.g. we have previously searched the position as a non-pv node
+    // and saved the result in ttvalue .. so using ttvalue is typically better than static::Evaluate, but could still
+    // be innaccurate.
+    int static_eval = NINF;
+    if (!b.in_check()) static_eval = (ttvalue > NINF && pv_node ? ttvalue : Eval::evaluate(b));
+    stack->static_eval = static_eval;
 
-	template<NodeType type>
-	int qsearch(Board& b, int alpha, int beta, int depth, Node* stack, bool inCheck)
-	{
-		int eval = NINF;
-		int ttval = NINF;
-		int ttstatic_value = NINF;
+    // dbg check on evaluate vs. search vs. ttvalue
+    //if (ttvalue > NINF && pv_node)
+    //{
+    //	int eval2 = Eval::evaluate(b);
+    //	
+    //	int iid = depth - 2;
+    //	int seval = NINF;
+    //	if (pv_node) seval = (iid <= 0 ? qsearch<PV>(b, alpha, beta, 0, stack, b.in_check()) : search<PV>(b, alpha, beta, iid, stack));
+    //	else  seval = (iid <= 0 ? qsearch<NONPV>(b, alpha, beta, 0, stack, b.in_check()) : search<NONPV>(b, alpha, beta, iid, stack));
 
-		U64 key = 0ULL;
-		U64 data = 0ULL;
-		
-		TableEntry e;
-		bool pv_node = (type == ROOT || type == PV);
-		
-		U16 ttm = MOVE_NONE;
-		U16 bestmove = MOVE_NONE;
-		
-		int aorig = alpha;
-		bool split = (b.get_worker()->currSplitBlock != NULL);
-		SplitBlock * split_point;
-		if (split) split_point = b.get_worker()->currSplitBlock;
+    //	printf("..dbg this is confusing ttval(%d), static-eval(%d), search-eval(%d), alpha(%d), beta(%d)\n", ttvalue, eval2, seval, alpha, beta);
 
-		
-		stack->ply = (stack - 1)->ply++;
-		U16 lastmove = (stack - 1)->currmove;
-		int moves_searched = 0;
-		
+    //}
 
-		// transposition table lookup at this node
-		{
-			data = b.data_key();
-			key = b.pos_key();
-			if (hashTable.fetch(key, e) &&
-				e.depth >= depth)
-			{
-				ttm = e.move;
-				ttstatic_value = e.static_value;
-				if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta) return e.value;
+    // 4. -- drop into qsearch if we are losing
+    float rm = RazorMargin(depth);
+    if (depth <= 4 &&
+	!pv_node &&
+	ttm == MOVE_NONE &&
+	!stack->isNullSearch &&
+	static_eval + rm <= alpha &&
+	!b.in_check() &&
+	!b.pawn_on_7(b.whos_move()))
+      {
+	int ralpha = alpha - rm;
 
-				else if (e.bound == BOUND_LOW && !pv_node) return e.value;
-				else if (e.bound == BOUND_HIGH && !pv_node) return e.value;
-				
-				if (alpha >= beta) return (int)beta;
-				ttval = e.value;
-			}
-		}
+	if (depth <= 1)
+	  {
+	    int v = qsearch<NONPV>(b, alpha, beta, 0, stack, false);
+	    if (v <= alpha) return alpha; // fail hard
+	  }
+	else
+	  {
+	    int v = qsearch<NONPV>(b, ralpha, ralpha + 1, depth, stack, false);
+	    if (v <= ralpha)
+	      {
+		return ralpha; // fail hard
+	      }
+	  }
+      }
 
+    // 5. -- futility pruning
+    if (depth <= 6 &&
+	!pv_node &&
+	!b.in_check() &&
+	!stack->isNullSearch &&
+	static_eval - 200 * depth >= beta &&
+	beta < INF - mate_dist &&
+	b.non_pawn_material(b.whos_move()))
+      {
+	return beta; // fail hard
+      }
 
-		// stand pat lower bound -- tried using static_eval for the stand-pat value
-		// however play was very weak..
-		int stand_pat = (ttval = NINF ? Eval::evaluate(b) : ttval);
+    // 6. -- null move search    
+    if (!pv_node &&
+	depth >= 2 &&
+	!stack->isNullSearch &&
+	static_eval >= beta &&
+	!b.in_check() &&
+	b.non_pawn_material(b.whos_move()))
+      {
+	int R = (depth >= 8 ? depth / 2 : 2);
+	BoardData pd;
+
+	(stack + 1)->isNullSearch = true;
+	b.do_null_move(pd);
+	int null_eval = (depth - R <= 1 ? -qsearch<NONPV>(b, -beta, -beta + 1, 0, stack + 1, false) : -search<NONPV>(b, -beta, -beta + 1, depth - R, stack + 1));
+	b.undo_null_move();
+	(stack + 1)->isNullSearch = false;
+
+	if (null_eval >= beta)
+	  {
+	    return beta;
+	  }
+	// the null move search failed low - which means we may be faced with threat ..
+	if ((stack + 1)->bestmove != MOVE_NONE &&
+	    null_eval > NINF + mate_dist)
+	  {
+	    //b.print();
+	    //printf("..null move failed, potential threat = %s\n", UCI::move_to_string((stack + 1)->bestmove).c_str());
+	    stack->threat = (stack + 1)->bestmove;
+	    if (stack->threat == (stack - 1)->bestmove) threat_extension = true;
+	    stack->threat_gain = null_eval - static_eval;
+	  }
+      }
+
+    // 7. -- probcut from stockfish (disabled)
+    if (!pv_node && 0 &&
+	depth >= 6 &&
+	!b.in_check() &&
+	!stack->isNullSearch &&
+	beta < MATE_IN_MAXPLY &&
+	movetype((stack - 1)->currmove) == CAPTURE)
+      {
+	BoardData pd;
+	MoveSelect ms(statistics, QsearchCaptures, false); // no checks just captures
+	U16 move;
+	int rdepth = depth / 2;
+	int rbeta = beta + MAX(rdepth, 1) * 200;
+	while (ms.nextmove(b, stack, ttm, move, false))
+	  {
+	    if (!b.is_legal(move)) continue;
+	    b.do_move(pd, move);
+	    stack->currmove = move;
+	    eval = -search<NONPV>(b, -rbeta, -rbeta + 1, rdepth, stack + 1);
+	    b.undo_move(move);
+	    if (eval >= rbeta)
+	      {
+		return beta;
+	      }
+	  }
+      }
+
+    // 7. -- internal iterative deepening
+    if (ttm == MOVE_NONE &&
+	depth >= (pv_node ? 8 : 6) &&
+	(pv_node || static_eval + 250 >= beta) &&
+	!b.in_check())
+      {
+	int R = (depth >= 8 ? depth / 2 : 2);
+	int iid = depth - R;// depth - 2 - (pv_node ? 0 : depth / 4);
+
+	stack->isNullSearch = true;
+	if (pv_node)
+	  {
+	    search<PV>(b, alpha, beta, iid, stack);
+	  }
+	else
+	  {
+	    search<NONPV>(b, alpha, beta, iid, stack);
+	  }
+	stack->isNullSearch = false;
+	if (hashTable.fetch(key, e))
+	  {
+	    ttm = e.move;
+	  }
+      }
+
+    // check if singular extension node
+    singular_extension = !ROOT &&
+      depth >= 8 &&
+      ttm != MOVE_NONE &&
+      e.bound == BOUND_LOW &&
+      e.depth > depth - 3 &&
+      excluded_move == MOVE_NONE && // no recursion
+      ttvalue < INF - mate_dist &&
+		beta < INF - mate_dist;
+
+    // 6. -- moves search
+    BoardData pd;
+    MoveSelect ms(statistics, MainSearch);
+    U16 move;
+    int pruned = 0; moves_searched = 0;
+    //if (ttm == MOVE_NONE) ttm = (stack-2)->pv[iter_depth-depth];
+
+    improving = static_eval - (stack - 2)->static_eval >= 0;// || static_eval == 0 || (stack - 2)->static_eval == 0;
+
+    //printf("!!DBG (search) start moves loop :: depth(%d) alpha(%d),eval(%d),beta(%d), bm=%s\n", depth, alpha, eval, beta, UCI::move_to_string(stack->bestmove).c_str());
+
+    while (ms.nextmove(b, stack, ttm, move, false))
+      {
+	if (UCI_SIGNALS.stop) { return DRAW; }
+
+	if (move == excluded_move) continue;
 	
-		// deprecated idea ... 
-		//int stand_pat = (ttval > NINF ? ttval : ttstatic_value > NINF ? ttstatic_value : Eval::evaluate(b));
-		//if (stand_pat == DRAW && ttstatic_value == DRAW) stand_pat = Eval::evaluate(b);
+	if (!b.is_legal(move))
+	  {
+	    ++pruned;
+	    continue;
+	  }
 
-		// split search tt lookup
-		//if (split)
-		//{
-		//	//split_point->split_mutex.lock();
-		//	stand_pat = Eval::evaluate(b);
-		//	//split_point->split_mutex.unlock();
-		//}
-		//else stand_pat = (ttval > NINF ? ttval : ttstatic_value > NINF ? ttstatic_value : Eval::evaluate(b));
+	if (type == ROOT && !RootsContain(move)) RootMoves.push_back(move);
 
+	// piece and move data
+	bool givesCheck = b.gives_check(move); 
+	stack->givescheck = givesCheck;
+	bool inCheck = b.in_check();
+	bool isQuiet = b.is_quiet(move);
+	bool pvMove = (moves_searched == 0 && pv_node);
+	//bool isPromotion = b.is_promotion(move);
 
-		// standpat idea : but do not return during a check sequence
-		if (stand_pat >= beta && !inCheck) 
-			return beta;
-		if (alpha < stand_pat && !inCheck)
-			alpha = stand_pat;
-		if (alpha >= beta && !inCheck) return beta;
+	// see pruning at shallow depths
+	if (!pv_node && !ROOT && !pvMove &&
+	    !givesCheck &&
+	    isQuiet &&
+	    move != ttm &&
+	    !inCheck &&
+	    depth <= 3 &&
+	    b.see_sign(move) < 0)
+	  {
+	    ++pruned;
+	    continue;
+	  }
 
+	// extension/reductions
+	int extension = 0; int reduction = 1; // always reduce current depth by 1
+	if (givesCheck && b.see_sign(move) >= 0) extension += 1;
+	if (threat_extension) extension += 1;
+	//if (isPromotion) extension += 1;
+
+	// singular extension search (same implementation as stockfish)
+	// TODO - tt-entries are currently spared by SE (hack)
+	if (singular_extension && 0 &&
+	    move == ttm &&
+	    extension == 0)
+	  {
+	    int rbeta = beta - 2 * depth; // ttvalue - 2 * depth;
+	    stack->excludedMove = move;
+	    stack->isNullSearch = true; // turn off null-move pruning
+	    eval = search<NONPV>(b, rbeta - 1, rbeta, depth / 2, stack);
+	    stack->isNullSearch = false;
+	    stack->excludedMove = MOVE_NONE;
+
+	    if (eval < rbeta)
+	      extension += 1;
+	  }
+
+	if (depth >= 6 &&
+	    !inCheck &&
+	    !givesCheck &&
+	    isQuiet &&
+	    move != ttm &&
+	    move != stack->killer[0] &&
+	    move != stack->killer[1])
+	  {
+	    reduction += 1;
+	    if (depth > 8 && !pv_node) reduction += 1;
+	  }
+
+	// adjust search depth based on reduction/extensions
+	int newdepth = depth + extension - reduction;
+
+	// futility pruning
+	if (newdepth <= 1 &&
+	    move != ttm &&
+	    move != stack->killer[0] &&
+	    move != stack->killer[1] &&
+	    !inCheck &&
+	    !givesCheck &&
+	    isQuiet &&
+	    !pv_node &&
+	    eval + 650 < alpha &&
+	    eval > NINF + mate_dist)
+	  {
+	    //printf("!!DBG futility prune move(%s) depth(%d), alpha(%d) eval(%d) beta(%d), nodes(%d), msnodes(%d), qsnodes(%d)\n", (b.whos_move() == WHITE ? "white" : "black"), depth, alpha, eval, beta, b.get_nodes_searched(), b.MSnodes(), b.QSnodes());
+	    ++pruned;
+	    continue;
+	  }
+	//printf("   !!DBG color(%s) domove(%s), alpha(%d) eval(%d) beta(%d), nodes(%d), msnodes(%d), qsnodes(%d)\n", (b.whos_move() == WHITE ? "white" : "black"), UCI::move_to_string(move).c_str(), alpha, eval, beta, b.get_nodes_searched(), b.MSnodes(), b.QSnodes());
+	b.do_move(pd, move);
+
+	// stack updates
+	stack->currmove = move;
+	stack->givescheck = givesCheck;
+
+	bool fulldepthSearch = false;
+	if (!pvMove &&
+	    move != ttm &&
+	    move != stack->killer[0] &&
+	    move != stack->killer[1] &&
+	    !givesCheck &&
+	    !inCheck &&
+	    isQuiet &&
+	    //extension == 0 &&
+	    depth > 3 &&
+	    !b.pawn_on_7(b.whos_move()) &&
+	    moves_searched > 3)
+	  {
+	    int R = Reduction(pv_node, improving, newdepth, moves_searched) / 3;
+	    int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];
+	    if (v <= (NINF - 1)) R += 1;
+	    int LMR = newdepth - R;
+	    eval = (LMR <= 1 ? -qsearch<NONPV>(b, -alpha - 1, -alpha, 0, stack + 1, givesCheck) : -search<NONPV>(b, -alpha - 1, -alpha, LMR, stack + 1));
+	    if (eval > alpha) fulldepthSearch = true;
+	  }
+	else fulldepthSearch = !pvMove;
+
+	if (fulldepthSearch)
+	  {
+	    //printf("!!DBG fulldepthSearch(true) move(%s) newdepth(%d), alpha(%d) eval(%d) beta(%d), nodes(%d), msnodes(%d), qsnodes(%d)\n", (b.whos_move() == WHITE ? "white" : "black"), newdepth, alpha, eval, beta, b.get_nodes_searched(), b.MSnodes(), b.QSnodes());
+	    eval = (newdepth <= 1 ? -qsearch<NONPV>(b, -alpha - 1, -alpha, 0, stack + 1, givesCheck) : -search<NONPV>(b, -alpha - 1, -alpha, newdepth, stack + 1));
+	  }
+
+	if (pvMove || eval > alpha)
+	  {
+	    //printf("!!DBG pvSearch(true) move(%s) newdepth(%d), alpha(%d) eval(%d) beta(%d), nodes(%d), msnodes(%d), qsnodes(%d)\n", (b.whos_move() == WHITE ? "white" : "black"), newdepth, alpha, eval, beta, b.get_nodes_searched(), b.MSnodes(), b.QSnodes());
+	    eval = (newdepth <= 1 ? -qsearch<PV>(b, -beta, -alpha, 0, stack + 1, givesCheck) : -search<PV>(b, -beta, -alpha, newdepth, stack + 1));
+	  }
+
+	b.undo_move(move);
+	moves_searched++;
+	if (UCI_SIGNALS.stop) return DRAW;
+
+	// record move scores/evals
+	if (eval >= beta)
+	  {
+	    if (excluded_move != MOVE_NONE) return beta;
+	    //printf("!!DBG (search) beta cut :: depth(%d) alpha(%d),eval(%d),beta(%d), bm=%s\n", depth, alpha, eval, beta, UCI::move_to_string(move).c_str());
+	    if (eval >= MATE_IN_MAXPLY && givesCheck) update_pv(stack->pv, move, (stack + 1)->pv); // mating move
+	    if (isQuiet)
+	      {
+		if (quiets_searched < MAXDEPTH - 1)
+		  {
+		    quiets[quiets_searched++] = move;
+		    quiets[quiets_searched] = MOVE_NONE;
+		  }
+		statistics.update(b, move, lastmove, stack, depth, adjust_score(eval, mate_dist), quiets);
+	      }
+	    hashTable.store(key, data, depth, BOUND_LOW, move, adjust_score(beta, mate_dist), static_eval, pv_node);
+	    return beta;
+	  }
+	if (eval > alpha)
+	  {
+	    //printf("!!DBG (search, eval>alpha) :: depth(%d) alpha(%d),eval(%d),beta(%d), bm=%s\n", depth, alpha, eval, beta, UCI::move_to_string(move).c_str());
+	    stack->bestmove = move;
+	    stack->givescheck = givesCheck;
+	    alpha = eval;
+	    bestmove = move;
+	    if (!stack->isNullSearch)update_pv(stack->pv, move, (stack + 1)->pv);
+	  }
+      }
+
+    if (b.in_check() && !moves_searched && (excluded_move == MOVE_NONE))
+      {
+	//printf("!!DBG found mate (search) :: mate_dist(%d) alpha(%d),eval(%d),beta(%d), bm=%s\n", mate_dist, alpha, eval, beta, UCI::move_to_string(stack->bestmove).c_str());
+	return NINF + mate_dist;
+      }
+    else if (b.is_draw(moves_searched) && excluded_move == MOVE_NONE) return DRAW;
+
+    // update gui 
+    //if (timer_thread->elapsed - last_time_ms >= 3000)
+    //{
+    //	pv_from_tt(ROOT_BOARD, eval, iter_depth);
+    //	last_time_ms = timer_thread->elapsed;
+    //}
+    if (excluded_move != MOVE_NONE) return alpha;
+
+    Bound ttb = alpha <= aorig ? BOUND_HIGH : alpha >= beta ? BOUND_LOW : BOUND_EXACT;
+    hashTable.store(key, data, depth, ttb, bestmove, adjust_score(alpha, mate_dist), static_eval, pv_node);
+
+    return alpha;
+  } // end search
+
+  template<NodeType type>
+  int qsearch(Board& b, int alpha, int beta, int depth, Node* stack, bool inCheck)
+  {
+    int eval = NINF;
+    //int ttval = NINF;
+    //int ttstatic_value = NINF;
+
+    U64 key = 0ULL;
+    U64 data = 0ULL;
+
+    TableEntry e;
+    //bool root_node = type == ROOT;
+    bool pv_node = (type == ROOT || type == PV);
+
+    U16 ttm = MOVE_NONE;
+    U16 bestmove = MOVE_NONE;
+
+    stack->ply = (stack - 1)->ply++;
+    //if (b.is_repition_draw()) return DRAW;
+
+    int aorig = alpha;
+    int mate_dist = iter_depth - depth; //stack->ply;
+    //bool split = (b.get_worker()->currSplitBlock != NULL);
+    //SplitBlock * split_point;
+    //if (split) split_point = b.get_worker()->currSplitBlock;
+
+    //U16 lastmove = (stack - 1)->currmove;
+    bool genChecks = (stack - 2)->givescheck;// && depth > -3;
+    //if (genChecks)
+    //{
+    //	b.print();
+    //	printf("..prev-move = %s, tomv=%s\n", UCI::move_to_string((stack - 2)->currmove).c_str(), b.whos_move() == WHITE ? "white" : "black");
+    //	
+    //	//printf("..dbg genchecks = true\n");
+    //}
+    int qsDepth = (genChecks ? -1 : 0);
+
+    // transposition table lookup    
+    data = b.data_key();
+    key = b.pos_key();
+    if (hashTable.fetch(key, e))
+      {
+	++hash_hits;
+	ttm = e.move;
+	//ttval = e.value;
+	if (pv_node && e.Depth() >= qsDepth) {
+	  if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta) return e.value;
+	  else if (e.bound == BOUND_LOW && e.value >= beta) return  e.value;
+	  else if (e.bound == BOUND_HIGH && e.value <= alpha) return  e.value;
+	}
+      }
+
+    // stand pat lower bound -- tried using static_eval for the stand-pat value, play was weak		
+    int stand_pat = 0;
 		
-		// get all the captures+checks/or evasions
-		// NOTE : searching only checks or captures causes it to miss obv. "forcing moves" at higher depths!!
-		//MoveGenerator mvs(b,inCheck);
-		MoveGenerator mvs(b, CAPTURE); // play is a little stronger with this one
+    if (!inCheck && !b.in_check()) stand_pat = Eval::evaluate(b);  //(ttval > NINF && pv_node ? ttval : Eval::evaluate(b));
 
-		// this return from search weakens play
-		// note : draw detection happens in main search method
-		//if (mvs.size() == 0 && !inCheck) return stand_pat;
-		
-		// mate detection
-		if (inCheck && mvs.size() == 0) return NINF + stack->ply;
+    // note: what to do when ttval << stand_pat || ttval >> stand_pat (?)
+    // in either case one result is innaccurate 
+    // dbg check on evaluate vs. search vs. ttvalue
+    //if (ttval > NINF && pv_node)
+    //{
+    //	//int eval2 = Eval::evaluate(b);
+    //	
+    //	//int iid = depth - 2;
+    //	int seval = NINF;
+    //	seval = search<PV>(b, alpha, beta, 1, stack, b.in_check());
+    //	
+    //	printf("..dbg ttval(%d), static-eval(%d), search-eval(%d), alpha(%d), beta(%d)\n", ttval, stand_pat, seval, alpha, beta);
 
-		//if (split) split_point->split_mutex.lock();
-		MoveSelect ms;
-		U16 killer = MOVE_NONE;
-		ms.load(mvs, b, ttm, statistics, killer, killer, killer, killer, 0);
-		//if (split) split_point->split_mutex.unlock();
-		U16 move;
-		Node dummy;
-
-		// movegenerator generates only legal moves in qsearch (fyi)
-		while (ms.nextmove(dummy, move, false))
-		{
-			if (move == MOVE_NONE) continue;
-
-			// 0. prune quiet evasions -- leads to weaker play
-			//if (inCheck &&
-			//	b.is_quiet(move))
-			//{
-			//	stack->currmove = move;
-			//	continue;
-			//}
-
-			//1. futility pruning
-			//if (!inCheck &&
-			//	!b.checks_king(move) &&
-			//	!pv_node &&
-			//	move != ttm &&
-			//	b.piece_on(get_from(move)) != PAWN && 
-			//	stand_pat + 100 < alpha)
-			//{
-			//	int to = get_to(move);
-			//	int from = get_from(move);
-			//	int increase = material.material_value((GamePhase)b.phase(), b.piece_on(to)) - material.material_value(b.phase(), b.piece_on(from));
-			//	if (stand_pat + increase < alpha) continue;
-			//}
+    //}
 
 
-			// prune captures which have see values < 0	  
-			if (!inCheck &&
-				!b.checks_king(move) &&
-				!pv_node &&
-				move != ttm &&
-				eval <= alpha &&
-				b.see_move(move) < 0)
-				continue;
+    // delta pruning                 		
+    if (stand_pat < alpha - 650 && !inCheck && !b.in_check())
+      {
+	return alpha;
+      }
+    if (alpha < stand_pat && !inCheck && !b.in_check()) alpha = stand_pat;
+    if (alpha >= beta && !inCheck && !b.in_check()) return beta;
 
-			BoardData pd;
+    MoveSelect ms(statistics, QsearchCaptures, genChecks);
+    int moves_searched = 0, pruned = 0;
+    U16 move;
 
-			b.do_move(pd, move);
+    while (ms.nextmove(b, stack, ttm, move, false)) {
+      if (!b.is_legal(move)) {
+	++pruned;
+	continue;
+      }
 
-			bool givesCheck = b.gives_check(move);
+      // move data
+      bool checksKing = b.gives_check(move);
+      stack->givescheck = checksKing;
+      //bool isQuiet = b.is_quiet(move); // evasions
+      //bool discoveredBlocker = (Globals::SquareBB[get_from(move)] && b.discovered_blockers(b.whos_move()));
 
-			eval = -qsearch<type>(b, -beta, -alpha, depth - 1, stack + 1, givesCheck);
-
-			b.undo_move(move);
-
-			moves_searched++;
-
-			if (eval >= beta)
-			{
-				hashTable.store(key, data, depth, BOUND_LOW, move, adjust_score(beta, stack->ply), stand_pat, iter_depth);
-				return beta;
-			}
-			if (eval > alpha)
-			{
-				alpha = eval;
-				bestmove = move;
-				stack->currmove = move;
-			}
-		}
-
-		//if (split) return alpha;
-
-		//if (use_tt) //&& bestmove != MOVE_NONE)		
-		{
-			Bound ttb = BOUND_NONE;
-			if (alpha <= aorig)
-			{
-				ttb = BOUND_HIGH;
-			}
-			else if (alpha >= beta)
-			{
-				ttb = BOUND_LOW;
-			}
-			else if (alpha > aorig && alpha < beta) ttb = BOUND_EXACT;
-
-			//if (ttb != BOUND_NONE) ttable.store(key,data,depth,ttb,bestmove,alpha,NINF,iter_depth);
-			if (ttb != BOUND_NONE) hashTable.store(key, data, depth, ttb, bestmove, adjust_score(alpha, stack->ply), stand_pat, iter_depth);
-		}
-
-		return alpha;
-	}
-
-	// from stockfish - standard method to store the pv-line (also see chess programming wiki)	
-	void update_pv(U16* pv, U16& move, U16* child_pv)
+      // futility pruning --continue if we are winning	
+      if (!checksKing &&
+	  !inCheck &&
+	  move != ttm &&
+	  //!isQuiet && // if we are not in check, this is a capture
+	  !pv_node &&
+	  eval + material.material_value(b.piece_on(get_to(move)), END_GAME) >= beta)
 	{
-		for (*pv++ = move; *child_pv && *child_pv != MOVE_NONE;)
-		{
-			*pv++ = *child_pv++;
-		}
-		*pv = MOVE_NONE;
-		//int j=0;
-		//U16 tmp[MAXDEPTH];
-		////std::memset(pv, 0, MAXDEPTH * sizeof(U16));
-
-		//while(U16 m = (stack-j)->bestmove)
-		//{
-		//	if (m == MOVE_NONE) break;
-		//	tmp[j++] = m;
-		//}
-		//
-		//for (int i =0; i < j; ++i) pv[i] = tmp[j-i-1];
-
-		//int k=0;
-		//std::cout << std::endl;
-		//while (U16 m = pv[k])
-		//{
-		//	if (m == MOVE_NONE) break;
-		//	std::cout << SanSquares[get_from(m)] + SanSquares[get_to(m)] << " ";
-		//	k++;
-		//}
-		//std::cout << std::endl;
-		//std::cout << std::endl;
+	  eval += material.material_value(b.piece_on(get_to(move)), END_GAME);
+	  ++pruned;
+	  continue;
 	}
-	int adjust_score(int bestScore, int ply)
+
+      // continue if lost (futility pruning)
+      if (move != ttm &&
+	  !checksKing &&
+	  !inCheck &&
+	  !pv_node &&
+	  eval + 650 < alpha &&
+	  eval > NINF + mate_dist)
 	{
-		return (bestScore >= MATE_IN_MAXPLY ? bestScore = bestScore - ply :
-			bestScore <= MATED_IN_MAXPLY ? bestScore + ply : bestScore);
+	  //printf("!!DBG futility prune move(%s) depth(%d), alpha(%d) eval(%d) beta(%d), nodes(%d), msnodes(%d), qsnodes(%d)\n", (b.whos_move() == WHITE ? "white" : "black"), depth, alpha, eval, beta, b.get_nodes_searched(), b.MSnodes(), b.QSnodes());
+	  ++pruned;
+	  continue;
 	}
-	void write_pv_to_tt(Board& b, U16* moves, int depth)
+
+      // prune captures which have see values < 0	
+      if (!inCheck
+	  && !pv_node
+	  && !checksKing
+	  && move != ttm
+	  && b.see_sign(move) <= 0)
 	{
-		//Board copy = b;
-		TableEntry e;
-		int j = 0;
-		BoardData pd[MAX_MOVES + 2], *st = pd;
-
-		U16 m = MOVE_NONE;
-		while ((m = moves[j++]) != MOVE_NONE)
-		{
-			if (m == MOVE_NONE) break;
-			//std::cout << ".. try mv " << UCI::move_to_string(m) << std::endl;
-			U64 pk = b.pos_key();
-			U64 dk = b.data_key();
-			// could consider storing even if tt-hit
-			if (!hashTable.fetch(pk, e) || (hashTable.fetch(pk, e) && m != e.move))
-			{
-				// flag entries with exact bounds -- these are pv nodes from the search anyway
-				hashTable.store(pk, dk, 0, BOUND_NONE, m, DRAW, NINF, iter_depth);
-			}
-			b.do_move(*st++, m);
-			//b.print();
-		}
-		j--;
-		// printf("nb mvs = %d\n",j);
-
-		while (j) b.undo_move(moves[--j]);
-		//b.print();
+	  ++pruned;
+	  continue;
 	}
-	void uci_readout(Board& b, int depth)
+
+      BoardData pd;
+      b.do_move(pd, move, true);
+      eval = -qsearch<type>(b, -beta, -alpha, depth - 1, stack + 1, checksKing);
+      b.undo_move(move);
+      moves_searched++;
+
+      if (eval >= beta)
 	{
-		int j = 0;
-		U16 ttMoves[MAX_MOVES];
-		TableEntry e;
-
-		// check if e.move is actually legal here...possible tt move is not legal!
-		// sometimes the tt move is actually illegal!!! need to fix that (especially for move ordering :-/)
-		Board local_copy = b;
-
-		do
-		{
-			U64 pk = local_copy.pos_key();
-
-			if (hashTable.fetch(pk, e))
-			{
-				BoardData * pd = new BoardData(); // should go out of scope and be deleted (so no mem leak here.)
-
-				if (e.move == MOVE_NONE) break;
-				ttMoves[j] = e.move;
-				if (j < 2) BestMoves[j] = e.move;
-				std::string movestr = UCI::move_to_string(ttMoves[j]);
-				std::cout << movestr << " ";
-				local_copy.do_move(*pd, ttMoves[j++]);
-			}
-			else break;
-
-		} while (e.move != MOVE_NONE && j < MAX_MOVES && j < int(depth));
-		std::cout << "\n";
-
-		j--;
-		if (j > 0)
-		{
-			int k = j;
-			RootMoves.clear();
-			for (k = 0; k < j; ++k) RootMoves.push_back(ttMoves[k]);
-		}
-		while (j >= 0) local_copy.undo_move(ttMoves[j--]);
-
+	  //printf("!!DBG (qsearch) beta cut :: depth(%d) alpha(%d),eval(%d),beta(%d), bm=%s\n", depth, alpha, eval, beta, UCI::move_to_string(move).c_str());
+	  hashTable.store(key, data, qsDepth, BOUND_LOW, move, adjust_score(beta, mate_dist), stand_pat, pv_node);
+	  return beta;
 	}
-
-	void checkMoreTime(Board& b, Node * stack)
+      if (eval > alpha)
 	{
-		//timer_thread->moretime_mutex.lock();
-		timer_thread->adding_time = true;
+	  //printf("!!DBG (qsearch) pv-node :: depth(%d) alpha(%d),eval(%d),beta(%d), bm=%s\n", depth, alpha, eval, beta, UCI::move_to_string(move).c_str());
 
-		int j = 0;
-		U16 move = MOVE_NONE;
-		while (U16 m = (stack)->pv[j])
-		{
-			if (m == MOVE_NONE) break;
-			move = m;
-			j++;
-		}
-
-		//bool givesCheck = b.gives_check(move);
-		//bool quiet = b.is_quiet(move);
-		//bool dangerous = b.is_dangerous(move, b.piece_on(get_from(move)));
-
-		int eval_change = 0;
-		if (searchEvals.size() - 2 >= 0) eval_change = (searchEvals[searchEvals.size() - 1] - searchEvals[searchEvals.size() - 2]);
-
-		bool moretime = (eval_change >= 50) || (eval_change <= -50 && searchEvals[searchEvals.size() - 1] > -20); // ((givesCheck || dangerous || !quiet) || (eval_change >= 33) || (eval_change <= -33 && searchEvals[searchEvals.size() - 1] > -20));
-
-		if (moretime) nb_time_allocs++;
-
-		// attempt to avoid case where score is oscillating and there is not much time left on the clock anyway
-		if (moretime && eval_change > 100)
-		{
-			int timeleft = (b.whos_move() == WHITE ? timer_thread->search_limits->wtime : timer_thread->search_limits->btime);
-
-			if (timeleft <= 2000 * 60) moretime = false;
-			if (timeleft > 2000 * 60 && eval_change > 350) moretime = false; // should be ok to make the move
-		}
-		else if (moretime && eval_change < -100)
-		{
-			int timeleft = (b.whos_move() == WHITE ? timer_thread->search_limits->wtime : timer_thread->search_limits->btime);
-			if (timeleft <= 2000 * 60) moretime = false;
-			if (moretime && eval_change < -350) moretime = false; // we are probably lost here anyway...
-		}
-
-		if (moretime && nb_time_allocs > 3)
-		{
-			moretime = false;
-			//std::cout << "...DBG allocated " << nb_time_allocs << " abort search here..." << std::endl;
-		}
-		//if (searchEvals.size() - 2 >= 0)
-			//std::cout << "...DBG curr eval " << searchEvals[searchEvals.size() - 1] << " prev eval " << searchEvals[searchEvals.size() - 2] << " diff " << eval_change << " more time " << moretime << std::endl;
-
-
-		UCI_SIGNALS.timesUp = !moretime;
-
-		// signal the timer thread that we are finished checking if we need more time 
-		timer_thread->adding_time = false;
-		timer_thread->moretime_condition.signal();
-
-
+	  alpha = eval;
+	  bestmove = move;
+	  stack->currmove = move;
+	  if (!stack->isNullSearch) update_pv(stack->pv, move, (stack + 1)->pv);
 	}
-}
+    }
+
+    // detect terminal node
+    if (!moves_searched && b.in_check()) return NINF + mate_dist;
+    else if (b.is_repition_draw()) return DRAW;
+
+    Bound ttb = alpha <= aorig ? BOUND_HIGH : alpha >= beta ? BOUND_LOW : BOUND_EXACT;
+    hashTable.store(key, data, qsDepth, ttb, bestmove, adjust_score(alpha, mate_dist), stand_pat, pv_node);
+
+    return alpha;
+  }
+
+  void update_pv(U16* pv, U16& move, U16* child_pv) {
+    for (*pv++ = move; *child_pv && *child_pv != MOVE_NONE;)
+      {
+	*pv++ = *child_pv++;
+      }
+    *pv = MOVE_NONE;
+  }
+  
+  void pv_from_tt(Board b, int eval, int d, U16 * pv) {
+    TableEntry e;  int j = 0; std::string pv_str = "";
+    BoardData pd;
+    if (BestMoves[0] == MOVE_NONE || pv_str == "") {
+      while (U16 m = pv[j]) {
+	if (m == MOVE_NONE) break;
+	pv_str += UCI::move_to_string(m) + " ";
+	if (j < 2) BestMoves[j] = m;
+	j++;
+      }
+    }
+    if (pv_str == "") {
+      for (j = 0; hashTable.fetch(b.pos_key(), e) && e.move != MOVE_NONE && j < d; ++j) {
+	if (b.is_legal(e.move)) {
+	  if (j < 2) BestMoves[j] = e.move;
+	  pv_str += UCI::move_to_string(e.move) + " ";
+	  b.do_move(pd, e.move);
+	}
+	else break;
+      }
+    }
+    printf("info score cp %d depth %d seldepth %d nodes %d time %d pv ",
+	   eval,
+	   d,
+	   d,
+	   b.get_nodes_searched(),
+	   (int)timer_thread->elapsed);
+    std::cout << pv_str << std::endl;
+  }
+  
+  void ReadoutRootMoves(int depth) {
+    for (unsigned int j = 0; j < RootMoves.size(); ++j) {
+      printf("info depth %u currmove %s currmovenumber %u\n", depth, UCI::move_to_string(RootMoves[j]).c_str(), j + 1);
+    }
+  }
+
+  int adjust_score(int bestScore, int ply) {
+    return (bestScore >= MATE_IN_MAXPLY ? bestScore = bestScore - ply : bestScore <= MATED_IN_MAXPLY ? bestScore + ply : bestScore);
+  }
+};

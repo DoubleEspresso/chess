@@ -1,5 +1,5 @@
-#ifndef HEDWIG_OPTIONS_H
-#define HEDWIG_OPTIONS_H
+#ifndef SBC_OPTIONS_H
+#define SBC_OPTIONS_H
 
 #ifdef _WIN32
   #include <utility>

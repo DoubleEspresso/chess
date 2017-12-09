@@ -1,7 +1,7 @@
 #pragma once
 
-#ifndef HEDWIG_PLATFORM_H
-#define HEDWIG_PLATFORM_H
+#ifndef SBC_PLATFORM_H
+#define SBC_PLATFORM_H
 
 #ifdef _WIN32
 #include <io.h>

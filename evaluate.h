@@ -1,6 +1,6 @@
 #pragma once
-#ifndef HEDWIG_EVALUATE_H
-#define HEDWIG_EVALUATE_H
+#ifndef SBC_EVALUATE_H
+#define SBC_EVALUATE_H
 
 #include "board.h"
 #include "material.h"

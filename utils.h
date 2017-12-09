@@ -1,7 +1,7 @@
 #pragma once
 
-#ifndef HEDWIG_UTILS_H
-#define HEDWIG_UTILS_H
+#ifndef SBC_UTILS_H
+#define SBC_UTILS_H
 
 #define MIN(x,y) (x <= y ? x : y)
 #define MAX(x,y) (x <= y ? y : x)

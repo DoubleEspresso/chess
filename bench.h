@@ -1,7 +1,7 @@
 #pragma once
 
-#ifndef HEDWIG_BENCH_H
-#define HEDWIG_BENCH_H
+#ifndef SBC_BENCH_H
+#define SBC_BENCH_H
 
 #include "definitions.h"
 

@@ -1,6 +1,6 @@
 #pragma once
-#ifndef HEDWIG_TYPES_H
-#define HEDWIG_TYPES_H
+#ifndef SBC_TYPES_H
+#define SBC_TYPES_H
 
 #include <iostream>
 
