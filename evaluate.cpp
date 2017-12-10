@@ -8,102 +8,13 @@
 #include "utils.h"
 #include "magic.h"
 #include "opts.h"
+#include "evaltables.h"
 
 using namespace Globals;
 using namespace Magic;
 
-namespace
-{
+namespace {
   Clock timer;
-
-  /* bonuses section */
-  /*
-    int CenterBonus[2][5] =
-    {
-    // pawn, knight, bishop, rook, queen
-    { 5,4,3,2,1 },
-    { 5,4,3,2,1 }
-    };
-  */
-  
-  // [pinning piece][pinned piece]
-  int PinPenalty[5][5] =
-    {
-      {}, // pinned by pawn
-      {}, // pinned by knight
-      {0,1,0,2,3}, // pinned by bishop
-      {0,0,0,0,1}, // pinned by rook
-      {0,0,0,0,0} // pinned by queen	    
-    };
-
-  int DevelopmentBonus[5] = { 0, 8, 6, 0, 0 }; // pawn, knight, bishop, rook, queen
-  int TrappedPenalty[5] = { 0, 2, 3, 4, 5 }; // pawn, knight, bishop, rook, queen penalties for being imobile
-  int BishopCenterBonus[2] = { 4 , 6 };
-  int DoubleBishopBonus[2] = { 16 , 22 };
-  int RookOpenFileBonus[2] = { 6, 8 };
-  int AttackBonus[2][5][6] =
-    {
-      {
-	// pawn, knight, bishop, rook, queen, king
-	{ 0, 5, 6, 7, 8, 9 },  // pawn attcks mg
-	{ 0, 2, 3, 7, 11, 12 },  // knight attcks mg
-	{ 0, 0, 2, 6, 11, 12 },   // bishop attcks mg
-	{ 0, 0, 0, 2, 6, 12 },    // rook attcks mg
-	{ 0, 0, 0, 2, 3, 12 },    // queen attcks mg
-      },
-      {
-	// pawn, knight, bishop, rook, queen, king
-	{ 0, 5, 6, 7, 8, 9 },  // pawn attcks eg
-	{ 0, 2, 3, 7, 11, 12 },  // knight attcks eg
-	{ 0, 0, 2, 6, 11, 12 },   // bishop attcks eg
-	{ 0, 0, 0, 2, 6, 12 },    // rook attcks eg
-	{ 0, 0, 0, 2, 3, 12 },    // queen attcks eg
-      }
-    };
-
-  int KingAttackBonus[6] = { 6, 14, 10, 12, 14, 24 }; // pawn, knight, bishop, rook, queen, king
-  int KingExposureBonus[2] = { 2, 0 };
-  int CastleBonus[2] = { 6, 1 };
-  /*
-    int KnightOutpostBonus[2][64] =
-    {
-    // white
-    {
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 1, 1, 1, 1, 0, 0,
-    0, 1, 2, 3, 3, 2, 1, 0,
-    0, 2, 3, 4, 4, 3, 2, 0,
-    1, 3, 4, 5, 5, 4, 3, 1,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0
-    },
-    // black
-    {
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    1, 3, 4, 5, 5, 4, 3, 1,
-    0, 2, 3, 4, 4, 3, 2, 0,
-    0, 1, 2, 3, 3, 2, 1, 0,
-    0, 0, 1, 1, 1, 1, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0
-    }
-    };
-  */
-  int PawnLeverScore[64] =
-    {
-      1, 2, 3, 4, 4, 3, 2, 1,
-      1, 2, 3, 4, 4, 3, 2, 1,
-      1, 2, 3, 4, 4, 3, 2, 1,
-      1, 2, 3, 4, 4, 3, 2, 1,
-      1, 2, 3, 4, 4, 3, 2, 1,
-      1, 2, 3, 4, 4, 3, 2, 1,
-      1, 2, 3, 4, 4, 3, 2, 1,
-      1, 2, 3, 4, 4, 3, 2, 1
-    };
-
-  /* main evaluation methods */
   int eval(Board& b);
   void traceout(EvalInfo& e);
   template<Color c> int eval_squares(Board& b, EvalInfo& ei);
@@ -115,32 +26,17 @@ namespace
   template<Color c> int eval_space(Board& b, EvalInfo& ei);
   template<Color c> int eval_center(Board& b, EvalInfo& ei);
   template<Color c> int eval_threats(Board& b, EvalInfo& ei);
-
-  /* helper evaluation methods */
-  template<Color c> int pawn_support(Board& b, EvalInfo& ei);
   template<Color c> int eval_pawn_levers(Board& b, EvalInfo& ei);
-  template<Color c> int connected_pawns(Board& b, EvalInfo& ei);
-  template<Color c> int isolated_pawns(Board& b, EvalInfo& ei);
 
   /* material scaling */
   template<Color c> int eval_imbalance(Board& b, EvalInfo& ei);
 
-
-  /* attack helpers */
+  /* todo */
   template<Color c> int eval_xray_bishop(Board& b, EvalInfo& ei);
   template<Color c> int eval_xray_rook(Board& b, EvalInfo& ei);
-
-};
-
-namespace Eval
-{
-  int evaluate(Board& b) { return eval(b); }
-};
-
-namespace
-{
-  int eval(Board &b)
-  {
+  template<Color c> int eval_xray_queen(Board& b, EvalInfo& ei);
+  
+  int eval(Board &b) {
     EvalInfo ei;
     ei.tempoBonus = 8;
     ei.stm = b.whos_move();
@@ -876,4 +772,8 @@ namespace
     printf("| Threats     |\t %d \t|\t %d \t|\t %d \t|\n", ei.s.threat_sc[WHITE], ei.s.threat_sc[BLACK], ei.s.threat_sc[WHITE] - ei.s.threat_sc[BLACK]);
     printf("| Eval time   |\t -- \t|\t -- \t|\t %d \t|\n", ei.s.time);
   }
+};
+
+namespace Eval {
+  int evaluate(Board& b) { return eval(b); }
 };
