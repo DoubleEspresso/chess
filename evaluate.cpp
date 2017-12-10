@@ -45,23 +45,23 @@ namespace
     {
       {
 	// pawn, knight, bishop, rook, queen, king
-	{ 2, 5, 6, 7, 8, 9 },  // pawn attcks mg
-	{ 1, 2, 3, 7, 11, 12 },  // knight attcks mg
-	{ 1, 1, 2, 6, 11, 12 },   // bishop attcks mg
-	{ 1, 1, 1, 2, 6, 12 },    // rook attcks mg
-	{ 1, 1, 1, 2, 3, 12 },    // queen attcks mg
+	{ 0, 5, 6, 7, 8, 9 },  // pawn attcks mg
+	{ 0, 2, 3, 7, 11, 12 },  // knight attcks mg
+	{ 0, 0, 2, 6, 11, 12 },   // bishop attcks mg
+	{ 0, 0, 0, 2, 6, 12 },    // rook attcks mg
+	{ 0, 0, 0, 2, 3, 12 },    // queen attcks mg
       },
       {
 	// pawn, knight, bishop, rook, queen, king
-	{ 2, 5, 6, 7, 8, 9 },  // pawn attcks eg
-	{ 1, 2, 3, 7, 11, 12 },  // knight attcks eg
-	{ 1, 1, 2, 6, 11, 12 },   // bishop attcks eg
-	{ 1, 1, 1, 2, 6, 12 },    // rook attcks eg
-	{ 1, 1, 1, 2, 3, 12 },    // queen attcks eg
+	{ 0, 5, 6, 7, 8, 9 },  // pawn attcks eg
+	{ 0, 2, 3, 7, 11, 12 },  // knight attcks eg
+	{ 0, 0, 2, 6, 11, 12 },   // bishop attcks eg
+	{ 0, 0, 0, 2, 6, 12 },    // rook attcks eg
+	{ 0, 0, 0, 2, 3, 12 },    // queen attcks eg
       }
     };
 
-  int KingAttackBonus[6] = { 2, 14, 10, 20, 22, 24 }; // pawn, knight, bishop, rook, queen, king
+  int KingAttackBonus[6] = { 6, 14, 10, 12, 14, 24 }; // pawn, knight, bishop, rook, queen, king
   int KingExposureBonus[2] = { 2, 0 };
   int CastleBonus[2] = { 6, 1 };
   /*
@@ -142,7 +142,7 @@ namespace
   int eval(Board &b)
   {
     EvalInfo ei;
-    ei.tempoBonus = 5;
+    ei.tempoBonus = 8;
     ei.stm = b.whos_move();
     ei.me = material.get(b);
     ei.phase = ei.me->game_phase;
@@ -182,6 +182,7 @@ namespace
     score += (ei.stm == WHITE ? ei.tempoBonus : -ei.tempoBonus);
     score += ei.me->value;
     score += ei.pe->value;
+
     score += (eval_squares<WHITE>(b, ei) - eval_squares<BLACK>(b, ei));
     score += (eval_knights<WHITE>(b, ei) - eval_knights<BLACK>(b, ei));
     score += (eval_bishops<WHITE>(b, ei) - eval_bishops<BLACK>(b, ei));
@@ -829,10 +830,9 @@ namespace
       }
     }
 
-
     // central weaknesses
     U64 doubled_pawns = ei.pe->doubledPawns[them];
-    U64 weaknesses = (doubled_pawns) & bigCenter;// | undefended_pawns) & bigCenter;
+    U64 weaknesses = doubled_pawns & bigCenter;// | undefended_pawns) & bigCenter;
     if (ei.phase == MIDDLE_GAME && weaknesses != 0ULL) {
       score += 1;
     }
@@ -850,7 +850,7 @@ namespace
 
     // if we have the move adjust the score a little
     // since we can initiate the capture
-    if (b.whos_move() == c) score += 1;
+    //if (b.whos_move() == c) score += 1;
 
     U64 pawn_lever_attacks = ei.pe->attacks[c] & ei.pawns[them];
     while (pawn_lever_attacks) {
