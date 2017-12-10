@@ -1,6 +1,6 @@
 #pragma once
 #ifndef SBC_EVALTABLES_H
-#define SBC_EVATABLES_H
+#define SBC_EVALTABLES_H
 
 namespace { 
   int PinPenalty[5][5] = // [pinning piece][pinned piece]
