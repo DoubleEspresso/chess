@@ -86,16 +86,16 @@ void Board::from_fen(std::istringstream& is)
       char c = *it;
       if (isdigit(c)) s += int(c - '0');
       else
-	switch (c)
-	  {
-	  case '/':
-	    s -= 16;
-	    break;
-	  default:
-	    set_piece(c, s);
-	    s++;
-	    break;
-	  }
+        switch (c)
+          {
+          case '/':
+            s -= 16;
+            break;
+          default:
+            set_piece(c, s);
+            s++;
+            break;
+          }
     }
 
   // the side to move
@@ -114,24 +114,24 @@ void Board::from_fen(std::istringstream& is)
     {
       char c = *it;
       switch (c)
-	{
-	case 'K':
-	  position->crights |= W_KS;
-	  position->dKey ^= Zobrist::castle_rands(WHITE, W_KS);
-	  break;
-	case 'Q':
-	  position->crights |= W_QS;
-	  position->dKey ^= Zobrist::castle_rands(WHITE, W_QS);
-	  break;
-	case 'k':
-	  position->crights |= B_KS;
-	  position->dKey ^= Zobrist::castle_rands(BLACK, B_KS);
-	  break;
-	case 'q':
-	  position->crights |= B_QS;
-	  position->dKey ^= Zobrist::castle_rands(BLACK, B_QS);
-	  break;
-	}
+        {
+        case 'K':
+          position->crights |= W_KS;
+          position->dKey ^= Zobrist::castle_rands(WHITE, W_KS);
+          break;
+        case 'Q':
+          position->crights |= W_QS;
+          position->dKey ^= Zobrist::castle_rands(WHITE, W_QS);
+          break;
+        case 'k':
+          position->crights |= B_KS;
+          position->dKey ^= Zobrist::castle_rands(BLACK, B_KS);
+          break;
+        case 'q':
+          position->crights |= B_QS;
+          position->dKey ^= Zobrist::castle_rands(BLACK, B_QS);
+          break;
+        }
     }
   // the ep-square
   is >> token;
@@ -141,11 +141,11 @@ void Board::from_fen(std::istringstream& is)
   if (token != "-")
     {
       for (std::string::iterator it = token.begin(), end = token.end(); it != end; ++it)
-	{
-	  char c = *it;
-	  if (c >= 'a' && c <= 'h') col = int(c - 'a');
-	  if (c == '3' || c == '6') row = int(c - '1');
-	}
+        {
+          char c = *it;
+          if (c >= 'a' && c <= 'h') col = int(c - 'a');
+          if (c == '3' || c == '6') row = int(c - '1');
+        }
       position->eps = 8 * row + col;
       position->dKey ^= Zobrist::ep_rands(col);
     }
@@ -305,15 +305,15 @@ void Board::do_move(BoardData& d, U16 m, bool qsMove)
     {
       int rook_from, rook_to;
       if (type == CASTLE_KS)
-	{
-	  rook_from = (us == WHITE ? H1 : H8);
-	  rook_to = (us == WHITE ? F1 : F8);
-	}
+        {
+          rook_from = (us == WHITE ? H1 : H8);
+          rook_to = (us == WHITE ? F1 : F8);
+        }
       else
-	{
-	  rook_from = (us == WHITE ? A1 : A8);
-	  rook_to = (us == WHITE ? D1 : D8);
-	}
+        {
+          rook_from = (us == WHITE ? A1 : A8);
+          rook_to = (us == WHITE ? D1 : D8);
+        }
       move_piece(us, KING, idx, from, to);
       pieces[us][p] ^= tfbit;
       pieces_by_color[us] ^= tfbit;
@@ -328,14 +328,15 @@ void Board::do_move(BoardData& d, U16 m, bool qsMove)
 
       // unset the castle rights here
       if (type == CASTLE_KS || type == CASTLE_QS)
-	{
-	  (us == WHITE ? position->crights &= 0xC : position->crights &= 0x3);
-	  // update the castle zobrist keys
-	  if (us == WHITE) position->dKey ^= (Zobrist::castle_rands(WHITE, W_KS) | Zobrist::castle_rands(WHITE, W_QS));
-	  else position->dKey ^= (Zobrist::castle_rands(BLACK, B_KS) | Zobrist::castle_rands(BLACK, B_QS));
-	  castled[us] = true;
-	}
+        {
+          (us == WHITE ? position->crights &= 0xC : position->crights &= 0x3);
+          // update the castle zobrist keys
+          if (us == WHITE) position->dKey ^= (Zobrist::castle_rands(WHITE, W_KS) | Zobrist::castle_rands(WHITE, W_QS));
+          else position->dKey ^= (Zobrist::castle_rands(BLACK, B_KS) | Zobrist::castle_rands(BLACK, B_QS));
+          castled[us] = true;
+        }
     }
+
   // updates -- eps, capturedPiece, pinned, in_check, stm
   position->eps = SQUARE_NONE;
   if (p == PAWN && (from + Square((us == WHITE ? (NORTH + NORTH) : (SOUTH + SOUTH)))) == to)
@@ -363,6 +364,7 @@ void Board::do_move(BoardData& d, U16 m, bool qsMove)
   // if in check, set the checkers bitmap
   position->in_check = is_attacked(position->ks, position->stm, us);
   position->checkers = (position->in_check ? attackers_of(position->ks) & colored_pieces(position->stm ^ 1) : 0ULL);
+
 
   // update discovered checking candidates
   //compute_discovered_candidates(position->stm);
@@ -441,15 +443,15 @@ void Board::undo_move(U16 m)
     {
       int rook_from, rook_to;
       if (type == CASTLE_KS)
-	{
-	  rook_to = (us == WHITE ? H1 : H8);
-	  rook_from = (us == WHITE ? F1 : F8);
-	}
+        {
+          rook_to = (us == WHITE ? H1 : H8);
+          rook_from = (us == WHITE ? F1 : F8);
+        }
       else
-	{
-	  rook_to = (us == WHITE ? A1 : A8);
-	  rook_from = (us == WHITE ? D1 : D8);
-	}
+        {
+          rook_to = (us == WHITE ? A1 : A8);
+          rook_from = (us == WHITE ? D1 : D8);
+        }
       move_piece(us, KING, idx, from, to);
       int rook_idx = piece_index[us][ROOK][rook_from];
       move_piece(us, ROOK, rook_idx, rook_from, rook_to);
@@ -478,7 +480,7 @@ bool Board::is_promotion(const U16& m)
 {
   int type = ((m & 0xf000) >> 12);
   return ((type != MOVE_NONE && type <= PROMOTION) ||
-	  (type > PROMOTION && type <= PROMOTION_CAP));
+          (type > PROMOTION && type <= PROMOTION_CAP));
 }
 bool Board::is_legal(U16& move)
 {
@@ -507,9 +509,9 @@ bool Board::is_legal(U16& move)
     {
       U64 tmp = (SquareBB[to] & PseudoAttacksBB(KNIGHT, frm));
       if (!tmp)
-	{
-	  return false;
-	}
+        {
+          return false;
+        }
     }
 
   if (piece == KING)
@@ -517,29 +519,29 @@ bool Board::is_legal(U16& move)
       if (mt == CASTLE_KS || mt == CASTLE_QS) return true; // assumed legal
       U64 tmp = (SquareBB[to] & PseudoAttacksBB(KING, frm));
       if (!tmp)
-	{
-	  return false;
-	}
+        {
+          return false;
+        }
     }
 
   if (piece == PAWN)
     {
       int cdiff = (COL(frm) - COL(to));
       if (cdiff == -1 || cdiff == 1)
-	{
-	  if ((mt == CAPTURE || mt == PROMOTION_CAP)
-	      && mt != EP && color_on(to) == COLOR_NONE)
-	    {
-	      return false;
-	    }
-	}
+        {
+          if ((mt == CAPTURE || mt == PROMOTION_CAP)
+              && mt != EP && color_on(to) == COLOR_NONE)
+            {
+              return false;
+            }
+        }
       else if (cdiff == 0 && mt == QUIET)
-	{
-	  if (color_on(to) != COLOR_NONE)
-	    {
-	      return false;
-	    }
-	}
+        {
+          if (color_on(to) != COLOR_NONE)
+            {
+              return false;
+            }
+        }
     }
 
   U64 mask = all_pieces();
@@ -548,27 +550,27 @@ bool Board::is_legal(U16& move)
       U64 bmvs = attacks<BISHOP>(mask, frm);
       U64 tmp = (SquareBB[to] & bmvs);
       if (!tmp)
-	{
-	  return false;
-	}
+        {
+          return false;
+        }
     }
   if (piece == ROOK)
     {
       U64 rmvs = attacks<ROOK>(mask, frm);
       U64 tmp = (SquareBB[to] & rmvs);
       if (!tmp)
-	{
-	  return false;
-	}
+        {
+          return false;
+        }
     }
   if (piece == QUEEN)
     {
       U64 qmvs = attacks<BISHOP>(mask, frm) | attacks<ROOK>(mask, frm);
       U64 tmp = (SquareBB[to] & qmvs);
       if (!tmp)
-	{
-	  return false;
-	}
+        {
+          return false;
+        }
     }
 
   if (mt == EP || frm == ks || SquareBB[frm] & pinnd)
@@ -613,7 +615,7 @@ bool Board::legal_ep(int frm, int to, int ks, int ec)
   int csq = to + (ec == WHITE ? NORTH : SOUTH);
   U64 m = (all_pieces() ^ SquareBB[frm] ^ SquareBB[csq]) | SquareBB[to];
   return (!(attacks<BISHOP>(m, ks) & (get_pieces(ec, QUEEN) | get_pieces(ec, BISHOP)))
-	  && !(attacks<ROOK>(m, ks) & (get_pieces(ec, QUEEN) | get_pieces(ec, ROOK))));
+          && !(attacks<ROOK>(m, ks) & (get_pieces(ec, QUEEN) | get_pieces(ec, ROOK))));
 }
 bool Board::is_legal_km(const U8 &ks, const U8 &to, const U8 &ec)
 {
@@ -653,13 +655,13 @@ bool Board::is_repition_draw()
       if (past->previous && past->previous->previous) past = past->previous->previous;
       else return false;
       if (past->pKey == position->pKey)
-	{
-	  ++count;
-	}
+        {
+          ++count;
+        }
       if (count >= 1)
-	{
-	  return true;
-	}
+        {
+          return true;
+        }
     }
   return false;
 }
@@ -680,11 +682,11 @@ void Board::clear()
   for (int c = WHITE; c <= BLACK; c++)
     {
       for (int p = PAWN; p <= KING; p++)
-	{
-	  for (int j = 0; j < 10; j++) square_of_arr[c][p][j] = SQUARE_NONE;
-	  for (int j = 0; j < SQUARES; j++) piece_index[c][p][j] = 0;
-	  number_of_arr[c][p] = 0;
-	}
+        {
+          for (int j = 0; j < 10; j++) square_of_arr[c][p][j] = SQUARE_NONE;
+          for (int j = 0; j < SQUARES; j++) piece_index[c][p][j] = 0;
+          number_of_arr[c][p] = 0;
+        }
     }
   start.stm = COLOR_NONE;
   start.eps = SQUARE_NONE;
@@ -720,12 +722,12 @@ U64 Board::attackers_of(int s)
   U64 rattck = attacks<ROOK>(mask, s);
   U64 qattck = battck | rattck;
   return ((PawnAttacksBB[BLACK][s] & pieces[WHITE][PAWN]) |
-	  (PawnAttacksBB[WHITE][s] & pieces[BLACK][PAWN]) |
-	  (PseudoAttacksBB(KNIGHT, s) & (pieces[BLACK][KNIGHT] | pieces[WHITE][KNIGHT])) |
-	  (PseudoAttacksBB(KING, s) & (pieces[BLACK][KING] | pieces[WHITE][KING])) |
-	  (battck & (pieces[WHITE][BISHOP] | pieces[BLACK][BISHOP])) |
-	  (rattck & (pieces[WHITE][ROOK] | pieces[BLACK][ROOK])) |
-	  (qattck & (pieces[WHITE][QUEEN] | pieces[BLACK][QUEEN])));
+          (PawnAttacksBB[WHITE][s] & pieces[BLACK][PAWN]) |
+          (PseudoAttacksBB(KNIGHT, s) & (pieces[BLACK][KNIGHT] | pieces[WHITE][KNIGHT])) |
+          (PseudoAttacksBB(KING, s) & (pieces[BLACK][KING] | pieces[WHITE][KING])) |
+          (battck & (pieces[WHITE][BISHOP] | pieces[BLACK][BISHOP])) |
+          (rattck & (pieces[WHITE][ROOK] | pieces[BLACK][ROOK])) |
+          (qattck & (pieces[WHITE][QUEEN] | pieces[BLACK][QUEEN])));
 }
 U64 Board::attackers_of(int s, U64& mask)
 {
@@ -733,28 +735,28 @@ U64 Board::attackers_of(int s, U64& mask)
   U64 rattck = attacks<ROOK>(mask, s);
   U64 qattck = battck | rattck;
   return ((PawnAttacksBB[BLACK][s] & pieces[WHITE][PAWN]) |
-	  (PawnAttacksBB[WHITE][s] & pieces[BLACK][PAWN]) |
-	  (PseudoAttacksBB(KNIGHT, s) & (pieces[BLACK][KNIGHT] | pieces[WHITE][KNIGHT])) |
-	  (PseudoAttacksBB(KING, s) & (pieces[BLACK][KING] | pieces[WHITE][KING])) |
-	  (battck & (pieces[WHITE][BISHOP] | pieces[BLACK][BISHOP])) |
-	  (rattck & (pieces[WHITE][ROOK] | pieces[BLACK][ROOK])) |
-	  (qattck & (pieces[WHITE][QUEEN] | pieces[BLACK][QUEEN])));
+          (PawnAttacksBB[WHITE][s] & pieces[BLACK][PAWN]) |
+          (PseudoAttacksBB(KNIGHT, s) & (pieces[BLACK][KNIGHT] | pieces[WHITE][KNIGHT])) |
+          (PseudoAttacksBB(KING, s) & (pieces[BLACK][KING] | pieces[WHITE][KING])) |
+          (battck & (pieces[WHITE][BISHOP] | pieces[BLACK][BISHOP])) |
+          (rattck & (pieces[WHITE][ROOK] | pieces[BLACK][ROOK])) |
+          (qattck & (pieces[WHITE][QUEEN] | pieces[BLACK][QUEEN])));
 }
 
 bool Board::is_attacked(const U8 &ks, const U8 &fc, const U8 &ec, const U64& m) {
   U64 stepper_checks = ((PawnAttacksBB[fc][ks] & pieces[ec][PAWN]) |
-			(PseudoAttacksBB(KNIGHT, ks) & pieces[ec][KNIGHT]) |
-			(PseudoAttacksBB(KING, ks) & pieces[ec][KING]));
+                        (PseudoAttacksBB(KNIGHT, ks) & pieces[ec][KNIGHT]) |
+                        (PseudoAttacksBB(KING, ks) & pieces[ec][KING]));
   if (stepper_checks != 0ULL) return true;
   
   return ((attacks<BISHOP>(m, ks) & (get_pieces(ec, QUEEN) | get_pieces(ec, BISHOP))) ||
-	  (attacks<ROOK>(m, ks) & (get_pieces(ec, QUEEN) | get_pieces(ec, ROOK))));
+          (attacks<ROOK>(m, ks) & (get_pieces(ec, QUEEN) | get_pieces(ec, ROOK))));
 }
 
 bool Board::is_attacked(const U8 &ks, const U8 &fc, const U8 &ec) {
   U64 stepper_checks = ((PawnAttacksBB[fc][ks] & pieces[ec][PAWN]) |
-			(PseudoAttacksBB(KNIGHT, ks) & pieces[ec][KNIGHT]) |
-			(PseudoAttacksBB(KING, ks) & pieces[ec][KING]));
+                        (PseudoAttacksBB(KNIGHT, ks) & pieces[ec][KNIGHT]) |
+                        (PseudoAttacksBB(KING, ks) & pieces[ec][KING]));
   if (stepper_checks != 0ULL) return true;
 
   U64 m = all_pieces();
@@ -783,10 +785,10 @@ U64 Board::xray_attackers(const int& s, const int& c)
     {
       U64 a = attackers_of(s, tmp) & tmp;
       if (a)
-	{
-	  tmp ^= a;
-	  attackers |= a;
-	}
+        {
+          tmp ^= a;
+          attackers |= a;
+        }
       else break;
     }
   return attackers & colored_pieces(c);
@@ -827,17 +829,17 @@ int Board::see_move(const U16& move) {
     U64 white_attackers = a & white_bb;
     if (white_attackers) {
       while(white_attackers) {
-	white[white_sz].p = piece_on(pop_lsb(white_attackers));
-	white[white_sz].v = material.material_value(white[white_sz].p, MIDDLE_GAME);
-	white_sz++;
+        white[white_sz].p = piece_on(pop_lsb(white_attackers));
+        white[white_sz].v = material.material_value(white[white_sz].p, MIDDLE_GAME);
+        white_sz++;
       }
     }
     U64 black_attackers = a & black_bb;
     if (black_attackers) {
       while(black_attackers) {
-	black[black_sz].p = piece_on(pop_lsb(black_attackers));
-	black[black_sz].v = material.material_value(black[black_sz].p, MIDDLE_GAME);
-	black_sz++;
+        black[black_sz].p = piece_on(pop_lsb(black_attackers));
+        black[black_sz].v = material.material_value(black[black_sz].p, MIDDLE_GAME);
+        black_sz++;
       }	  
     }
     std::sort(white, white + white_sz, LessThan); 
@@ -923,25 +925,25 @@ void Board::print()
       printf("   +---+---+---+---+---+---+---+---+\n");
       printf(" %d ", r + 1);
       for (int c = COL1; c <= COL8; c++)
-	{
-	  int s = 8 * r + c;
-	  bool occupied = false;
+        {
+          int s = 8 * r + c;
+          bool occupied = false;
 
-	  for (int p = PAWN; p <= KING; p++)
-	    {
-	      if (U64(s) & pieces[WHITE][p])
-		{
-		  std::cout << "|" << "(" << SanPiece[p] << ")";
-		  occupied = true;
-		}
-	      if (U64(s) & pieces[BLACK][p])
-		{
-		  std::cout << "| " << SanPiece[p + 6] << " ";
-		  occupied = true;
-		}
-	    }
-	  if (!occupied) std::cout << "|   ";
-	}
+          for (int p = PAWN; p <= KING; p++)
+            {
+              if (U64(s) & pieces[WHITE][p])
+                {
+                  std::cout << "|" << "(" << SanPiece[p] << ")";
+                  occupied = true;
+                }
+              if (U64(s) & pieces[BLACK][p])
+                {
+                  std::cout << "| " << SanPiece[p + 6] << " ";
+                  occupied = true;
+                }
+            }
+          if (!occupied) std::cout << "|   ";
+        }
       std::cout << "|\n";
     }
   printf("   +---+---+---+---+---+---+---+---+\n");
@@ -954,8 +956,8 @@ U64 Board::pinned_to(int s)
   U64 pinned = 0ULL;
   if (piece_on_arr[s] == PIECE_NONE) return pinned;
   U64 sliders = ((pieces[ec][BISHOP] & PseudoAttacksBB(BISHOP, s)) |
-		 (pieces[ec][ROOK] & PseudoAttacksBB(ROOK, s)) |
-		 (pieces[ec][QUEEN] & PseudoAttacksBB(QUEEN, s)));
+                 (pieces[ec][ROOK] & PseudoAttacksBB(ROOK, s)) |
+                 (pieces[ec][QUEEN] & PseudoAttacksBB(QUEEN, s)));
   if (!sliders) return pinned;
   do
     {
@@ -972,8 +974,8 @@ U64 Board::pinned()
   int ks = position->ks;
   U64 pinned = 0ULL;
   U64 sliders = ((pieces[ec][BISHOP] & PseudoAttacksBB(BISHOP, ks)) |
-		 (pieces[ec][ROOK] & PseudoAttacksBB(ROOK, ks)) |
-		 (pieces[ec][QUEEN] & PseudoAttacksBB(QUEEN, ks)));
+                 (pieces[ec][ROOK] & PseudoAttacksBB(ROOK, ks)) |
+                 (pieces[ec][QUEEN] & PseudoAttacksBB(QUEEN, ks)));
   if (!sliders) return pinned;
   do
     {
@@ -1036,16 +1038,16 @@ void Board::compute_discovered_candidates(int c)
   if (candidates)
     {
       while (candidates)
-	{
-	  int f = pop_lsb(candidates);
-	  U64 CandidateMask = (BetweenBB[eks][f] & colored_pieces(c)) ^ (SquareBB[f]);
-	  U64 tmp = CandidateMask; // local copy
-	  if (tmp && count(tmp) == 1)
-	    {
-	      position->disc_checkers[c] |= SquareBB[f];
-	      position->blockers[c] |= CandidateMask;
-	    }
-	}
+        {
+          int f = pop_lsb(candidates);
+          U64 CandidateMask = (BetweenBB[eks][f] & colored_pieces(c)) ^ (SquareBB[f]);
+          U64 tmp = CandidateMask; // local copy
+          if (tmp && count(tmp) == 1)
+            {
+              position->disc_checkers[c] |= SquareBB[f];
+              position->blockers[c] |= CandidateMask;
+            }
+        }
     }
 }
 U64 Board::discovered_blockers(int c)
@@ -1058,8 +1060,8 @@ U64 Board::pinned(int c, int * pinners) {
   int ks = square_of_arr[c][KING][1];
   U64 pinned = 0ULL;
   U64 sliders = ((pieces[ec][BISHOP] & PseudoAttacksBB(BISHOP, ks)) |
-		 (pieces[ec][ROOK] & PseudoAttacksBB(ROOK, ks)) |
-		 (pieces[ec][QUEEN] & PseudoAttacksBB(QUEEN, ks)));
+                 (pieces[ec][ROOK] & PseudoAttacksBB(ROOK, ks)) |
+                 (pieces[ec][QUEEN] & PseudoAttacksBB(QUEEN, ks)));
   if (!sliders) return pinned;
   do
     {
@@ -1079,38 +1081,38 @@ void Board::set_piece(char& c, int s) {
   for (int p = W_PAWN; p <= B_KING; ++p)
     {
       if (c == SanPiece[p])
-	{
-	  Color color = color_of(p);
+        {
+          Color color = color_of(p);
 
-	  // adjust colored piece to bare piece type (pawn, knight, etc..)
-	  int piece = (p > W_KING ? p - 6 : p);
+          // adjust colored piece to bare piece type (pawn, knight, etc..)
+          int piece = (p > W_KING ? p - 6 : p);
 
-	  // update the colored piece arrays
-	  pieces[color][piece] |= SquareBB[s];
-	  pieces_by_color[color] |= SquareBB[s];
-	  color_on_arr[s] = color;
+          // update the colored piece arrays
+          pieces[color][piece] |= SquareBB[s];
+          pieces_by_color[color] |= SquareBB[s];
+          color_on_arr[s] = color;
 
-	  // update the piece counter/index arrays
-	  number_of_arr[color][piece]++;
-	  piece_index[color][piece][s] = number_of_arr[color][piece];
+          // update the piece counter/index arrays
+          number_of_arr[color][piece]++;
+          piece_index[color][piece][s] = number_of_arr[color][piece];
 
-	  // update zobrist keys and square info for this piece 
-	  square_of_arr[color][piece][number_of_arr[color][piece]] = s;
-	  piece_on_arr[s] = piece;
-	  position->pKey ^= Zobrist::piece_rands(s, color, piece);
+          // update zobrist keys and square info for this piece 
+          square_of_arr[color][piece][number_of_arr[color][piece]] = s;
+          piece_on_arr[s] = piece;
+          position->pKey ^= Zobrist::piece_rands(s, color, piece);
 
-	  if (p == W_KING || p == B_KING)
-	    {
-	      king_sq_bm[color] |= SquareBB[s];
-	    }
-	  else
-	    {
-	      position->mKey ^= Zobrist::piece_rands(s, color, piece);
-	      (color == WHITE ? piece_diff[piece]++ : piece_diff[piece]--);
-	    }
-	  if (p == W_PAWN || p == B_PAWN) position->pawnKey ^= Zobrist::piece_rands(s, color, piece);
+          if (p == W_KING || p == B_KING)
+            {
+              king_sq_bm[color] |= SquareBB[s];
+            }
+          else
+            {
+              position->mKey ^= Zobrist::piece_rands(s, color, piece);
+              (color == WHITE ? piece_diff[piece]++ : piece_diff[piece]--);
+            }
+          if (p == W_PAWN || p == B_PAWN) position->pawnKey ^= Zobrist::piece_rands(s, color, piece);
 
-	}
+        }
     }
 }
 void Board::move_piece(int c, int p, int idx, int frm, int to)
