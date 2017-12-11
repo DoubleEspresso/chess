@@ -12,7 +12,7 @@
 struct MoveStats {
   int history[2][SQUARES][SQUARES];
   U16 countermoves[SQUARES][SQUARES];
-
+  
   void update(Board& b, U16& m, U16& last, Node* stack, int d, int eval, U16* quiets);
 
   int score(U16& m, int c) {
@@ -40,8 +40,7 @@ enum Phase {
   Killer1, Killer2, BadCaptures, Quiet, End
 };
 
-class MoveSelect
-{
+class MoveSelect {
   int c_sz, stored_csz;
   int q_sz, stored_qsz;
   int phase;

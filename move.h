@@ -49,6 +49,8 @@ struct MoveList
 {
   U16 m;
   int score;
+  int tries=0; // mc-search
+  int wins=0;  // mc-search
 };
 
 class MoveGenerator
@@ -62,11 +64,10 @@ class MoveGenerator
  MoveGenerator() : it(0), last(0) { }
  MoveGenerator(Board &b) : it(0), last(0) { generate(b, LEGAL); }
  MoveGenerator(Board& b, MoveType mt) : it(0), last(0) { generate(b, mt); }
- MoveGenerator(Board& b, MoveType mt, bool legal) : it(0), last(0)
-    {
-      if (legal) generate(b, mt);
-      else generate_pseudo_legal(b, mt);
-    }
+ MoveGenerator(Board& b, MoveType mt, bool legal) : it(0), last(0) {
+    if (legal) generate(b, mt);
+    else generate_pseudo_legal(b, mt);
+  }
   ~MoveGenerator() { };
   
   void print_mvlist();
@@ -76,6 +77,7 @@ class MoveGenerator
   MoveList operator++() { return list[legal_i[it++]]; }
   bool end() { return it == last; }
   U16 move() { return list[legal_i[it]].m; }
+  MoveList& get(int i) { return list[legal_i[i]]; }
   int size() const { return last; }
   template<MoveType> void serialize(U64 &b, const U8& from);
   template<MoveType> void serialize(U64 &b, const Direction& d);

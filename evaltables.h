@@ -1,6 +1,6 @@
 #pragma once
 #ifndef SBC_EVALTABLES_H
-#define SBC_EVATABLES_H
+#define SBC_EVALTABLES_H
 
 namespace { 
   int PinPenalty[5][5] = // [pinning piece][pinned piece]
@@ -11,7 +11,6 @@ namespace {
       {0,0,0,0,1}, // pinned by rook
       {0,0,0,0,0} // pinned by queen	    
     };
-  int DevelopmentBonus[5] = { 0, 8, 6, 0, 0 }; // pawn, knight, bishop, rook, queen
   int TrappedPenalty[5] = { 0, 2, 3, 4, 5 }; // pawn, knight, bishop, rook, queen
   int BishopCenterBonus[2] = { 4 , 6 };
   int DoubleBishopBonus[2] = { 16 , 22 };

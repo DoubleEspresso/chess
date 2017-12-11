@@ -78,7 +78,6 @@ namespace {
     score += (ei.stm == WHITE ? ei.tempoBonus : -ei.tempoBonus);
     score += ei.me->value;
     score += ei.pe->value;
-
     score += (eval_squares<WHITE>(b, ei) - eval_squares<BLACK>(b, ei));
     score += (eval_knights<WHITE>(b, ei) - eval_knights<BLACK>(b, ei));
     score += (eval_bishops<WHITE>(b, ei) - eval_bishops<BLACK>(b, ei));
@@ -144,74 +143,42 @@ namespace {
       {
 	(c == WHITE ? e.s.squares_sc[WHITE] = score : e.s.squares_sc[BLACK] = score);
       }
-
-    // adjustments and re-weighting due to imbalances?
+    
     return score;
   }
 
   template<Color c> int eval_knights(Board& b, EvalInfo& ei) {
     int score = 0;
-    //if (!b.has_any<KNIGHT>(c)) return score;    
-    int *sqs = b.sq_of<KNIGHT>(c);
     int them = c ^ 1;
     U64 pinned = ei.pinned[c];
-
-    // king safety
     KingSafety * kingScores = &ei.ks[c];
+    int *sqs = b.sq_of<KNIGHT>(c);
+    
+    for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs) {      
+      if (SquareBB[from] & pinned) score -= PinPenalty[ei.pinners[them][from]][KNIGHT];
 
-    for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs) {
-      if ((SquareBB[from] & pinned)) {
-	//b.print();
-	//printf("..%s n, pinner = %d\n", c==WHITE?"w":"b", ei.pinners[them][from]);
-	score -= PinPenalty[ei.pinners[them][from]][KNIGHT];
-      }
-      
-      // development (handled by square scores)
-      //if (SquareBB[from] & ei.backrank[c]) score -= DevelopmentBonus[KNIGHT];
-
+      // mobility
       U64 mvs = PseudoAttacksBB(KNIGHT, from);
       U64 mobility = mvs & ei.empty;
-      // remove sqs attacked by enemy pawns
       U64 tmp = ei.pe->attacks[them];
       if (tmp) {
 	if (tmp & SquareBB[from]) score -= ei.tempoBonus / 2;
 	U64 bm = mobility & tmp;
 	mobility ^= bm;
       }
-      score += count(mobility);
-
-      // dbg...
-      if (mobility == 0ULL) score -= TrappedPenalty[KNIGHT];
-
-      // knight attacks weighted by game phase, and piece being attacked.			
+      int mcount = count(mobility);
+      score += mcount;
+      if (mcount <= 1) score -= TrappedPenalty[KNIGHT];
+      
+      // attack bonuses
       U64 attacks = mvs & ei.pieces[them];
       while (attacks) {
 	int to = pop_lsb(attacks);
 	int p = b.piece_on(to);
-	score += int(AttackBonus[ei.phase][KNIGHT][p]); // already weighted by game phase.
-	//U64 weak = SquareBB[to] & ei.weak_enemies[them];
-	//if (weak != 0ULL) score += 1; // small bonus.
+	score += int(AttackBonus[ei.phase][KNIGHT][p]);
       }
       
-      // ..positional
-      //if (pawn_cnt >= 13 && ei.position_type == POSITION_CLOSED) score += Value( 50 );
-      /*
-	U64 blockade = (c == WHITE ? (ei.pe->backwardPawns[BLACK] >> NORTH) : (ei.pe->backwardPawns[WHITE] << NORTH));
-	blockade |= (c == WHITE ? (ei.pe->isolatedPawns[BLACK] >> NORTH) : (ei.pe->isolatedPawns[WHITE] << NORTH));
-	blockade &= (mobility | SquareBB[from]);
-	if (blockade) score += count(blockade);
-      */
-	
-      // outpost bonus : TODO
-      /*
-	if ((c == WHITE ? ROW(from) > ROW4 : ROW(from) < ROW5))
-	{
-	U64 outpost = (mobility | SquareBB[from]) & ei.pe->attacks[c];// &blockade;
-	if (outpost) score += KnightOutpostBonus[c][from];
-	}
-      */
-	
-      // evaluate threats to king 
+      // king attacks
       U64 king_threats = PseudoAttacksBB(KNIGHT, from) & KingSafetyBB[them][ei.kingsq[them]];
       if (king_threats) {
 	kingScores->attackScore[KNIGHT] += KingAttackBonus[KNIGHT];
@@ -228,43 +195,25 @@ namespace {
 
   template<Color c> int eval_bishops(Board& b, EvalInfo& ei) {
     int score = 0;
-    //if (!b.has_any<BISHOP>(c)) return score;
-    
     int them = (c ^ 1);
-    int *sqs = b.sq_of<BISHOP>(c);
-    //if (!sqs || sqs[0] == SQUARE_NONE) return score;
-
     U64 pinned = ei.pinned[c];
     U64 mask = ei.all_pieces;
     bool light_bishop = false;
     bool dark_bishop = false;
     int eks = ei.kingsq[them];
-
-    // pawn info 
     U64 center_pawns = ei.all_pawns & CenterMaskBB;
     int center_nb = count(center_pawns);
-
-    // king safety
     KingSafety * kingScores = &ei.ks[c];
-
-    // loop over each bishop
+    int *sqs = b.sq_of<BISHOP>(c);
+    
     for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs) {
       if (SquareBB[from] & ColoredSquaresBB[WHITE]) light_bishop = true;
       else dark_bishop = true;
+     
+      if (SquareBB[from] & pinned) score -= PinPenalty[ei.pinners[them][from]][BISHOP];
       
-      // mobility score
-      U64 mvs = attacks<BISHOP>(mask, from);
-      
-      // development
-      if (SquareBB[from] & ei.backrank[c]) score -= DevelopmentBonus[BISHOP];
-      
-      if (SquareBB[from] & pinned) {
-	//b.print();
-	//printf("..%s b, pinner = %d\n", c==WHITE?"w":"b", ei.pinners[them][from]);
-	score -= PinPenalty[ei.pinners[them][from]][BISHOP];
-      }
+      U64 mvs = attacks<BISHOP>(mask, from);      
       U64 mobility = mvs & ei.empty;
-      // remove sqs attacked by enemy pawns
       U64 tmp = ei.pe->attacks[them];
       if (tmp) {
 	if (tmp & SquareBB[from]) score -= ei.tempoBonus / 2;
@@ -272,9 +221,7 @@ namespace {
 	mobility ^= bm;
       }
       int mcount = count(mobility);
-      score += mcount / 2;
-
-      // extra penalty if the bishop cannot move
+      score += mcount;
       if (mcount <= 4) score -= TrappedPenalty[BISHOP];
 
       U64 attacks = mvs & ei.pieces[them];
@@ -286,17 +233,9 @@ namespace {
 	//if (weak != 0ULL) score += 1; // small bonus.
       }
 
-      // ..positional .. bishop is a more valuable minor piece if..
-      if (center_nb <= 2) score += BishopCenterBonus[ei.phase]; // score += BishopCenterBonus[ei.phase];
-
-      //// color penalties -- too few targets
-      //if (light_bishop && (enemy_wsq_pawns <= 2))  score -= BishopTargetPenalty[ei.phase];
-      //if (dark_bishop && (enemy_bsq_pawns <= 2))  score -= BishopTargetPenalty[ei.phase];
-
-      //// color penalties -- too many pawns on same color
-      //if (light_bishop && (our_wsq_pawns >= 3)) score -= BishopColorPenalty[ei.phase];
-      //if (dark_bishop && (our_bsq_pawns >= 3))  score -= BishopColorPenalty[ei.phase];
-
+      // positional
+      // note: did try including color penalties for few pawn targets
+      if (center_nb <= 2) score += BishopCenterBonus[ei.phase];
 
       // threats to king 
       U64 king_threats = mvs & PseudoAttacksBB(KING, eks);
@@ -317,35 +256,27 @@ namespace {
     return int(score);
   }
 
-  template<Color c> int eval_rooks(Board& b, EvalInfo& ei) {
+  template<Color c> int eval_rooks(Board& b, EvalInfo& ei) {    
     int score = 0;
-    U64 our_pawns = ei.pawns[c];
-    //if (!b.has_any<ROOK>(c)) return score;
-    
-    int *sqs = b.sq_of<ROOK>(c);
-    //if (!sqs || sqs[0] == SQUARE_NONE) return score;
-
     int them = (c ^ 1);
     U64 pinned = ei.pinned[c];
     U64 mask = ei.all_pieces;
-
-    // king safety
     KingSafety * kingScores = &ei.ks[c];
     int eks = ei.kingsq[them];
-    // pinned info/ attacker info
-    U64 pawns = (ei.pawns[WHITE] | ei.pawns[BLACK]);
+    U64 pawns = ei.all_pawns;
     U64 rank7 = (c == WHITE ? RowBB[ROW7] : RowBB[ROW2]);
     int ranks[2]; int files[2]; int idx = 0;
-    for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs) {
+
+    int *sqs = b.sq_of<ROOK>(c);
+    for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs) {      
+      // pinned
       U64 mvs = attacks<ROOK>(mask, from);
       if ((SquareBB[from] & pinned)) {
-	//b.print();
-	//printf("..%s r, pinner = %d\n", c==WHITE?"w":"b", ei.pinners[them][from]);
 	score -= PinPenalty[ei.pinners[them][from]][ROOK];
       }
 
+      // mobility
       U64 mobility = mvs & ei.empty;
-
       U64 tmp = ei.pe->attacks[them];
       if (tmp) {
 	if (tmp & SquareBB[from]) score -= ei.tempoBonus / 2;
@@ -354,45 +285,35 @@ namespace {
       }
       int mcount = count(mobility);
       if (mobility) score += mcount/2;
-
-      // dbg...
       if (mcount <= 4) score -= TrappedPenalty[ROOK];
-
-      // .. rook attacks
+      
+      // attacks
       U64 attacks = mvs & ei.pieces[them];
       while (attacks) {
 	int to = pop_lsb(attacks);
 	int p = b.piece_on(to);
 	score += int(AttackBonus[ei.phase][ROOK][p]);
-	//U64 weak = SquareBB[to] & ei.weak_enemies[them];
-	//if (weak != 0ULL) score += 1; // small bonus.
       }
 
-      // track ranks/files of rook
-      // for doubled/connected rooks
+      // doubled/connected rooks
       int file = COL(from);
-      U64 fileBB = ColBB[file];
       if (idx < 2) {
 	ranks[idx] = ROW(from);
 	files[idx] = file;
 	U64 file_closed = ColBB[file] & pawns;
-	if (file_closed == 0ULL)
-	  {
-	    score += 2 * RookOpenFileBonus[ei.phase];
-	    ei.RooksOpenFile[c] = true;
-	  }
+	if (file_closed == 0ULL) {
+	  score += 2 * RookOpenFileBonus[ei.phase];
+	  ei.RooksOpenFile[c] = true;
+	}
 	++idx;
       }
-
-      if (fileBB & ei.pe->undefended[them]) {
-	U64 semiClosed = (fileBB & our_pawns);
-	if (semiClosed == 0ULL) score += 2; // on semi-open file with weak pawns
-      }
-
-      if (SquareBB[from] & rank7) score += 2;
-
+      
+      // rank-7
+      U64 on7 = SquareBB[from] & rank7;
+      if (!empty(on7)) score += 2;
+      
       U64 king_threats = mvs & KingSafetyBB[them][eks];
-      if (king_threats) {
+      if (!empty(king_threats)) {
 	kingScores->attackScore[ROOK] += KingAttackBonus[ROOK];
 	kingScores->numAttackers++;
 	kingScores->attackedSquareBB |= king_threats;
@@ -414,57 +335,35 @@ namespace {
   }
 
   template<Color c> int eval_queens(Board& b, EvalInfo& ei) {
-    int score = 0;
-    //if (!b.has_any<QUEEN>(c)) return score;
-    
-    int *sqs = b.sq_of<QUEEN>(c);
-    //if (!sqs || sqs[0] == SQUARE_NONE) return score;
-
+    int score = 0;    
     int them = (c ^ 1);
     U64 mask = ei.all_pieces;
     int eks = ei.kingsq[them];
-
-    // pinned info/ attacker info
     U64 pinned = ei.pinned[c];
     U64 enemy_pawns = ei.pawns[them];
     U64 enemy_knights = b.get_pieces(them, KNIGHT);
     U64 enemy_bishops = b.get_pieces(them, BISHOP);
     U64 enemy_rooks = b.get_pieces(them, ROOK);
     U64 pawns = ei.all_pawns;
-
-    // king safety
     KingSafety * kingScores = &ei.ks[c];
-
+    int *sqs = b.sq_of<QUEEN>(c);
+    
     for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs) {
       U64 mvs = (attacks<BISHOP>(mask, from) | attacks<ROOK>(mask, from));
 
-      if (SquareBB[from] & pinned) {
-	//b.print();
-	//printf("..%s q, pinner = %d\n", c==WHITE?"w":"b", ei.pinners[them][from]);
-	score -= PinPenalty[ei.pinners[them][from]][QUEEN];
-      }
-      U64 mobility = mvs & ei.empty;
-      U64 tmp = ei.pe->attacks[them];
-      if (tmp) {
-	if (tmp & SquareBB[from]) score -= ei.tempoBonus;
-	U64 bm = mobility & tmp;
-	mobility ^= bm;
-      }
-      if (mobility) score += count(mobility) / 4;
+      if (SquareBB[from] & pinned) score -= PinPenalty[ei.pinners[them][from]][QUEEN];
 
-      // dbg...
-      //if (mobility == 0ULL) score -= TrappedPenalty[QUEEN];
-
+      // note : dropped the mobility check for the queen       
       U64 attacks = mvs & ei.pieces[them];
       while (attacks) {
 	int to = pop_lsb(attacks);
 	int p = b.piece_on(to);
 	score += int(AttackBonus[ei.phase][QUEEN][p]);
-	//U64 weak = SquareBB[to] & ei.weak_enemies[them];
-	//if (weak != 0ULL) score += 1; // small bonus.
       }
 
-      if (b.is_attacked(from, c, them) & (enemy_pawns | enemy_knights | enemy_bishops | enemy_rooks)) score -= ei.tempoBonus;
+      if (b.is_attacked(from, c, them) &
+	  (enemy_pawns | enemy_knights | enemy_bishops | enemy_rooks))
+	score -= ei.tempoBonus;
 
       // open file bonus for the queen
       U64 file_closed = ColBB[COL(from)] & pawns;

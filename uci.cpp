@@ -17,6 +17,7 @@
 #include "material.h"
 #include "utils.h"
 #include "opts.h"
+#include "mctree.h" // monte-carlo searching (dbg)
 
 using namespace UCI;
 
@@ -62,15 +63,19 @@ void UCI::command(std::string cmd, int& GAME_OVER)
 	  std::cout << "Fen: " << b.to_fen() << std::endl;
 	}
 
-      else if (command == "caps" || command == "captures")
-	{
-	  for (MoveGenerator mvs(b, CAPTURE); !mvs.end(); ++mvs)
-	    {
-	      U16 m = mvs.move();
-	      std::cout << move_to_string(m) << " ";
-	    }
-	  std::cout << "" << std::endl;
-	}
+      else if (command == "mc" || command == "mcsearch") {
+	MCTree * mc = new MCTree(b);
+	mc->search(2);
+	printf("..finished monte-carlo search\n");
+      }
+      else if (command == "caps" || command == "captures") {
+	for (MoveGenerator mvs(b, CAPTURE); !mvs.end(); ++mvs)
+	  {
+	    U16 m = mvs.move();
+	    std::cout << move_to_string(m) << " ";
+	  }
+	std::cout << "" << std::endl;
+      }
       else if (command == "pseudo_mvs")
 	{
 	  int count = 0;

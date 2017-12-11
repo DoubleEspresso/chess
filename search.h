@@ -21,14 +21,12 @@ class ThreadWorker;
 class MoveSelect;
 class SplitBlock;
 
-struct Score
-{
+struct Score {
   int beta;
   int eval;
 };
 
-struct Limits
-{
+struct Limits {
   int wtime;
   int btime;
   int winc;
@@ -43,8 +41,7 @@ struct Limits
 };
 
 
-struct Node
-{
+struct Node {
   NodeType type;
   U16 currmove, bestmove , threat, excludedMove;
   U16 killer[4];
@@ -52,17 +49,14 @@ struct Node
   bool isNullSearch;
   bool givescheck;
   U16 pv[MAXDEPTH];
-
   SplitBlock * sb;
 };
 
-struct SignalsType
-{
+struct SignalsType {
   bool stop, stopOnPonderhit, firstRootMove, failedLowAtRoot, timesUp;
 };
 
-namespace Search
-{
+namespace Search {
   // alpha-beta search
   extern void run(Board& b, int dpth, bool pondering=false);
   extern void from_thread(Board& b, int alpha, int beta, int depth, Node& node);
