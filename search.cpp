@@ -30,6 +30,9 @@ namespace
   int search(Board& b, int alpha, int beta, int depth, Node* stack);
 
   template<NodeType type>
+  int simulate(Board& b, int alpha, int beta, int depth, Node* stack);
+  
+  template<NodeType type>
   int qsearch(Board& b, int alpha, int beta, int depth, Node* stack, bool inCheck);
 
   int adjust_score(int bestScore, int ply);
@@ -116,7 +119,8 @@ namespace Search
 	  beta = MIN(eval + delta, INF);
 	}
 
-	eval = search<ROOT>(b, alpha, beta, depth, stack + 2);
+	eval = simulate<ROOT>(b, alpha, beta, depth, stack+2);
+	//search<ROOT>(b, alpha, beta, depth, stack + 2);
 	iter_depth++;
 
 	if (timer_thread->elapsed - last_time_ms >= 3000) ReadoutRootMoves(depth);
@@ -142,6 +146,35 @@ namespace Search
 
   void from_thread(Board& b, int alpha, int beta, int depth, Node& node) {
     search<SPLIT>(b, alpha, beta, depth, NULL);
+  }
+
+  int mc_minimax(Board& b, int dpth) {
+    // init search params
+    int alpha = NINF;
+    int beta = INF;
+    int eval = NINF;
+
+    // search nodes init
+
+    Node stack[64 + 4];
+    std::memset(stack, 0, (64 + 4) * sizeof(Node));
+    
+    // clear search data
+    statistics.clear();
+    hashTable.clear();    
+    (stack + 2)->ply = (stack + 1)->ply = (stack)->ply = 0;
+    
+    eval = simulate<ROOT>(b, alpha, beta, dpth, stack + 2);    
+
+    //b.print();
+    //printf(" mc_minimax : depth(%d), alpha(%d), eval(%d), beta(%d)\n",
+    //dpth, eval, eval, beta);
+    //printf(" mc_minimax : final eval(%d)\n", eval);
+    //pv_from_tt(b, eval, dpth, (stack + 2)->pv);
+    //b.print();
+    //printf("\n\n");
+    
+    return eval;
   }
 };
 
@@ -411,10 +444,11 @@ namespace {
 	  move != ttm &&
 	  !inCheck &&
 	  depth <= 3 &&
-	  b.see_sign(move) < 0) {
-	++pruned;
-	continue;
-      }
+	  b.see_sign(move) < 0)
+	{
+	  ++pruned;
+	  continue;
+	}
 
       // extension/reductions
       int extension = 0; int reduction = 1; // always reduce current depth by 1
@@ -425,17 +459,17 @@ namespace {
       // TODO - tt-entries are currently spared by SE (hack)
       if (singular_extension && 0 &&
 	  move == ttm &&
-	  extension == 0) {
-	int rbeta = beta - 2 * depth; // ttvalue - 2 * depth;
-	stack->excludedMove = move;
-	stack->isNullSearch = true; // turn off null-move pruning
-	eval = search<NONPV>(b, rbeta - 1, rbeta, depth / 2, stack);
-	stack->isNullSearch = false;
-	stack->excludedMove = MOVE_NONE;
-
-	if (eval < rbeta)
-	  extension += 1;
-      }
+	  extension == 0)
+	{
+	  int rbeta = beta - 2 * depth; // ttvalue - 2 * depth;
+	  stack->excludedMove = move;
+	  stack->isNullSearch = true; // turn off null-move pruning
+	  eval = search<NONPV>(b, rbeta - 1, rbeta, depth / 2, stack);
+	  stack->isNullSearch = false;
+	  stack->excludedMove = MOVE_NONE;
+	  
+	  if (eval < rbeta) extension += 1;
+	}
 
       if (depth >= 6 &&
 	  !inCheck &&
@@ -443,10 +477,11 @@ namespace {
 	  isQuiet &&
 	  move != ttm &&
 	  move != stack->killer[0] &&
-	  move != stack->killer[1]) {
-	reduction += 1;
-	if (depth > 8 && !pv_node) reduction += 1;
-      }
+	  move != stack->killer[1])
+	{
+	  reduction += 1;
+	  if (depth > 8 && !pv_node) reduction += 1;
+	}
 
       // adjust search depth based on reduction/extensions
       int newdepth = depth + extension - reduction;
@@ -769,5 +804,40 @@ namespace {
 
   int adjust_score(int bestScore, int ply) {
     return (bestScore >= MATE_IN_MAXPLY ? bestScore = bestScore - ply : bestScore <= MATED_IN_MAXPLY ? bestScore + ply : bestScore);
+  }
+  
+  // mc simulation (full game?)
+  template<NodeType type>  
+  int simulate(Board& b, int alpha, int beta, int depth, Node* stack) {
+    BoardData pd;
+    MoveSelect ms(statistics, MainSearch);
+    U16 move, bestmove;
+    U16 ttm = MOVE_NONE; //hack
+    bool givesCheck = b.gives_check(move);
+    int moves_searched = 0;
+    int eval = NINF;
+    
+    while (ms.nextmove(b, stack, ttm, move, false)) {
+
+      if (!b.is_legal(move)) continue;
+
+      b.do_move(pd, move);
+
+      ++moves_searched;
+
+      eval = (depth <= 1 ? -Eval::evaluate(b) : -search<PV>(b, -beta, -alpha, depth-1, stack+1));
+
+      b.undo_move(move);
+      
+      if (eval >= beta) return beta;      
+      else if (eval > alpha) {
+	alpha = eval;
+	bestmove = move;
+	update_pv(stack->pv, move, (stack + 1)->pv);
+      }
+
+      if (b.in_check() && !moves_searched) return NINF;      
+    }
+    return alpha;
   }
 };

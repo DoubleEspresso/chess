@@ -56,10 +56,12 @@ struct SignalsType {
   bool stop, stopOnPonderhit, firstRootMove, failedLowAtRoot, timesUp;
 };
 
+
 namespace Search {
   // alpha-beta search
   extern void run(Board& b, int dpth, bool pondering=false);
   extern void from_thread(Board& b, int alpha, int beta, int depth, Node& node);
+  extern int mc_minimax(Board& b, int dpth);
 };
 
 // global data

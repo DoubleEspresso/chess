@@ -30,7 +30,7 @@ class MT19937 {
 };
 
 struct MCNode {
-  int visits, score;
+  float visits, score;
   U16 move;
   std::vector<MCNode> child;    
   MCNode * parent; // never allocated
@@ -63,13 +63,15 @@ class MCTree {
   ~MCTree();
   
   MCNode * select(MCNode * n, Board * brd);
-  MCNode * pick_child(MCNode * n);
+  MCNode * pick_child(MCNode * n, Board& b);
   void add_children(MCNode * n, Board * brd);
   bool has_child(MCNode * n);
-  bool expand(MCNode* n, Board * brd);
-  void update(MCNode* n); 
+  float expand(MCNode* n, Board * brd,  int depth);
+  void update(MCNode* n, float score); 
   void print_pv();
   bool search(int depth);
+  bool has_ties();
+  float minimax(Board& b, int depth);
 };
 
 

@@ -104,6 +104,7 @@ namespace {
       ei.s.time = timer.ms();
       traceout(ei);
     }
+
     return b.whos_move() == WHITE ? score : -score;
   }
 
