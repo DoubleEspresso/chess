@@ -158,22 +158,34 @@ namespace Search
 
     Node stack[64 + 4];
     std::memset(stack, 0, (64 + 4) * sizeof(Node));
+    int delta = 65;
     
-    // clear search data
-    statistics.clear();
-    hashTable.clear();    
-    (stack + 2)->ply = (stack + 1)->ply = (stack)->ply = 0;
-    
-    eval = simulate<ROOT>(b, alpha, beta, dpth, stack + 2);    
-
-    //b.print();
-    //printf(" mc_minimax : depth(%d), alpha(%d), eval(%d), beta(%d)\n",
-    //dpth, eval, eval, beta);
-    //printf(" mc_minimax : final eval(%d)\n", eval);
-    //pv_from_tt(b, eval, dpth, (stack + 2)->pv);
-    //b.print();
-    //printf("\n\n");
-    
+    for (int depth = 1; depth <= dpth; depth += 1) {      
+      // clear search data
+      statistics.clear();
+      hashTable.clear();
+      while (true) {
+	
+	(stack + 2)->ply = (stack + 1)->ply = (stack)->ply = 0;
+	
+    	if (depth >= 4) {
+	  alpha = MAX(eval - delta, NINF);
+	  beta = MIN(eval + delta, INF);
+	}
+	
+	eval = simulate<ROOT>(b, alpha, beta, depth, stack + 2);
+	
+	if (eval <= alpha) {
+	  alpha -= delta;
+	  delta += delta / 2;
+	}
+	else if (eval >= beta) {
+	  beta += delta;
+	  delta += delta / 2;
+	}
+	else break;
+      }
+    }
     return eval;
   }
 };
@@ -811,9 +823,8 @@ namespace {
   int simulate(Board& b, int alpha, int beta, int depth, Node* stack) {
     BoardData pd;
     MoveSelect ms(statistics, MainSearch);
-    U16 move, bestmove;
+    U16 move;
     U16 ttm = MOVE_NONE; //hack
-    bool givesCheck = b.gives_check(move);
     int moves_searched = 0;
     int eval = NINF;
     
@@ -821,6 +832,8 @@ namespace {
 
       if (!b.is_legal(move)) continue;
 
+      if (type == ROOT && !RootsContain(move)) RootMoves.push_back(move);
+      
       b.do_move(pd, move);
 
       ++moves_searched;
@@ -832,7 +845,6 @@ namespace {
       if (eval >= beta) return beta;      
       else if (eval > alpha) {
 	alpha = eval;
-	bestmove = move;
 	update_pv(stack->pv, move, (stack + 1)->pv);
       }
 

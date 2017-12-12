@@ -11,12 +11,6 @@
 #include "search.h"
 #include "uci.h"
 
-struct {
-  bool operator()(const MoveList& x, const MoveList& y) {
-    return x.score > y.score; // nb. linux sorting needs > not >=
-  }
-} GreaterThan;
-
 int piece_vals[5] = { PawnValueMG, KnightValueMG, BishopValueMG, RookValueMG, QueenValueMG };
 
 void MoveStats::update(Board& b,
@@ -97,7 +91,7 @@ void MoveSelect::print_list(Board& b) {
     for (; ; ml++) {
       if (ml->m == MOVE_NONE) break;
       std::string s = UCI::move_to_string(ml->m);
-      std::cout << "currmove " << s << " " << ml->score << std::endl;
+      std::cout << "currmove " << s << " " << ml->v << std::endl;
     }
   }
   if (quiets) {
@@ -106,7 +100,7 @@ void MoveSelect::print_list(Board& b) {
     for (; ; ml++) {
       if (ml->m == MOVE_NONE) break;
       std::string s = UCI::move_to_string(ml->m);
-      std::cout << "currmove " << s << " " << ml->score << std::endl;
+      std::cout << "currmove " << s << " " << ml->v << std::endl;
     }
   }
   printf(".....end....\n\n");
@@ -141,7 +135,7 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs,
       int score = 0;
       
       if (mt == EP) {
-	captures[c_sz++].score = score;
+	captures[c_sz++].v = score;
 	continue;
       }
       
@@ -157,7 +151,7 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs,
       // promotion bonus
       //if (mt > PROMOTION && mt <= PROMOTION_CAP) score += piece_vals[(type-4)];
 
-      captures[c_sz++].score = score;
+      captures[c_sz++].v = score;
     }
     else if ((mt == QUIET || mt == CASTLE_KS || mt == CASTLE_QS || mt <= PROMOTION)) {
       
@@ -198,7 +192,7 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs,
       //	//if (Globals::SquareBB[from] && b.checkers()) score += 1;
       //	score += (square_score(b.whos_move(), fp, b.phase(), to) - square_score(b.whos_move(), fp, b.phase(), from))*0.1;
       //}
-      quiets[q_sz++].score = score;
+      quiets[q_sz++].v = score;
     }
   }
 
@@ -206,25 +200,17 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs,
   stored_qsz = stored_csz = 0;
   if (q_sz > 0 && movetype == QUIET)
     {
-      std::sort(quiets, quiets + q_sz, GreaterThan);
+      std::sort(quiets, quiets + q_sz, MLGreater);
       stored_qsz = q_sz;
       q_sz = 0; // reset indices to 0, they index the quiet/capture arrays now     
     }
   else if (c_sz > 0 && movetype == CAPTURE)
     {
-      std::sort(captures, captures + c_sz, GreaterThan);
+      std::sort(captures, captures + c_sz, MLGreater);
       stored_csz = c_sz;
       c_sz = 0;
     }
   //print_list(b);
-}
-
-// note : scores are initialized to NINF-1
-// so we want to sort the least negative of the scores to the front of the
-// move list..
-void MoveSelect::sort(MoveList * ml, int length)
-{
-  std::sort(ml, ml + length, GreaterThan);
 }
 
 bool MoveSelect::nextmove(Board &b, Node * stack, U16& ttm, U16& out, bool split)
@@ -294,7 +280,7 @@ bool MoveSelect::nextmove(Board &b, Node * stack, U16& ttm, U16& out, bool split
 	else if (type == QsearchCaptures) mvs.generate_qsearch_mvs(b, CAPTURE, genChecks); // only generates checks if givesCheck == true
 	load_and_sort(mvs, b, ttm, stack, CAPTURE);
       }
-      if (captures[c_sz].score >= 0 &&
+      if (captures[c_sz].v >= 0 &&
 	  captures[c_sz].m != MOVE_NONE) {
 	out = captures[c_sz].m; c_sz++; return true;
       }
@@ -302,7 +288,7 @@ bool MoveSelect::nextmove(Board &b, Node * stack, U16& ttm, U16& out, bool split
       break;
 
     case BadCaptures:
-      if (captures[c_sz].score < 0 && captures[c_sz].m != MOVE_NONE)
+      if (captures[c_sz].v < 0 && captures[c_sz].m != MOVE_NONE)
 	{
 	  out = captures[c_sz].m; c_sz++; return true;
 	}

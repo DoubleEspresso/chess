@@ -31,7 +31,7 @@ class MT19937 {
 
 struct MCNode {
   float visits, score;
-  U16 move;
+  MoveList ML;
   std::vector<MCNode> child;    
   MCNode * parent; // never allocated
 
@@ -42,21 +42,26 @@ struct MCNode {
   
   inline void do_move(BoardData& bd, Board& b);
   inline bool has_parent();
+  inline U16 move(int j);
 };
 
 inline void MCNode::do_move(BoardData& bd, Board& b) {
-  b.do_move(bd, move);
+  b.do_move(bd, ML.m);
 }
 
 inline bool MCNode::has_parent() {
   return parent != NULL;
 }
 
+inline U16 MCNode::move(int j) {
+  return child[j].ML.m;
+}
+
 class MCTree {
   MCNode * tree;
   MT19937 * rand;
   Board * b;
-  std::vector<U16> RootMoves;  
+  int reduction;
     
  public:
   MCTree(Board& b);
@@ -70,6 +75,7 @@ class MCTree {
   void update(MCNode* n, float score); 
   void print_pv();
   bool search(int depth);
+  int bootstrap(Board& b);
   bool has_ties();
   float minimax(Board& b, int depth);
 };

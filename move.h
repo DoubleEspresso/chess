@@ -45,21 +45,17 @@ class Board;
 
 // movelist structure is used for move array storage 
 // and contains a score used exclusively for move ordering purposes
-struct MoveList
-{
+struct MoveList {
   U16 m;
-  int score;
-  int tries=0; // mc-search
-  int wins=0;  // mc-search
+  int v; // value for move-ordering (search or move generation)
 };
+inline bool MLGreater(const MoveList& x, const MoveList& y) { return x.v > y.v; }
 
-class MoveGenerator
-{
- private:
+class MoveGenerator {
   int it, last;
   MoveList list[MAX_MOVES];
   int legal_i[MAX_MOVES];
-
+  
  public:
  MoveGenerator() : it(0), last(0) { }
  MoveGenerator(Board &b) : it(0), last(0) { generate(b, LEGAL); }
