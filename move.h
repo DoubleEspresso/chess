@@ -48,6 +48,13 @@ class Board;
 struct MoveList {
   U16 m;
   int v; // value for move-ordering (search or move generation)
+  
+  MoveList() { }
+  MoveList(U16& mv, int val = 0) : m(mv), v(val) { } 
+  ~MoveList() { }
+
+  bool operator()(const MoveList& ML) const { return ML.m == m; }
+  bool operator==(const MoveList& m2) { return m == m2.m; }
 };
 inline bool MLGreater(const MoveList& x, const MoveList& y) { return x.v > y.v; }
 

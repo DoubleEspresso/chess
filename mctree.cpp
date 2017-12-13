@@ -111,10 +111,14 @@ void MCTree::update(MCNode * n, float score) {
 bool MCTree::search(int depth) {
   int bound = bootstrap(*b);
   for (unsigned int j = 0; j < RootMoves.size(); ++j) {
-    printf("info depth 4 currmove %s currmovenumber %u\n", UCI::move_to_string(RootMoves[j]).c_str(), j + 1);    
+    U16 mv = RootMoves[j].m;
+    printf("info depth 4 currmove %s score %d\n", 
+           UCI::move_to_string(mv).c_str(), 
+           RootMoves[j].v);    
   }
   printf("..initial eval = %d\n", bound);
   
+  /*
   int trials = 0; reduction = 0;
   while(trials < 300 || has_ties()) {
     Board brd(*b);
@@ -125,6 +129,7 @@ bool MCTree::search(int depth) {
   }
   print_pv();
   printf("..mc search took %d trials to converge\n", trials);
+  */
   return true;
 }
 
@@ -190,7 +195,7 @@ void MCTree::print_pv() {
 }
 
 int MCTree::bootstrap(Board& b) {
-  return -Search::mc_minimax(b, 6);
+  return Search::mc_minimax(b, 6);
 }
 
 float MCTree::minimax(Board& b, int depth) {

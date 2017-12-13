@@ -13,7 +13,7 @@
 #include "globals.h"
 #include "utils.h"
 #include "board.h"
-
+#include "move.h"
 
 enum NodeType { ROOT, PV, CUT, SPLIT, NONPV, NONE };
 
@@ -65,7 +65,7 @@ namespace Search {
 };
 
 // global data
-extern std::vector<U16> RootMoves;
+extern std::vector<MoveList> RootMoves;
 extern SignalsType UCI_SIGNALS;
 
 #endif
