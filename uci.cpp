@@ -65,7 +65,7 @@ void UCI::command(std::string cmd, int& GAME_OVER)
 
       else if (command == "mc" || command == "mcsearch") {
         MCTree * mc = new MCTree(b);
-        mc->search(6);
+        mc->search(4);
         printf("..finished monte-carlo search\n");
       }
       else if (command == "caps" || command == "captures") {
@@ -241,6 +241,12 @@ void UCI::command(std::string cmd, int& GAME_OVER)
           RootMoves.clear();
           timer_thread->search_limits = &limits;
 
+	  /*
+	  MCTree * mc = new MCTree(b);
+	  mc->search(4);
+	  if (mc) { delete mc; mc = 0; }
+	  */
+
           ROOT_BOARD = b;
           ROOT_DEPTH = (limits.depth == 0 ? MAXDEPTH : limits.depth);
           ROOT_DEPTH = (ROOT_DEPTH > MAXDEPTH ? MAXDEPTH : ROOT_DEPTH <= 0 ? MAXDEPTH : ROOT_DEPTH);
@@ -336,6 +342,7 @@ void UCI::move_from_string(std::string& move)
         {
           BoardData * pd = new BoardData();
           b.do_move(*pd, m);
+	  //if (pd) { delete pd; pd = 0; }
           break;
         }
     }

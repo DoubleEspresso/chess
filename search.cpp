@@ -140,7 +140,7 @@ namespace Search
         }
         else break;
       }
-
+      
       if (!UCI_SIGNALS.stop) {
         pv_from_tt(b, eval, depth, (stack + 2)->pv);
         last_time_ms = timer_thread->elapsed;        

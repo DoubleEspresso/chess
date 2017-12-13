@@ -42,7 +42,7 @@ struct MCNode {
   
   inline void do_move(BoardData& bd, Board& b);
   inline bool has_parent();
-  inline U16 move(int j);
+  inline U16 childmove(int j);
 };
 
 inline void MCNode::do_move(BoardData& bd, Board& b) {
@@ -53,7 +53,7 @@ inline bool MCNode::has_parent() {
   return parent != NULL;
 }
 
-inline U16 MCNode::move(int j) {
+inline U16 MCNode::childmove(int j) {
   return child[j].ML.m;
 }
 
@@ -67,17 +67,17 @@ class MCTree {
   MCTree(Board& b);
   ~MCTree();
   
-  MCNode * select(MCNode * n, Board * brd);
-  MCNode * pick_child(MCNode * n, Board& b);
+  MCNode * select(MCNode * n, Board * brd, bool first_trial = false);
+  MCNode * pick_child(MCNode * n, Board& b, bool first_trial = false);
   void add_children(MCNode * n, Board * brd);
   bool has_child(MCNode * n);
-  float expand(MCNode* n, Board * brd,  int depth);
+  float expand(MCNode* n, Board * brd,  int depth, int limit);
   void update(MCNode* n, float score); 
   void print_pv();
   bool search(int depth);
   int bootstrap(Board& b);
   bool has_ties();
-  float minimax(Board& b, int depth);
+  float minimax(Board& b, int depth, int limit);
 };
 
 
