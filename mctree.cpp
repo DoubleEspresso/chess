@@ -42,14 +42,12 @@ MCTree::~MCTree() {
   if (rand) { delete rand; rand = 0; }
 }
 
-MCNode * MCTree::select(MCNode * n, Board * brd, bool first_trial) {
+MCNode * MCTree::select(MCNode * n, Board * brd) {
   BoardData bd;
   while (has_child(n)) {
-    n = pick_child(n, *brd, first_trial);
+    n = pick_child(n, *brd);
     n->do_move(bd, (*brd));
-    ++reduction;
-  }
-  
+  }  
   return n;
 }
 
@@ -65,47 +63,38 @@ bool MCTree::has_child(MCNode * n) {
   return n->child.size() > 0;
 }
 
-MCNode * MCTree::pick_child(MCNode* n, Board& b, bool first_trial) {
+MCNode * MCTree::pick_child(MCNode* n, Board& b) {
   int mvs = n->child.size();
   double max = NINF;
-  double C = 10;
+  double C = 1;
   int id = -1; int N = n->visits;
   int tried = 0;
   
   double p = rand->next();
-  if (p <= 0.99 && !first_trial) {
+  if (p <= 0.99) {  
     for (int j=0; j<mvs; ++j) {
       int nn = n->child[j].visits;
       double sc = (double) n->child[j].score;
       double v = (double) n->child[j].visits;
       if (v > 0) {
-	double r = sc / v;
-	double UCT = r + C * sqrt((double)(2.0 * log(N) / (double) nn) );
-	if (UCT > max) { max = UCT; id = j; }
-	++tried;
+        double r = sc / v;
+        double UCT = r + C * sqrt((double)(2.0 * log(N) / (double) nn) );
+        if (UCT > max) { max = UCT; id = j; }
+        ++tried;
       }
     }
   }  
-  if (first_trial && RootMoves.size() > 0) {    
-    U16 rmv = RootMoves[0].m;
-    for (int j=0; j<mvs; ++j) {
-      if (n->childmove(j) == rmv) { id = j; break; }
-    }
-    U16 smv = n->childmove(id);
-  }  
-
   if (id < 0) id = (int)(rand->next() * mvs); // real monte carlo ;)
   
   return &n->child[id];
 }
 
-float MCTree::expand(MCNode * n, Board * brd, int depth, int limit) {
+float MCTree::expand(MCNode * n, Board * brd) {
   if (n->child.size() <= 0) { 
     add_children(n, brd);
   }
   
-  float s = minimax(*brd, depth, limit);
-
+  float s = Search::mc_rollout(*brd);  
   n->visits++; // auto-adds node to tree
   n->score = s;
   return s;
@@ -114,24 +103,23 @@ float MCTree::expand(MCNode * n, Board * brd, int depth, int limit) {
 void MCTree::update(MCNode * n, float score) {
   while (n->has_parent()) {
     n = n->parent;
-    score = -score;
+    score = (score == 1 ? 0 : score == 0 ? 1 : 0.5);
     n->visits++; n->score += score;
   }
 }
 
-bool MCTree::search(int depth) {
-
-  int bound = bootstrap(*b);
+bool MCTree::search() {
   
-  int trials = 0; reduction = 0; bool first_trial = true;
+  int trials = 0;
 
-  while(trials < 100 || has_ties()) {
+  while(trials < 20000 || has_ties()) {
+
     Board brd(*b);
-
-    MCNode * n = select(tree, &brd, first_trial);
-    float score = expand(n, &brd, depth, bound);
+    MCNode * n = select(tree, &brd);
+    float score = expand(n, &brd);
     update(n, score);
-    ++trials; first_trial = false;
+
+    ++trials;
   }
   print_pv();
 
@@ -172,19 +160,18 @@ void MCTree::print_pv() {
     
     for(unsigned int j=0; j<n->child.size(); ++j) {      
       if (n->child[j].visits > 0) {
-	float p = (float)((float)n->child[j].score / (float)n->child[j].visits);
-	if (p > max) { max = p; id = j; }
-	U16 mv = n->childmove(j);
-	/*
-	printf("idx(%d), move(%s), visits(%3.3f), wins(%3.3f), p(%3.3f)\n", j,
-	       UCI::move_to_string(mv).c_str(),
-	       n->child[j].visits, 
-	       n->child[j].score,
-	       p);
-	*/
+        float p = (float)((float)n->child[j].score / (float)n->child[j].visits);
+        if (p > max) { max = p; id = j; }
+        
+        U16 mv = n->childmove(j);	
+        printf("idx(%d), move(%s), visits(%3.3f), wins(%3.3f), p(%3.3f)\n", j,
+               UCI::move_to_string(mv).c_str(),
+               n->child[j].visits, 
+               n->child[j].score,
+               p);        
       }
     }    
-    //printf("  max(%3.3f), id(%d)\n\n", max, id);
+ 
     if (id >= 0) {
       root_moves.push_back(n->childmove(id));
       n = &n->child[id];
@@ -196,19 +183,6 @@ void MCTree::print_pv() {
   for (unsigned int j = 0; j < root_moves.size(); ++j) {
     pv += UCI::move_to_string(root_moves[j]) + " ";      
   }
-  //printf("info (monte-carlo search) pv ");
+
   std::cout << "bestmove " << UCI::move_to_string(root_moves[0]) << std::endl;
-}
-
-int MCTree::bootstrap(Board& b) {
-  return Search::mc_minimax(b, 6);
-}
-
-float MCTree::minimax(Board& b, int depth, int limit) {
-  int newdepth = depth - reduction;
-  //int llimit = (limit < 0 ? limit - 100 : -limit);
-  //int ulimit = limit - 1; 
-  newdepth = (newdepth < 1 ? 2 : newdepth);
-  int eval = -Search::mc_minimax(b, newdepth);
-  return (eval <= -33 ? -1 : eval <= 33 ? 0 : 1);
 }

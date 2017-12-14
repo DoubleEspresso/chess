@@ -122,8 +122,7 @@ namespace Search
           beta = MIN(eval + delta, INF);
         }
 
-        eval = simulate<ROOT>(b, alpha, beta, depth, stack+2);
-        //search<ROOT>(b, alpha, beta, depth, stack + 2);
+        eval = search<ROOT>(b, alpha, beta, depth, stack + 2);
         iter_depth++;
 
         std::sort(RootMoves.begin(), RootMoves.end(), MLGreater);
@@ -151,49 +150,53 @@ namespace Search
   void from_thread(Board& b, int alpha, int beta, int depth, Node& node) {
     search<SPLIT>(b, alpha, beta, depth, NULL);
   }
-
-  int mc_minimax(Board& b, int dpth) {
-
-    int alpha = NINF;
-    int beta = INF;
+  
+  float mc_rollout(Board& b) {
     int eval = NINF;
     Node stack[64 + 4];
     std::memset(stack, 0, (64 + 4) * sizeof(Node));
-    int delta = 65;
-          
-    for (int depth = 1; depth <= dpth; depth += 1) {      
-      RootMoves.clear();
-      statistics.clear();
-      hashTable.clear();
+    bool stop = false;
+    int moves_searched = 0;
+    BoardData pd;
+    int cut = 250;
+    
+    while (!stop) {
+      MoveSelect ms(statistics, MainSearch);
+      U16 move;
+      U16 ttm = MOVE_NONE; //hack
+      bool hasmove = false;
 
-      while (true) {
-	
-        (stack + 2)->ply = (stack + 1)->ply = (stack)->ply = 0;
-	
-        if (depth >= 4) {
-          alpha = MAX(eval - delta, NINF);
-          beta = MIN(eval + delta, INF);
-        }
-	
-        eval = simulate<ROOT>(b, alpha, beta, depth, stack + 2);
-
-        std::sort(RootMoves.begin(), RootMoves.end(), MLGreater);	
-
-        if (eval <= alpha) {
-          alpha -= delta;
-          delta += delta / 2;
-        }
-        else if (eval >= beta) {
-          beta += delta;
-          delta += delta / 2;
-        }
-        else break;
+      while (ms.nextmove(b, stack, ttm, move, false)) {
+        if (!b.is_legal(move)) continue;
+        else hasmove = true;
       }
-    }
+      
+      if (!hasmove && b.in_check()) { 
+        stop = true; eval = NINF;
+      }
+      else if (!hasmove && b.is_draw(0)) {
+        stop = true; eval = 0;
+      }
+      else {
+        b.do_move(pd, move);
+        ++moves_searched;
+      }
+      
+      if (moves_searched == 8) {        
+        eval = Eval::evaluate(b);
+        
+        if(b.whos_move() == BLACK) {
+          eval = (eval <= -cut ? 1 : eval <= cut ? 0.5 : 0);
+        }
+        else eval = (eval <= -cut ? 0 : eval <= cut ? 0.5 : 1);        
+
+        stop = true;
+      }
+      
+    }    
     return eval;
   }
-};
-
+};  
 
 namespace {
   int Reduction(bool pv_node, bool improving, int d, int mc) {
@@ -208,7 +211,7 @@ namespace {
   float RazorMargin(int depth) {
     return 330 + 200 * log( (float)depth );
   }
-
+  
   template<NodeType type>
   int search(Board& b, int alpha, int beta, int depth, Node* stack) {
     //if (b.is_repition_draw()) return DRAW;
@@ -621,7 +624,7 @@ namespace {
 
     return alpha;
   }
-
+  
   template<NodeType type>
   int qsearch(Board& b, int alpha, int beta, int depth, Node* stack, bool inCheck)
   {
@@ -825,51 +828,7 @@ namespace {
     }
   }
     
-    int adjust_score(int bestScore, int ply) {
+  int adjust_score(int bestScore, int ply) {
     return (bestScore >= MATE_IN_MAXPLY ? bestScore = bestScore - ply : bestScore <= MATED_IN_MAXPLY ? bestScore + ply : bestScore);
-  }
-  
-  // mc simulation (full game?)
-  template<NodeType type>  
-  int simulate(Board& b, int alpha, int beta, int depth, Node* stack) {
-    BoardData pd;
-    MoveSelect ms(statistics, MainSearch);
-    U16 move;
-    U16 ttm = MOVE_NONE; //hack
-    int moves_searched = 0;
-    int eval = NINF;
-    
-    while (ms.nextmove(b, stack, ttm, move, false)) {
-
-      if (!b.is_legal(move)) continue;
-      
-      b.do_move(pd, move);
-
-      ++moves_searched;
-
-      eval = (depth <= 1 ? -Eval::evaluate(b) : -search<PV>(b, -beta, -alpha, depth-1, stack+1));
-      
-      b.undo_move(move);
-      
-      if (type == ROOT) {
-        // note: we return alpha (from leaf node) .. so scoring
-        // moves based on eval doesn't (quite) work .. alpha is a bound
-        // so many (different) moves will be scored with that bound :/
-        
-        int v = eval == alpha ? eval - 1 : eval;
-        MoveList root(move, v);
-        if (!RootsContain(root)) RootMoves.push_back(root);
-        
-      }
-      
-      if (eval >= beta) return beta;      
-      else if (eval > alpha) {
-        alpha = eval;
-        update_pv(stack->pv, move, (stack + 1)->pv);
-      }     
-      
-      if (b.in_check() && !moves_searched) return NINF;      
-    }
-    return alpha;
-  }
+  } 
 };

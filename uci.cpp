@@ -65,7 +65,7 @@ void UCI::command(std::string cmd, int& GAME_OVER)
 
       else if (command == "mc" || command == "mcsearch") {
         MCTree * mc = new MCTree(b);
-        mc->search(4);
+        mc->search();
         printf("..finished monte-carlo search\n");
       }
       else if (command == "caps" || command == "captures") {

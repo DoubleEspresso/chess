@@ -61,23 +61,21 @@ class MCTree {
   MCNode * tree;
   MT19937 * rand;
   Board * b;
-  int reduction;
     
  public:
   MCTree(Board& b);
   ~MCTree();
   
-  MCNode * select(MCNode * n, Board * brd, bool first_trial = false);
-  MCNode * pick_child(MCNode * n, Board& b, bool first_trial = false);
+  MCNode * select(MCNode * n, Board * brd);
+  MCNode * pick_child(MCNode * n, Board& b);
   void add_children(MCNode * n, Board * brd);
   bool has_child(MCNode * n);
-  float expand(MCNode* n, Board * brd,  int depth, int limit);
+  float expand(MCNode* n, Board * brd);
   void update(MCNode* n, float score); 
   void print_pv();
-  bool search(int depth);
+  bool search();
   int bootstrap(Board& b);
   bool has_ties();
-  float minimax(Board& b, int depth, int limit);
 };
 
 

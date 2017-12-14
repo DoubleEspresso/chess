@@ -61,7 +61,7 @@ namespace Search {
   // alpha-beta search
   extern void run(Board& b, int dpth, bool pondering=false);
   extern void from_thread(Board& b, int alpha, int beta, int depth, Node& node);
-  extern int mc_minimax(Board& b, int dpth);
+  extern float mc_rollout(Board& b);
 };
 
 // global data
