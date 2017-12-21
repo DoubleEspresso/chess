@@ -4,21 +4,14 @@
 #include "uci.h"
 #include "search.h"
 #include "moveselect.h"
+#include "evaluate.h"
 
 //------------------------------------------------------
 // node utilities
 //------------------------------------------------------
-MCNode::MCNode() : visits(0), score(0), parent(0) {
+MCNode::MCNode() : visits(0), score(0), parent(NULL) {
   ML.m = MOVE_NONE; ML.v = 0;
   child.clear();
-}
-
-MCNode::MCNode(Board& b, MCNode * p) : visits(0), score(0), parent(p) {  
-  child.clear();
-  for (MoveGenerator mvs(b); !mvs.end(); ++mvs) {
-    MCNode n(this, mvs.move());
-    child.push_back(n);
-  }
 }
 
 MCNode::MCNode(MCNode * p, U16 m) : visits(0), score(0), parent(p) {
@@ -31,10 +24,9 @@ MCNode::~MCNode() { }
 //------------------------------------------------------
 // monte carlo tree search methods
 //------------------------------------------------------
-MCTree::MCTree(Board& b) : tree(0), rand(0) {
-  tree = new MCNode(b);
+MCTree::MCTree() : tree(0), rand(0) {
+  tree = new MCNode();
   rand = new MT19937(0, 1);
-  this->b = &b;
 }
 
 MCTree::~MCTree() {
@@ -42,29 +34,31 @@ MCTree::~MCTree() {
   if (rand) { delete rand; rand = 0; }
 }
 
-MCNode * MCTree::select(MCNode * n, Board * brd) {
-  BoardData bd;
-  while (has_child(n)) {
-    n = pick_child(n, *brd);
-    n->do_move(bd, (*brd));
-  }  
-  return n;
-}
-
-void MCTree::add_children(MCNode * n, Board * brd) {
-  MCNode nn(*brd);
-  for (unsigned int j=0; j<nn.child.size(); ++j) {
-    nn.child[j].parent = n;
-    n->child.push_back(nn.child[j]);
+void MCTree::add_children(MCNode*& n, Board& B) {  
+  MoveGenerator mvs(B); // all legal mvs
+  //printf("..input node's parent = %p\n", (void*)n->parent);
+  for (int j=0; !mvs.end(); ++mvs, ++j) {    
+    MCNode mcn(n, mvs.move());
+    //printf("..child's parent[%d]=%p\n", j, (void*)mcn.parent);
+    n->child.push_back(mcn);
   }
 }
 
-bool MCTree::has_child(MCNode * n) {  
-  return n->child.size() > 0;
+bool MCTree::has_child(MCNode& n) {  
+  return n.child.size() > 0;
 }
 
-MCNode * MCTree::pick_child(MCNode* n, Board& b) {
+MCNode * MCTree::pick_child(MCNode*& n, Board& b) {
+
+  if (!has_child(*n)) add_children(n, b);
+  //printf("..dbg pick_child (after add) has %d-children\n", n->child.size());
+  //printf("..child's parent[%d]=%p (after-added)\n", 0, (void*)n->child[0].parent);
+  
   int mvs = n->child.size();
+
+  if (mvs <= 0) return NULL;
+  
+
   double max = NINF;
   double C = 1;
   int id = -1; int N = n->visits;
@@ -86,39 +80,31 @@ MCNode * MCTree::pick_child(MCNode* n, Board& b) {
   }  
   if (id < 0) id = (int)(rand->next() * mvs); // real monte carlo ;)
   
-  return &n->child[id];
-}
-
-float MCTree::expand(MCNode * n, Board * brd) {
-  if (n->child.size() <= 0) { 
-    add_children(n, brd);
-  }
+  if (id < 0) return NULL;
   
-  float s = Search::mc_rollout(*brd);  
-  n->visits++; // auto-adds node to tree
-  n->score = s;
-  return s;
+  return &(n->child[id]);
 }
 
-void MCTree::update(MCNode * n, float score) {
+
+void MCTree::update(MCNode*& n, float score) {
+  //printf("..update (node's parent) %p\n", (void*)n->parent);
   while (n->has_parent()) {
     n = n->parent;
-    score = (score == 1 ? 0 : score == 0 ? 1 : 0.5);
+    score = 1 - score;
     n->visits++; n->score += score;
+    //printf("..dbg update n->visits(%d) n->Score(%d)\n", n->visits, n->score);
   }
 }
 
-bool MCTree::search() {
+bool MCTree::search(Board& b) {
   
   int trials = 0;
 
-  while(trials < 20000 || has_ties()) {
-
-    Board brd(*b);
-    MCNode * n = select(tree, &brd);
-    float score = expand(n, &brd);
+  while(trials < 20000) {
+    Board B(b); MCNode * n = tree;
+    float score = rollout(n, B);
+    //printf("..updating\n");
     update(n, score);
-
     ++trials;
   }
   print_pv();
@@ -126,39 +112,177 @@ bool MCTree::search() {
   return true;
 }
 
-bool MCTree::has_ties() {
-  float max = NINF;
-  int maxcount = 0;
-  MCNode * n = tree;
-  int sz = n->child.size();
+float MCTree::rollout(MCNode*& n, Board& B) {
+  float eval = NINF;
+  bool stop = false;
+  int moves_searched = 0;
+  BoardData bd;
+  bool do_resolve = true;
   
-  for(int j=0; j<sz; ++j) {      
-    if (n->child[j].visits > 0) {
-      float p = (float)((float)n->child[j].score / (float)n->child[j].visits);
-      if (p > max) max = p;
+  while (!stop) {
+
+    MCNode * tmp = pick_child(n, B);
+    if (tmp == NULL) {
+      //printf("..dbg no children selected\n");
+      if (B.in_check()) eval = 0;
+      else eval = 0.5;
+      do_resolve = false;
+      break;
+    }
+    else {
+      U16 m = tmp->ML.m;
+      //printf("..dbg selected mv %s\n", UCI::move_to_string(m).c_str());
+    }
+
+    n = tmp;
+    
+    U16 move = n->ML.m;
+
+    bool hasmove = move != MOVE_NONE;
+    
+    if (!hasmove && B.in_check()) {
+      stop = true;
+      do_resolve = false;
+      eval = 0; 
+      //printf("..dbg mate detected\n");
+      break;
+    }
+    else if (!hasmove && B.is_draw(0)) {
+      //printf("..dbg draw detected\n");
+      stop = true;
+      do_resolve = false;
+      eval = 0.5;
+      break;
+    }
+    else {
+      B.do_move(bd, move);
+      ++moves_searched;
+    }
+    
+    if (moves_searched == 4) stop = true;
+  }
+  
+  if (do_resolve) {
+    eval = resolve(n, B);
+  }
+  
+  n->visits++;
+  n->score = eval;
+  
+  return eval;
+}
+
+float MCTree::resolve(MCNode*& n, Board& B) {
+
+  float eval = NINF;
+  bool stop = false;
+  int moves_searched = 0;
+  int cutoff = 90;
+  BoardData bd;
+    
+  while (!stop) {
+    
+    MCNode * tmp = pick_capture(n, B);
+    if (tmp == NULL) { stop = true; break; } // no captures
+
+    n = tmp;
+    
+    U16 move = n->ML.m;
+
+    bool hasmove = move != MOVE_NONE;
+    
+    if (!hasmove && B.in_check()) {
+      stop = true;
+      eval = 0; // mate condition
+    }
+    else if (B.is_repition_draw()) { // stalemate checked in rollout
+      stop = true;
+      eval = 0.5;
+    }
+    else if (!hasmove) {
+      stop = true;
+    }
+    else {
+      B.do_move(bd, move);
+      ++moves_searched;
     }
   }
-  if (max == NINF) return true;
+
+  eval = Eval::evaluate(B);
+
+  /*
+  if(B.whos_move() == BLACK) {
+    eval = (eval <= -cutoff ? 0 : eval <= cutoff ? 0.5 : 1);
+  }
+  else eval = (eval <= -cutoff ? 1 : eval <= cutoff ? 0.5 : 0);        
+  */
   
-  for (int j=0; j<sz; ++j) {    
-    if (n->child[j].visits > 0) {      
-      float p = (float)((float)n->child[j].score / (float)n->child[j].visits);
-      if (max == p) ++maxcount;
+  eval = (eval <= -cutoff ? 0 : eval <= cutoff ? 0.5 : 1);
+  return eval;
+}
+
+
+MCNode * MCTree::pick_capture(MCNode*& n, Board& b) {
+  
+  if (!has_child(*n)) add_children(n, b);
+  
+  int mvs = n->child.size();
+  
+  // load capture array
+  std::vector<MCNode> caps;  
+  for (int j=0; j<mvs; ++j) {
+    U16 mv = n->childmove(j);
+    int type = int((mv & 0xf000) >> 12);
+    if (type == CAPTURE) caps.push_back(*n); // some are checks!    
+  }
+
+  if (caps.size() <= 0) return NULL;
+  
+  double max = NINF;
+  double C = 1;
+  int id = -1; int N = n->visits;
+  int tried = 0;
+  
+  double p = rand->next();
+  if (p <= 0.99) {  
+    for (unsigned int j=0; j<caps.size(); ++j) {
+      int nn = caps[j].visits;
+      double sc = (double) caps[j].score;
+      double v = (double) caps[j].visits;
+      if (v > 0) {
+        double r = sc / v;
+        double UCT = r + C * sqrt((double)(2.0 * log(N) / (double) nn) );
+        if (UCT > max) { max = UCT; id = j; }
+        ++tried;
+      }
     }
   }
-  return maxcount > 1;
+  
+  if (id < 0) id = (int)(rand->next() * caps.size()); // real monte carlo ;)
+
+  for (int j=0; j<mvs; ++j) {
+    U16 mv = n->childmove(j);
+    for (int k=0; k<caps.size(); ++k) {
+      if (mv == caps[k].childmove(id)) { id = j; break; } 
+    }
+  }
+  if (id < 0) return NULL;
+  
+  return &(n->child[id]);
 }
 
 void MCTree::print_pv() {
   std::vector<U16> root_moves;
   MCNode * n = tree;
   float max = NINF; int id = -1;
-  
-  while (has_child(n)) {
+
+  while (has_child(*n)) {
     
+    //printf("..%d children\n", n->child.size());    
     max = NINF; id = -1;
     
-    for(unsigned int j=0; j<n->child.size(); ++j) {      
+    for(unsigned int j=0; j<n->child.size(); ++j) {
+      //printf("..child(%d) visit(%3.3f)\n", j, n->child[j].visits);
       if (n->child[j].visits > 0) {
         float p = (float)((float)n->child[j].score / (float)n->child[j].visits);
         if (p > max) { max = p; id = j; }
@@ -171,7 +295,6 @@ void MCTree::print_pv() {
                p);        
       }
     }    
- 
     if (id >= 0) {
       root_moves.push_back(n->childmove(id));
       n = &n->child[id];
@@ -179,10 +302,12 @@ void MCTree::print_pv() {
     else break;
   }
   std::string pv = "";
-  if (root_moves.size() <= 0) pv = "(none)";
+  if (root_moves.size() <= 0) { printf("pv (none)\n"); return; }
   for (unsigned int j = 0; j < root_moves.size(); ++j) {
     pv += UCI::move_to_string(root_moves[j]) + " ";      
   }
-
+  
+  std::cout << std::endl;
+  std::cout << "info pv " << pv << std::endl;
   std::cout << "bestmove " << UCI::move_to_string(root_moves[0]) << std::endl;
 }

@@ -36,7 +36,6 @@ struct MCNode {
   MCNode * parent; // never allocated
 
   MCNode();
-  MCNode(Board& b, MCNode * p = NULL);
   MCNode(MCNode * p, U16 move);
   ~MCNode();
   
@@ -60,22 +59,21 @@ inline U16 MCNode::childmove(int j) {
 class MCTree {
   MCNode * tree;
   MT19937 * rand;
-  Board * b;
-    
+  MCNode * curr; // not allocated
+  
  public:
-  MCTree(Board& b);
+  MCTree();
   ~MCTree();
   
-  MCNode * select(MCNode * n, Board * brd);
-  MCNode * pick_child(MCNode * n, Board& b);
-  void add_children(MCNode * n, Board * brd);
-  bool has_child(MCNode * n);
-  float expand(MCNode* n, Board * brd);
-  void update(MCNode* n, float score); 
+  bool has_child(MCNode& n);
   void print_pv();
-  bool search();
-  int bootstrap(Board& b);
-  bool has_ties();
+  bool search(Board &b);  
+  MCNode * pick_child(MCNode*& n, Board& b);
+  MCNode * pick_capture(MCNode*& n, Board& b);
+  void add_children(MCNode*& nn, Board& b);
+  float rollout(MCNode*& nn, Board& b);
+  float resolve(MCNode*& nn, Board& b);
+  void update(MCNode*& nn, float score); 
 };
 
 
