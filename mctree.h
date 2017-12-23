@@ -69,6 +69,7 @@ class MCTree {
   void print_pv();
   bool search(Board &b);  
   MCNode * pick_child(MCNode*& n, Board& b);
+  int uct_select(MCNode* n);
   MCNode * pick_capture(MCNode*& n, Board& b);
   void add_children(MCNode*& nn, Board& b);
   float rollout(MCNode*& nn, Board& b);
