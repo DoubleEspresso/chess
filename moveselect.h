@@ -12,7 +12,7 @@
 struct MoveStats {
   int history[2][SQUARES][SQUARES];
   U16 countermoves[SQUARES][SQUARES];
-
+  
   void update(Board& b, U16& m, U16& last, Node* stack, int d, int eval, U16* quiets);
 
   int score(U16& m, int c) {
@@ -40,8 +40,7 @@ enum Phase {
   Killer1, Killer2, BadCaptures, Quiet, End
 };
 
-class MoveSelect
-{
+class MoveSelect {
   int c_sz, stored_csz;
   int q_sz, stored_qsz;
   int phase;
@@ -57,8 +56,8 @@ class MoveSelect
     stored_qsz(0), phase(HashMove), statistics(0), type(t), genChecks(false) {
     // fixme...
     for (int j = 0; j < MAX_MOVES; ++j) {
-      captures[j].score = NINF - 1; captures[j].m = MOVE_NONE;
-      quiets[j].score = NINF - 1; quiets[j].m = MOVE_NONE;
+      captures[j].v = NINF - 1; captures[j].m = MOVE_NONE;
+      quiets[j].v = NINF - 1; quiets[j].m = MOVE_NONE;
     }
     statistics = &stats;
   }
@@ -67,17 +66,15 @@ class MoveSelect
   c_sz(0), stored_csz(0), q_sz(0),
     stored_qsz(0), phase(HashMove), statistics(0), type(t), genChecks(gChecks) {
     for (int j = 0; j < MAX_MOVES; ++j) {
-      captures[j].score = NINF - 1; captures[j].m = MOVE_NONE;
-      quiets[j].score = NINF - 1; quiets[j].m = MOVE_NONE;
+      captures[j].v = NINF - 1; captures[j].m = MOVE_NONE;
+      quiets[j].v = NINF - 1; quiets[j].m = MOVE_NONE;
     }
     statistics = &stats;
   }
 
   ~MoveSelect() {};
 
-  void sort(MoveList * ml, int length);
   bool nextmove(Board &b, Node * stack, U16& ttm, U16& out, bool split);
-
   MoveList * get_quites() { return quiets; }
   int qsize() { return stored_qsz; }
   int csize() { return stored_csz; }

@@ -45,28 +45,32 @@ class Board;
 
 // movelist structure is used for move array storage 
 // and contains a score used exclusively for move ordering purposes
-struct MoveList
-{
+struct MoveList {
   U16 m;
-  int score;
-};
+  int v; // value for move-ordering (search or move generation)
+  
+  MoveList() { }
+  MoveList(U16& mv, int val = 0) : m(mv), v(val) { } 
+  ~MoveList() { }
 
-class MoveGenerator
-{
- private:
+  bool operator()(const MoveList& ML) const { return ML.m == m; }
+  bool operator==(const MoveList& m2) { return m == m2.m; }
+};
+inline bool MLGreater(const MoveList& x, const MoveList& y) { return x.v > y.v; }
+
+class MoveGenerator {
   int it, last;
   MoveList list[MAX_MOVES];
   int legal_i[MAX_MOVES];
-
+  
  public:
  MoveGenerator() : it(0), last(0) { }
  MoveGenerator(Board &b) : it(0), last(0) { generate(b, LEGAL); }
  MoveGenerator(Board& b, MoveType mt) : it(0), last(0) { generate(b, mt); }
- MoveGenerator(Board& b, MoveType mt, bool legal) : it(0), last(0)
-    {
-      if (legal) generate(b, mt);
-      else generate_pseudo_legal(b, mt);
-    }
+ MoveGenerator(Board& b, MoveType mt, bool legal) : it(0), last(0) {
+    if (legal) generate(b, mt);
+    else generate_pseudo_legal(b, mt);
+  }
   ~MoveGenerator() { };
   
   void print_mvlist();
@@ -76,6 +80,7 @@ class MoveGenerator
   MoveList operator++() { return list[legal_i[it++]]; }
   bool end() { return it == last; }
   U16 move() { return list[legal_i[it]].m; }
+  MoveList& get(int i) { return list[legal_i[i]]; }
   int size() const { return last; }
   template<MoveType> void serialize(U64 &b, const U8& from);
   template<MoveType> void serialize(U64 &b, const Direction& d);

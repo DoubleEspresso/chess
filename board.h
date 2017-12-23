@@ -57,8 +57,7 @@ struct BoardDataReduced
   U64 blockers[2]; // piece blocking discovered candidate
 };
 
-class Board
-{
+class Board {
  public:
   Board();
   Board(std::istringstream& is);
