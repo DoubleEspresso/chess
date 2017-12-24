@@ -151,51 +151,6 @@ namespace Search
     search<SPLIT>(b, alpha, beta, depth, NULL);
   }
   
-  float mc_rollout(Board& b) {
-    int eval = NINF;
-    Node stack[64 + 4];
-    std::memset(stack, 0, (64 + 4) * sizeof(Node));
-    bool stop = false;
-    int moves_searched = 0;
-    BoardData pd;
-    int cut = 250;
-    
-    while (!stop) {
-      MoveSelect ms(statistics, MainSearch);
-      U16 move;
-      U16 ttm = MOVE_NONE; //hack
-      bool hasmove = false;
-
-      while (ms.nextmove(b, stack, ttm, move, false)) {
-        if (!b.is_legal(move)) continue;
-        else hasmove = true;
-      }
-      
-      if (!hasmove && b.in_check()) { 
-        stop = true; eval = NINF;
-      }
-      else if (!hasmove && b.is_draw(0)) {
-        stop = true; eval = 0;
-      }
-      else {
-        b.do_move(pd, move);
-        ++moves_searched;
-      }
-      
-      if (moves_searched == 8) {        
-        eval = Eval::evaluate(b);
-        
-        if(b.whos_move() == BLACK) {
-          eval = (eval <= -cut ? 1 : eval <= cut ? 0.5 : 0);
-        }
-        else eval = (eval <= -cut ? 0 : eval <= cut ? 0.5 : 1);        
-
-        stop = true;
-      }
-      
-    }    
-    return eval;
-  }
 };  
 
 namespace {
