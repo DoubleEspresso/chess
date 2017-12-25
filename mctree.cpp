@@ -56,7 +56,7 @@ int MCTree::uct_select(MCNode * n) {
   if (mvs <= 0) return id;
   
   double p = rand->next();  
-  if (p <= 0.99) {  
+  if (p <= 0.75) {  
     for (int j=0; j<mvs; ++j) {
       int nn = n->child[j].visits;
       double sc = (double) n->child[j].score;
@@ -94,7 +94,7 @@ bool MCTree::search(Board& b) {
   
   int trials = 0;
 
-  while(trials < 20000) {
+  while(trials < 10000) {
     Board B(b); MCNode * n = tree;
     float score = rollout(n, B);
     update(n, score);
@@ -111,7 +111,7 @@ float MCTree::rollout(MCNode*& n, Board& B) {
   int moves_searched = 0;
   BoardData bd;
   bool do_resolve = true;
-  
+
   while (!stop) {
     MCNode * tmp = pick_child(n, B);
     
@@ -123,75 +123,49 @@ float MCTree::rollout(MCNode*& n, Board& B) {
     }
 
     n = tmp;    
-    U16 move = n->ML.m;
-    bool hasmove = move != MOVE_NONE;
+    U16 move = n->ML.m;    
+    B.do_move(bd, move);
     
-    if (!hasmove && B.in_check()) {
-      stop = true;
-      do_resolve = false;
-      eval = 0; 
-      break;
-    }
-    else if (!hasmove && B.is_draw(0)) {
-      stop = true;
-      do_resolve = false;
-      eval = 0.5;
-      break;
-    }
-    else {
-      B.do_move(bd, move);
-      ++moves_searched;
-    }
-    
-    if (moves_searched == 4) stop = true;
+    if (++moves_searched >= 6 &&
+	!B.in_check() &&
+	!B.gives_check(move)) stop = true;
   }
   
-  if (do_resolve) {
-    eval = resolve(n, B);
-  }
-  
+  if (do_resolve) eval = resolve(n, B);
+
   n->visits++;
-  n->score = eval;
-  
+  n->score = eval;  
   return eval;
 }
 
 float MCTree::resolve(MCNode*& n, Board& B) {
   float eval = NINF;
   bool stop = false;
-  int moves_searched = 0;
   int cutoff = 90;
   BoardData bd;
-    
+
   while (!stop) {
-    
+
     MCNode * tmp = pick_capture(n, B);
-    if (tmp == NULL) { stop = true; break; } // no captures
+    
+    if (tmp == NULL) { stop = true; break; } // no captures/evasions
 
     n = tmp;    
     U16 move = n->ML.m;
-    bool hasmove = move != MOVE_NONE;
-    
-    if (!hasmove && B.in_check()) {
-      stop = true;
-      eval = 0; // mate condition
-    }
-    else if (B.is_repition_draw()) { // stalemate checked in rollout
-      stop = true;
-      eval = 0.5;
-    }
-    else if (!hasmove) {
-      stop = true;
-    }
-    else {
-      B.do_move(bd, move);
-      ++moves_searched;
-    }
-  }
 
-  eval = Eval::evaluate(B);  
+    /* // fixme
+    if (B.is_repition_draw()) { // stalemate checked in rollout
+    stop = true;
+    printf("..dbg repetition draw..\n");
+    eval = 0.5;
+    }
+    else */
+    B.do_move(bd, move);  
+  }
+  
+  eval = Eval::evaluate(B);
   eval = (eval <= -cutoff ? 0 : eval <= cutoff ? 0.5 : 1);
-  return eval;
+  return (1-eval);
 }
 
 
@@ -200,26 +174,26 @@ MCNode * MCTree::pick_capture(MCNode*& n, Board& b) {
   if (!has_child(*n)) add_children(n, b);
   
   int mvs = n->child.size();
-  
+  bool in_check = b.in_check();
+
   // dummy capture node
   MCNode caps;
   for (int j=0; j<mvs; ++j) {
     U16 mv = n->childmove(j);
-    int type = int((mv & 0xf000) >> 12);
-    if (type == CAPTURE) caps.child.push_back(*n); // some are checks!    
+    bool is_cap = is_capture(mv);
+    if (!in_check && is_cap) caps.child.push_back(n->child[j]); // some are checks!
+    else if (in_check) caps.child.push_back(n->child[j]); // all evasions
   }
+  
+  int id = uct_select(&caps);    
 
-  int id = uct_select(&caps);
-  
-  
-  if (id < 0) return NULL;  // no captures  
+  if (id < 0) return NULL;  // no captures
   
   for (int j=0; j<mvs; ++j) {    
     if (n->childmove(j) == caps.childmove(id)) { id = j; break; }     
   }
 
-  if (id < 0) return NULL; // after search (sanity check)
-  
+  if (id < 0) return NULL; // after search (sanity check)  
   return &(n->child[id]);
 }
 

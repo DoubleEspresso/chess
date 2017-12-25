@@ -108,7 +108,7 @@ inline int max_distance(int s1, int s2)
 // gets the smallest distance (row or col distance)
 inline int min_distance(int s1, int s2)
 {
-	return MIN(row_distance(s1, s2), col_distance(s1, s2));
+  return MIN(row_distance(s1, s2), col_distance(s1, s2));
 };
 
 // true if 2 squares are on a col, row, or diagonal
@@ -180,18 +180,25 @@ inline int get_movetype(U16 m)
 
 inline bool is_quiet_promotion(U16 m)
 {
-	int mt = get_movetype(m);
-	return (mt > MOVE_NONE && mt <= PROMOTION);
+  int mt = get_movetype(m);
+  return (mt > MOVE_NONE && mt <= PROMOTION);
 }
 
 inline bool is_cap_promotion(U16 m)
 {
-	int mt = get_movetype(m);
-	return (mt > PROMOTION && mt <= PROMOTION_CAP);
+  int mt = get_movetype(m);
+  return (mt > PROMOTION && mt <= PROMOTION_CAP);
+}
+
+inline bool is_capture(U16 m) {
+  int mt = get_movetype(m);
+  return (mt == CAPTURE ||
+	  mt == EP ||
+	  (mt > PROMOTION && mt <= PROMOTION_CAP));
 }
 
 // for hash table elements/size computation (most-sig-bit would be faster).
-inline size_t nearest_power_of_2(size_t x)
+  inline size_t nearest_power_of_2(size_t x)
 {
   return x <= 2 ? x : nearest_power_of_2(x >> 1) << 1;
 }

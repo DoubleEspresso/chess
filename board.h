@@ -1,6 +1,6 @@
 #pragma once
-#ifndef HEADWIG_BOARD_H
-#define HEADWIG_BOARD_H
+#ifndef SBC_BOARD_H
+#define SBC_BOARD_H
 
 #include "definitions.h"
 #include "utils.h"
@@ -214,12 +214,12 @@ inline int Board::get_nodes_searched()
 
 inline int Board::QSnodes()
 {
-	return qsnodes;
+  return qsnodes;
 }
 
 inline int Board::MSnodes()
 {
-	return msnodes;
+  return msnodes;
 }
 
 inline int * Board::piece_counts(int c)
@@ -321,7 +321,7 @@ inline bool Board::has_position()
 
 inline int Board::half_moves()
 {
-	return position->hmvs;
+  return position->hmvs;
 }
 
 extern Board ROOT_BOARD;
