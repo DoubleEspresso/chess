@@ -35,10 +35,12 @@ struct MCNode {
   MoveList ML;
   std::vector<MCNode> child;    
   std::shared_ptr<MCNode> parent; // never allocated
-
+  
   MCNode();
   MCNode(MCNode * p, U16 move);
-  ~MCNode() { child.clear(); }
+  ~MCNode() {
+    while (!child.empty()) child.pop_back();
+  }
   
   inline void do_move(BoardData& bd, Board& b);
   inline bool has_parent();
@@ -63,6 +65,15 @@ class MCTree {
   
  public:
  MCTree() : tree(new MCNode()), rand(new MT19937(0,1)) {}
+  MCTree(const MCTree& other) {
+    *tree = *other.tree;
+    *rand = *other.rand;    
+  }
+  MCTree& operator=(const MCTree& other) {
+    *tree = *other.tree;
+    *rand = *other.rand;
+    return *this;
+  }
   
   bool has_child(MCNode& n);
   void print_pv();

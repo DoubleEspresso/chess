@@ -82,7 +82,7 @@ void MCTree::update(MCNode*& n, float score) {
 
 bool MCTree::search(Board& b) {  
   int trials = 0;
-  while(trials < 1000) {
+  while(trials < 20000) {
     Board B(b);
     MCNode * n = tree.get();
     float score = rollout(n, B);
@@ -115,7 +115,7 @@ float MCTree::rollout(MCNode*& n, Board& B) {
     U16 move = n->ML.m;    
     B.do_move(bd, move);
     
-    if (++moves_searched >= 4 &&
+    if (++moves_searched >= 6 &&
 	!B.in_check() &&
 	!B.gives_check(move)) stop = true;
   }
@@ -186,7 +186,7 @@ MCNode * MCTree::pick_capture(MCNode*& n, Board& b) {
   for (int j=0; j<mvs; ++j) {    
     if (n->childmove(j) == caps.childmove(id)) { id = j; break; }     
   }
-  caps.child.clear();
+  //caps.child.clear();
 
   if (id < 0) return NULL; // after search (sanity check)  
   return &(n->child[id]);
