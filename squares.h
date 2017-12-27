@@ -170,6 +170,6 @@ namespace {
   }
 
 
-}; // end namespace
+} // end namespace
 
 #endif

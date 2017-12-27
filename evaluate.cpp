@@ -672,8 +672,8 @@ namespace {
     printf("| Threats     |\t %d \t|\t %d \t|\t %d \t|\n", ei.s.threat_sc[WHITE], ei.s.threat_sc[BLACK], ei.s.threat_sc[WHITE] - ei.s.threat_sc[BLACK]);
     printf("| Eval time   |\t -- \t|\t -- \t|\t %d \t|\n", ei.s.time);
   }
-};
+}
 
 namespace Eval {
   int evaluate(Board& b) { return eval(b); }
-};
+}

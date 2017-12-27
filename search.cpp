@@ -40,7 +40,7 @@ namespace
   void update_pv(U16* pv, U16& move, U16* child_pv);
   void pv_from_tt(Board b, int eval, int d, U16 * pv);
   void ReadoutRootMoves(int depth);
-};
+}
 
 namespace Search
 {
@@ -151,7 +151,7 @@ namespace Search
     search<SPLIT>(b, alpha, beta, depth, NULL);
   }
   
-};  
+}
 
 namespace {
   int Reduction(bool pv_node, bool improving, int d, int mc) {
@@ -786,4 +786,4 @@ namespace {
   int adjust_score(int bestScore, int ply) {
     return (bestScore >= MATE_IN_MAXPLY ? bestScore = bestScore - ply : bestScore <= MATED_IN_MAXPLY ? bestScore + ply : bestScore);
   } 
-};
+}

@@ -7,11 +7,9 @@
 #include "definitions.h"
 #include "platform.h"
 
-namespace
-{
+namespace {
   // print a bitboard to the screen (DBG)
-  inline void PrintBits(U64& board)
-  {
+  inline void PrintBits(U64& board) {
     printf("   +---+---+---+---+---+---+---+---+\n");
     for (int r = 7; r >= 0; --r)
       {
@@ -29,8 +27,7 @@ namespace
   }
 
   // SWAR popcount algorithm for U64 datatypes
-  inline int count64(U64 b)
-  {
+  inline int count64(U64 b) {
     if (!b) return 0;
     b = b - ((b >> 1) & 0x5555555555555555ULL);
     b = (b & 0x3333333333333333ULL) + ((b >> 2) & 0x3333333333333333ULL);
@@ -39,8 +36,7 @@ namespace
   }
 
   // SWAR popcount algorithm for U32 datatypes
-  inline int count32(U64 b)
-  {
+  inline int count32(U64 b) {
     if (!b) return 0;
     U32 bl = U32(b ^ (b << 32)); // lower 32 bits
     U32 bu = U32(b ^ (b >> 32)); // upper 32 bits
@@ -48,23 +44,20 @@ namespace
     int low_count = 0;
     int high_count = 0;
 
-    if (bl)
-      {
-	bl = bl - ((bl >> 1) & 0x55555555);
-	bl = (bl & 0x33333333) + ((bl >> 2) & 0x33333333);
-	low_count = (int)((((bl + (bl >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24);
-      }
-    if (bu)
-      {
-	bu = bu - ((bu >> 1) & 0x55555555);
-	bu = (bu & 0x33333333) + ((bu >> 2) & 0x33333333);
-	high_count = (int)((((bu + (bu >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24);
-      }
+    if (bl) {
+      bl = bl - ((bl >> 1) & 0x55555555);
+      bl = (bl & 0x33333333) + ((bl >> 2) & 0x33333333);
+      low_count = (int)((((bl + (bl >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24);
+    }
+    if (bu) {
+      bu = bu - ((bu >> 1) & 0x55555555);
+      bu = (bu & 0x33333333) + ((bu >> 2) & 0x33333333);
+      high_count = (int)((((bu + (bu >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24);
+    }
     return (int)(low_count + high_count);
   }
 
-  inline int count(const U64& b)
-  {
+  inline int count(const U64& b) {
     return builtin_popcount(b);
   }
 
@@ -111,13 +104,11 @@ namespace
       63, 59, 45, 55, 53, 51, 48, 39, 58, 44, 50, 38, 43, 37, 42, 41
     };
 
-  inline int lsb64(U64 b)
-  {
+  inline int lsb64(U64 b) {
     return idx64[(int)(((b & (~b + 1ULL)) * debruijn64) >> 58)];
   }
 
-  inline int lsb32(U64 b)
-  {
+  inline int lsb32(U64 b) {
     U32 bl = U32(b ^ (b << 32)); // lower 32 bits
     U32 bu = U32(b ^ (b >> 32)); // upper 32 bits
 
@@ -127,28 +118,27 @@ namespace
     return idx32[(int)((((bn & (~bn + 1ULL)) * debruijn32) >> 27) + idx)];
   }
 
-  inline int lsb(U64& b)
-  {
+  inline int lsb(U64& b) {
 #ifdef _MSC_VER
     unsigned long r = 0; builtin_lsb(&r, b);
     return r;
 #else
     return lsb64(b);//builtin_lsb(b);
 #endif
-  };
-
+  }
+  
   inline int pop_lsb(U64& b) {
     const int s = lsb(b); 
     b &= (b - 1);
     return s;
-  };
+  }
   
   inline bool more_than_one(U64& b) {
     return b & (b - 1);
-  };
+  }
   
   inline bool empty(const U64& b) {
     return b == 0ULL;
   }
-};
+}
 #endif

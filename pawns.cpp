@@ -22,14 +22,14 @@ namespace Penalty {
 // sps we only need to store .1% of that ~454254 ~7 mb
 PawnTable::PawnTable() : table(0) {
   init();
-};
+}
 
 PawnTable::~PawnTable() {
   if (table) {
     printf("..deleted pawn hash table\n");
     delete[] table;
   }
-};
+}
 
 bool PawnTable::init() {
   sz_kb = 10 * 1024;// opts["PawnHashKB"]; // 4mb

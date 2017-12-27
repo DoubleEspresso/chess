@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <random>
 #include <string>
+#include <memory>
 
 #include "definitions.h"
 #include "globals.h"
@@ -33,11 +34,11 @@ struct MCNode {
   float visits, score;
   MoveList ML;
   std::vector<MCNode> child;    
-  MCNode * parent; // never allocated
+  std::shared_ptr<MCNode> parent; // never allocated
 
   MCNode();
   MCNode(MCNode * p, U16 move);
-  ~MCNode();
+  ~MCNode() { child.clear(); }
   
   inline void do_move(BoardData& bd, Board& b);
   inline bool has_parent();
@@ -57,13 +58,11 @@ inline U16 MCNode::childmove(int j) {
 }
 
 class MCTree {
-  MCNode * tree;
-  MT19937 * rand;
-  MCNode * curr; // not allocated
+  std::shared_ptr<MCNode> tree;
+  std::shared_ptr<MT19937> rand;
   
  public:
-  MCTree();
-  ~MCTree();
+ MCTree() : tree(new MCNode()), rand(new MT19937(0,1)) {}
   
   bool has_child(MCNode& n);
   void print_pv();

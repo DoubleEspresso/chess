@@ -19,20 +19,11 @@ MCNode::MCNode(MCNode * p, U16 m) : visits(0), score(0), parent(p) {
   ML.m = m; ML.v = 0;
 }
 
-MCNode::~MCNode() { }
+//MCNode::~MCNode() { child.clear(); }
 
 //------------------------------------------------------
 // monte carlo tree search methods
 //------------------------------------------------------
-MCTree::MCTree() : tree(0), rand(0) {
-  tree = new MCNode();
-  rand = new MT19937(0, 1);
-}
-
-MCTree::~MCTree() {
-  if (tree) { delete tree; tree = 0; }
-  if (rand) { delete rand; rand = 0; }
-}
 
 void MCTree::add_children(MCNode*& n, Board& B) {  
   MoveGenerator mvs(B); // all legal mvs
@@ -56,14 +47,13 @@ int MCTree::uct_select(MCNode * n) {
   if (mvs <= 0) return id;
   
   double p = rand->next();  
-  if (p <= 0.75) {  
+  if (p <= 0.50) {  
     for (int j=0; j<mvs; ++j) {
-      int nn = n->child[j].visits;
       double sc = (double) n->child[j].score;
       double v = (double) n->child[j].visits;
       if (v > 0) {
         double r = sc / v;
-        double UCT = r + C * sqrt((double)(2.0 * log(N) / (double) nn) );
+        double UCT = r + C * sqrt((double)(2.0 * log(N) / v) );
         if (UCT > max) { max = UCT; id = j; }
       }
     }
@@ -84,18 +74,17 @@ MCNode * MCTree::pick_child(MCNode*& n, Board& b) {
 
 void MCTree::update(MCNode*& n, float score) {
   while (n->has_parent()) {
-    n = n->parent;
+    n = n->parent.get();
     score = 1 - score;
     n->visits++; n->score += score;
   }
 }
 
-bool MCTree::search(Board& b) {
-  
+bool MCTree::search(Board& b) {  
   int trials = 0;
-
-  while(trials < 10000) {
-    Board B(b); MCNode * n = tree;
+  while(trials < 1000) {
+    Board B(b);
+    MCNode * n = tree.get();
     float score = rollout(n, B);
     update(n, score);
     ++trials;
@@ -116,7 +105,7 @@ float MCTree::rollout(MCNode*& n, Board& B) {
     MCNode * tmp = pick_child(n, B);
     
     if (tmp == NULL) {
-      if (B.in_check()) eval = 0;
+      if (B.in_check()) eval = 0; // mate
       else eval = 0.5;
       do_resolve = false;
       break;
@@ -126,7 +115,7 @@ float MCTree::rollout(MCNode*& n, Board& B) {
     U16 move = n->ML.m;    
     B.do_move(bd, move);
     
-    if (++moves_searched >= 6 &&
+    if (++moves_searched >= 4 &&
 	!B.in_check() &&
 	!B.gives_check(move)) stop = true;
   }
@@ -174,6 +163,9 @@ MCNode * MCTree::pick_capture(MCNode*& n, Board& b) {
   if (!has_child(*n)) add_children(n, b);
   
   int mvs = n->child.size();
+
+  if (mvs <= 0) return NULL; // no captures
+  
   bool in_check = b.in_check();
 
   // dummy capture node
@@ -184,14 +176,17 @@ MCNode * MCTree::pick_capture(MCNode*& n, Board& b) {
     if (!in_check && is_cap) caps.child.push_back(n->child[j]); // some are checks!
     else if (in_check) caps.child.push_back(n->child[j]); // all evasions
   }
+
+  if (caps.child.size() <= 0 ) return NULL; // no captures
   
   int id = uct_select(&caps);    
-
-  if (id < 0) return NULL;  // no captures
+  
+  if (id < 0) return NULL;
   
   for (int j=0; j<mvs; ++j) {    
     if (n->childmove(j) == caps.childmove(id)) { id = j; break; }     
   }
+  caps.child.clear();
 
   if (id < 0) return NULL; // after search (sanity check)  
   return &(n->child[id]);
@@ -199,7 +194,7 @@ MCNode * MCTree::pick_capture(MCNode*& n, Board& b) {
 
 void MCTree::print_pv() {
   std::vector<U16> root_moves;
-  MCNode * n = tree;
+  MCNode * n = tree.get();
   float max = NINF; int id = -1;
 
   while (has_child(*n)) {

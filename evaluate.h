@@ -64,6 +64,6 @@ namespace Eval
     Scores s;
   };
   extern int evaluate(Board& b);
-};
+}
 
 #endif 

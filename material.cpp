@@ -6,8 +6,7 @@
 
 MaterialTable material;
 
-namespace
-{
+namespace {
   // local arrays containing the piece values in middle/end game
   // phase
   int piece_vals_mg[5] = { PawnValueMG, KnightValueMG, BishopValueMG, RookValueMG, QueenValueMG };
@@ -30,53 +29,45 @@ namespace
   float weights_eg[4] = { 10.0, 3.00, 1.15, 0.125 };
 }
 
-MaterialTable::MaterialTable() : table_size(0), table(0) { };
+MaterialTable::MaterialTable() : table_size(0), table(0) { }
 
-MaterialTable::~MaterialTable()
-{
-  if (table)
-    {
-      printf("..[MaterialTable] deleting table\n");
-      delete[] table; table = 0;
-    }
-};
+MaterialTable::~MaterialTable() {
+  if (table) {
+    printf("..[MaterialTable] deleting table\n");
+    delete[] table; table = 0;
+  }
+}
 
 // main wrapper to material values defined in definitions.h
-int MaterialTable::material_value(int piece, int gamephase)
-{
+int MaterialTable::material_value(int piece, int gamephase) {
   return gamephase == MIDDLE_GAME ? piece_vals_mg[piece] : piece_vals_eg[piece];
 }
 
-bool MaterialTable::init()
-{
+bool MaterialTable::init() {
   int sz_kb = options["material table size mb"] * 1024;
   nb_elts = 1024 * sz_kb / sizeof(MaterialEntry);
 
   nb_elts = nearest_power_of_2(nb_elts);
   nb_elts = nb_elts <= 256 ? 256 : nb_elts;
 
-  if (!table && (table = new MaterialEntry[nb_elts]()))
-    {
-      //float out_sz = float(float(nb_elts*sizeof(MaterialEntry)) / float(1024 * 1024));
-      //printf("..allocated material table of %lu elements --> size %3.1f mb.\n", nb_elts, out_sz);
-    }
-  else
-    {
-      float out_sz = float(float(nb_elts*sizeof(MaterialEntry)) / float(1024 * 1024));
-      printf("..failed to allocate material table of %lu elements --> size %3.1f mb.\n", nb_elts, out_sz);
-      return false;
-    }
+  if (!table && (table = new MaterialEntry[nb_elts]())) {
+    //float out_sz = float(float(nb_elts*sizeof(MaterialEntry)) / float(1024 * 1024));
+    //printf("..allocated material table of %lu elements --> size %3.1f mb.\n", nb_elts, out_sz);
+  }
+  else {
+    float out_sz = float(float(nb_elts*sizeof(MaterialEntry)) / float(1024 * 1024));
+    printf("..failed to allocate material table of %lu elements --> size %3.1f mb.\n", nb_elts, out_sz);
+    return false;
+  }
   return true;
 }
 
-void MaterialTable::clear()
-{
+void MaterialTable::clear() {
   memset(table, 0, nb_elts * sizeof(MaterialEntry));
 }
 
 // main storage for material entries during the search.
-MaterialEntry * MaterialTable::get(Board& b)
-{
+MaterialEntry * MaterialTable::get(Board& b) {
   U64 k = b.material_key();
   int * piece_diffs = b.piece_deltas();
   int * piece_count_w = b.piece_counts(WHITE);

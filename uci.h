@@ -9,8 +9,7 @@
 
 #include "board.h"
 
-namespace UCI
-{
+namespace UCI {
   void loop();
   void command(std::string cmd, int& GAME_OVER);
   void load_position(std::string& pos);
@@ -18,7 +17,7 @@ namespace UCI
   std::string move_to_string(U16& m);
   U16 get_move(std::string& move);
   void analyze(Board& b);
-};
+}
 
 #endif
 

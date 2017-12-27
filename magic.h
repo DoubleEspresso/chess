@@ -40,5 +40,5 @@ namespace Magic {
     unsigned int idx = index(BMagics[s].magic, BMagics[s].mask, occ, BMagics[s].shift);
     return BMagics[s].attacks[BMagics[s].index_occ[idx] + BMagics[s].offset];
   }
-};
+}
 #endif

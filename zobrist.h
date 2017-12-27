@@ -7,8 +7,7 @@
 #include "definitions.h"
 #include "types.h"
 
-namespace Zobrist
-{
+namespace Zobrist {
   bool init();
   U64 piece_rands(const U8& square, const U8& color, const U8& piece);
   U64 castle_rands(const U8& color, const U16& castle_rights);
@@ -21,6 +20,6 @@ namespace Zobrist
   extern U64 zobrist_col[8];
   extern U64 zobrist_stm[2];
   extern U64 zobrist_move50[50];
-};
+}
 
 #endif

@@ -8,9 +8,8 @@
 
 using namespace Eval;
 
-namespace Endgame
-{
-	int evaluate(Board& b, EvalInfo& ei);
-};
+namespace Endgame {
+  int evaluate(Board& b, EvalInfo& ei);
+}
 
 #endif
