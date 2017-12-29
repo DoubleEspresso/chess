@@ -1,5 +1,4 @@
 #pragma once
-
 #ifndef SBC_BENCH_H
 #define SBC_BENCH_H
 
@@ -28,6 +27,6 @@ class Benchmark
   std::string pawn_position[10];
   std::string minor_position[10];
   int max_iter;
-
 };
+
 #endif
