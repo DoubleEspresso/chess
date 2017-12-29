@@ -29,6 +29,8 @@ void MCNode::add_children(Board& b) {
 // monte carlo tree search methods
 //------------------------------------------------------
 
+MCTree::MCTree() : root(std::make_shared<MCNode>()), curr(root) { }
+
 int MCTree::uct_select() {
   double max = NINF;
   int id = -1;

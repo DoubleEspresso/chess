@@ -78,7 +78,7 @@ class MCTree {
   inline double get_rand() { return rand.next(); }
     
  public:
- MCTree() : root(std::make_shared<MCNode>()), curr(root) { }
+  MCTree();
   MCTree(const MCTree& other) = delete;
   MCTree& operator=(const MCTree& other) = delete;
   
