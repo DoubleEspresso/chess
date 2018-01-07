@@ -18,6 +18,7 @@
 #include "utils.h"
 #include "opts.h"
 #include "mctree.h" // monte-carlo searching (dbg)
+#include "move2.h"
 
 using namespace UCI;
 
@@ -63,6 +64,9 @@ void UCI::command(std::string cmd, int& GAME_OVER)
           std::cout << "Fen: " << b.to_fen() << std::endl;
         }
 
+      else if (command == "newmoves") {
+        MoveGenerator2<QUIET_PAWN> mvs(b);
+      }
       else if (command == "mc" || command == "mcsearch") {
         MCTree mc;
         mc.search(b);
