@@ -40,16 +40,17 @@ struct Move2 {
   bool operator==(const Move2& o) { return m == o.m; }
 };
 
-template <MoveType2 T>
+template <MoveType2 T, Color c>
 class MoveGenerator2 {  
   int it, last;
   Move2 list[MAX_MOVES];
 
-  void generate(const Board& b);
-
+  void generate(Board& b);
+  template<Direction> void serialize(U64& b);
+  
  public:
   MoveGenerator2() : it(0), last(0) {}
-  MoveGenerator2(const Board& b) : it(0), last(0) { generate(b); }   
+  MoveGenerator2<T,c>(Board& b) : it(0), last(0) { generate(b); }
 
   void print();
   Move2& operator++() { return list[it++]; }

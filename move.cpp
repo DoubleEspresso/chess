@@ -31,14 +31,12 @@ template<MoveType mt> void MoveGenerator::serialize(U64& b, const Direction& d)
 }
 template<MoveType mt> void MoveGenerator::serialize_promotion(U64 &b, const Direction& d)
 {
-  while (b)
-    {
-      int to = pop_lsb(b);
-      for (int i = mt - 3; i <= mt; ++i)
-	{
-	  list[last++].m = ((to + d) | (to << 6) | (i << 12));
-	}
+  while (b) {
+    int to = pop_lsb(b);
+    for (int i = mt - 3; i <= mt; ++i) {
+      list[last++].m = ((to + d) | (to << 6) | (i << 12));
     }
+  }
 }
 template<MoveType mt> inline void MoveGenerator::append(U16 m)
 {
