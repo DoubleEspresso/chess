@@ -10,22 +10,17 @@
 
 
 enum MoveType2 {
-  QUIET_PAWN,
-  ADVANCED_PAWN,
-  CAPTURE_PAWN,
-  QUIET_PROMOTION,
-  CAPTURE_PROMOTION,
-  PAWN_CHECKS,
-  QUIET_PIECE_NO_CHECK,
-  QUITE_PIECE_CHECK,
-  QUIET_PIECE,
-  CAPTURE_PIECE_NO_CHECK,
-  CAPTURE_PIECE_CHECK,
-  CAPTURE_PIECE,
+  QUIETS,
+  CHECKS,
+  QUIET_CHECKS,
+  QUIET_NOCHECKS,
+  CAPTURES,
+  //CAPTURE_CHECKS,
+  CAPTURE_NOCHECKS,
+  PROMOTIONS,
+  CAPTURE_PROMOTIONS,
   CASTLES,
-  PIECE_MVS,
-  PAWN_MVS,
-  DANGEROUS_MVS,
+  DANGEROUS_QUIETS,
   DANGEROUS_CHECKS,
   ALL_MVS
 };
@@ -40,7 +35,7 @@ struct Move2 {
   bool operator==(const Move2& o) { return m == o.m; }
 };
 
-template <MoveType2 T, Color c>
+template <MoveType2 T, Piece p, Color c>
 class MoveGenerator2 {  
   int it, last;
   Move2 list[MAX_MOVES];
@@ -50,7 +45,7 @@ class MoveGenerator2 {
   
  public:
   MoveGenerator2() : it(0), last(0) {}
-  MoveGenerator2<T,c>(Board& b) : it(0), last(0) { generate(b); }
+  MoveGenerator2<T,p,c>(Board& b) : it(0), last(0) { generate(b); }
 
   void print();
   Move2& operator++() { return list[it++]; }
