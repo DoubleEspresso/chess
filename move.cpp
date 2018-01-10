@@ -84,12 +84,14 @@ MoveList * MoveGenerator::generate_pawn_moves(Board &b, MoveType mt)
       if (left_caps) serialize<CAPTURE>(left_caps, bright);
 
       // ep - captures
-      U64 pawns4_no_right = pawns5 ^ (pawns5 & (stm == WHITE ? ColBB[COL8] : ColBB[COL1]));
-      U64 pawns4_no_left = pawns5 ^ (pawns5 & (stm == WHITE ? ColBB[COL1] : ColBB[COL8]));
-      U64 ep_right = (stm == WHITE ? pawns4_no_right << NE : pawns4_no_right >> NE) & SquareBB[eps]; // !! note danger (SQUARE_NONE = 65, extended SquareBB to account for this case).
-      U64 ep_left = (stm == WHITE ? pawns4_no_left << NW : pawns4_no_left >> NW) & SquareBB[eps];
-      if (ep_right) serialize<EP>(ep_right, bleft);
-      if (ep_left) serialize<EP>(ep_left, bright);
+      if (eps != SQUARE_NONE) {
+        U64 pawns4_no_right = pawns5 ^ (pawns5 & (stm == WHITE ? ColBB[COL8] : ColBB[COL1]));
+        U64 pawns4_no_left = pawns5 ^ (pawns5 & (stm == WHITE ? ColBB[COL1] : ColBB[COL8]));
+        U64 ep_right = (stm == WHITE ? pawns4_no_right << NE : pawns4_no_right >> NE) & SquareBB[eps]; // !! note danger (SQUARE_NONE = 65, extended SquareBB to account for this case).
+        U64 ep_left = (stm == WHITE ? pawns4_no_left << NW : pawns4_no_left >> NW) & SquareBB[eps];
+        if (ep_right) serialize<EP>(ep_right, bleft);
+        if (ep_left) serialize<EP>(ep_left, bright);
+      }
     }
 
   // promotions - quiet
@@ -268,21 +270,22 @@ MoveList * MoveGenerator::generate_evasions(Board& board, MoveType type)
     // pawn capture evasions
     if (type == CAPTURE || type == LEGAL)
       {
-	U64 pawnsNoRightCol = pawnsNot7 ^ (pawnsNot7 & (stm == WHITE ? ColBB[COL8] : ColBB[COL1]));
-	U64 pawnsNoLeftCol = pawnsNot7 ^ (pawnsNot7 & (stm == WHITE ? ColBB[COL1] : ColBB[COL8]));
-	U64 capsRight = move_pawns(stm, NE, pawnsNoRightCol) & enemies;
-	U64 capsLeft = move_pawns(stm, NW, pawnsNoLeftCol) & enemies;
-	if (capsRight) serialize<CAPTURE>(capsRight, backleft);
-	if (capsLeft) serialize<CAPTURE>(capsLeft, backright);
-	// ep captures
-	U64 pawns4NoRightCol = pawns5 ^ (pawns5 & (stm == WHITE ? ColBB[COL8] : ColBB[COL1]));
-	U64 pawns4NoLeftCol = pawns5 ^ (pawns5 & (stm == WHITE ? ColBB[COL1] : ColBB[COL8]));
-	U64 epCapRight = move_pawns(stm, NE, pawns4NoRightCol) & SquareBB[eps]; // !! note danger (SQUARE_NONE = 64, squareBB[0:64], carefully convert).
-	U64 epCapLeft = move_pawns(stm, NW, pawns4NoLeftCol) & SquareBB[eps];
-	if (epCapRight) serialize<EP>(epCapRight, backleft);
-	if (epCapLeft) serialize<EP>(epCapLeft, backright);
+        U64 pawnsNoRightCol = pawnsNot7 ^ (pawnsNot7 & (stm == WHITE ? ColBB[COL8] : ColBB[COL1]));
+        U64 pawnsNoLeftCol = pawnsNot7 ^ (pawnsNot7 & (stm == WHITE ? ColBB[COL1] : ColBB[COL8]));
+        U64 capsRight = move_pawns(stm, NE, pawnsNoRightCol) & enemies;
+        U64 capsLeft = move_pawns(stm, NW, pawnsNoLeftCol) & enemies;
+        if (capsRight) serialize<CAPTURE>(capsRight, backleft);
+        if (capsLeft) serialize<CAPTURE>(capsLeft, backright);
+        // ep captures
+        if (eps != SQUARE_NONE) {
+          U64 pawns4NoRightCol = pawns5 ^ (pawns5 & (stm == WHITE ? ColBB[COL8] : ColBB[COL1]));
+          U64 pawns4NoLeftCol = pawns5 ^ (pawns5 & (stm == WHITE ? ColBB[COL1] : ColBB[COL8]));
+          U64 epCapRight = move_pawns(stm, NE, pawns4NoRightCol) & SquareBB[eps]; // !! note danger (SQUARE_NONE = 64, squareBB[0:64], carefully convert).
+          U64 epCapLeft = move_pawns(stm, NW, pawns4NoLeftCol) & SquareBB[eps];
+          if (epCapRight) serialize<EP>(epCapRight, backleft);
+          if (epCapLeft) serialize<EP>(epCapLeft, backright);
+        }
       }
-
     // promotions -- quiet and capture
     if0(pawns7)
     {

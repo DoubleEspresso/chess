@@ -493,7 +493,7 @@ namespace {
           depth > 3 &&
           !b.pawn_on_7(b.whos_move()) &&
           moves_searched > 3) {
-        int R = Reduction(pv_node, improving, newdepth, moves_searched) / 3;
+        int R = Reduction(pv_node, improving, newdepth, moves_searched);
         int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];
         if (v <= (NINF - 1)) R += 1;
         int LMR = newdepth - R;
