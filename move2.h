@@ -42,7 +42,8 @@ class MoveGenerator2 {
 
   void generate(Board& b);
   template<Direction> void serialize(U64& b);
-  
+  template<Direction> void serialize_promotions(U64& b);
+
  public:
   MoveGenerator2() : it(0), last(0) {}
   MoveGenerator2<T,p,c>(Board& b) : it(0), last(0) { generate(b); }

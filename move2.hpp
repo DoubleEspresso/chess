@@ -2,6 +2,7 @@
 #include "board.h"
 #include "magic.h"
 #include "uci.h"
+#include "bits.h"
 
 using namespace Globals;
 
@@ -25,6 +26,18 @@ template<Direction d> void MoveGenerator2<mt, p, c>::serialize(U64& b) {
     list[last++].m = ((to + d) | (to << 6) | (mt << 12));
   }
 }
+
+template<MoveType2 mt, Piece p, Color c>
+template<Direction d> void MoveGenerator2<mt, p, c>::serialize_promotions(U64& b) {
+  while (b) {
+    int to = pop_lsb(b);
+    for (int i = mt - 3; i <= mt; ++i) {
+      list[last++].m = ((to + d) | (to << 6) | (i << 12));
+    }    
+  }
+}
+
+
 
 template<MoveType2 mt, Piece p, Color c> void MoveGenerator2<mt, p, c>::print() {
   for(int j=it; j<last; ++j) {
@@ -105,6 +118,32 @@ void MoveGenerator2<EP2, PAWN, WHITE>::generate(Board& b) {
 }  
 
 template<>
+void MoveGenerator2<PROMOTIONS, PAWN, WHITE>::generate(Board& b) {
+  U64 pawns = b.colored_pieces(WHITE);
+  U64 pawns7 = pawns & RowBB[ROW7];
+  if (pawns7 == 0ULL) return;
+  
+  shift<NORTH>(pawns7);
+  if (pawns7) serialize_promotions<SOUTH>(pawns7);
+}
+
+template<>
+void MoveGenerator2<CAPTURE_PROMOTIONS, PAWN, WHITE>::generate(Board& b) {
+  U64 pawns = b.colored_pieces(WHITE);
+  U64 enemies = b.colored_pieces(BLACK) & RowBB[ROW8];  
+  U64 right_caps = pawns;
+  U64 left_caps = pawns;
+  
+  shift<NE>(right_caps);
+  right_caps &= enemies;
+  if (right_caps != 0ULL) serialize_promotions<SW>(right_caps);
+  
+  shift<NW>(left_caps);
+  left_caps &= enemies;
+  if (left_caps != 0ULL) serialize_promotions<SE>(left_caps);
+}
+
+template<>
 void MoveGenerator2<QUIETS, PAWN, BLACK>::generate(Board& b) {
   
   U64 empty = ~(b.all_pieces());
@@ -114,7 +153,7 @@ void MoveGenerator2<QUIETS, PAWN, BLACK>::generate(Board& b) {
 
   shift<SOUTH>(single_pushes);
   single_pushes &= empty;
-
+  
   if (single_pushes != 0ULL) serialize<NORTH>(single_pushes);
   
   for (int i=0; i<2; ++i) {

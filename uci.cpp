@@ -66,7 +66,7 @@ void UCI::command(std::string cmd, int& GAME_OVER)
 
       else if (command == "newmoves") {
         MoveGenerator2<QUIETS, PAWN, WHITE> mvs(b);
-        MoveGenerator2<CAPTURES, PAWN, WHITE> mvs2(b);
+        MoveGenerator2<CAPTURE_PROMOTIONS, PAWN, WHITE> mvs2(b);
         mvs.print();
         mvs2.print();
       }
