@@ -38,8 +38,7 @@ template<MoveType mt> void MoveGenerator::serialize_promotion(U64 &b, const Dire
     }
   }
 }
-template<MoveType mt> inline void MoveGenerator::append(U16 m)
-{
+template<MoveType mt> inline void MoveGenerator::append(U16 m) {
   list[last++].m = (m | mt << 12);
 }
 
@@ -126,15 +125,15 @@ MoveList * MoveGenerator::generate_piece_moves(Board& b, MoveType mt)
     {
       mvs = PseudoAttacksBB(KNIGHT, from);
       if (mt == QUIET || mt == LEGAL)
-	{
-	  U64 quites = mvs & empty;
-	  if (quites) serialize<QUIET>(quites, from);
-	}
+        {
+          U64 quites = mvs & empty;
+          if (quites) serialize<QUIET>(quites, from);
+        }
       if (mt == CAPTURE || mt == LEGAL)
-	{
-	  U64 attackBB = mvs & enemies;
-	  if (attackBB) serialize<CAPTURE>(attackBB, from);
-	}
+        {
+          U64 attackBB = mvs & enemies;
+          if (attackBB) serialize<CAPTURE>(attackBB, from);
+        }
     }
 
   // the king 
@@ -156,15 +155,15 @@ MoveList * MoveGenerator::generate_piece_moves(Board& b, MoveType mt)
     {
       mvs = attacks<BISHOP>(mask, from);
       if (mt == QUIET || mt == LEGAL)
-	{
-	  U64 quites = mvs & empty;
-	  if (quites) serialize<QUIET>(quites, from);
-	}
+        {
+          U64 quites = mvs & empty;
+          if (quites) serialize<QUIET>(quites, from);
+        }
       if (mt == CAPTURE || mt == LEGAL)
-	{
-	  U64 attackBB = mvs & enemies;
-	  if (attackBB) serialize<CAPTURE>(attackBB, from);
-	}
+        {
+          U64 attackBB = mvs & enemies;
+          if (attackBB) serialize<CAPTURE>(attackBB, from);
+        }
     }
 
   // the rook
@@ -173,15 +172,15 @@ MoveList * MoveGenerator::generate_piece_moves(Board& b, MoveType mt)
     {
       mvs = attacks<ROOK>(mask, from);
       if (mt == QUIET || mt == LEGAL)
-	{
-	  U64 quites = mvs & empty;
-	  if (quites) serialize<QUIET>(quites, from);
-	}
+        {
+          U64 quites = mvs & empty;
+          if (quites) serialize<QUIET>(quites, from);
+        }
       if (mt == CAPTURE || mt == LEGAL)
-	{
-	  U64 attackBB = mvs & enemies;
-	  if (attackBB) serialize<CAPTURE>(attackBB, from);
-	}
+        {
+          U64 attackBB = mvs & enemies;
+          if (attackBB) serialize<CAPTURE>(attackBB, from);
+        }
     }
 
   // the queen
@@ -190,15 +189,15 @@ MoveList * MoveGenerator::generate_piece_moves(Board& b, MoveType mt)
     {
       mvs = attacks<BISHOP>(mask, from) | attacks<ROOK>(mask, from);
       if (mt == QUIET || mt == LEGAL)
-	{
-	  U64 quites = mvs & empty;
-	  if (quites) serialize<QUIET>(quites, from);
-	}
+        {
+          U64 quites = mvs & empty;
+          if (quites) serialize<QUIET>(quites, from);
+        }
       if (mt == CAPTURE || mt == LEGAL)
-	{
-	  U64 attackBB = mvs & enemies;
-	  if (attackBB) serialize<CAPTURE>(attackBB, from);
-	}
+        {
+          U64 attackBB = mvs & enemies;
+          if (attackBB) serialize<CAPTURE>(attackBB, from);
+        }
     }
   return list;
 }
@@ -260,11 +259,11 @@ MoveList * MoveGenerator::generate_evasions(Board& board, MoveType type)
     // pawn blocks (quiet moves)
     if (type == QUIET || type == LEGAL)
       {
-	U64  singlePushes = move_pawns(stm, NORTH, pawnsNot7) & target;
-	if (singlePushes) serialize<QUIET>(singlePushes, back1);
-	U64  tmp = move_pawns(stm, NORTH, pawns2) &  empty;
-	U64  doublePushes = move_pawns(stm, NORTH, tmp) & target;
-	if (doublePushes) serialize<QUIET>(doublePushes, back2);
+        U64  singlePushes = move_pawns(stm, NORTH, pawnsNot7) & target;
+        if (singlePushes) serialize<QUIET>(singlePushes, back1);
+        U64  tmp = move_pawns(stm, NORTH, pawns2) &  empty;
+        U64  doublePushes = move_pawns(stm, NORTH, tmp) & target;
+        if (doublePushes) serialize<QUIET>(doublePushes, back2);
       }
 
     // pawn capture evasions
@@ -290,20 +289,20 @@ MoveList * MoveGenerator::generate_evasions(Board& board, MoveType type)
     if0(pawns7)
     {
       if (type == QUIET || type == LEGAL)
-	{
-	  U64 quitePromotions = move_pawns(stm, NORTH, pawns7) & target;
-	  if (quitePromotions) serialize_promotion<PROMOTION>(quitePromotions, back1);
-	}
+        {
+          U64 quitePromotions = move_pawns(stm, NORTH, pawns7) & target;
+          if (quitePromotions) serialize_promotion<PROMOTION>(quitePromotions, back1);
+        }
       // promotions - captures
       if (type == CAPTURE || type == LEGAL)
-	{
-	  U64 pawns7NoRightCol = pawns7 ^ (pawns7 & (stm == WHITE ? ColBB[COL8] : ColBB[COL1]));
-	  U64 pawns7NoLeftCol = pawns7 ^ (pawns7 & (stm == WHITE ? ColBB[COL1] : ColBB[COL8]));
-	  U64 caps7Right = move_pawns(stm, NE, pawns7NoRightCol) & enemies;
-	  U64 caps7Left = move_pawns(stm, NW, pawns7NoLeftCol) & enemies;
-	  if (caps7Right) serialize_promotion<PROMOTION_CAP>(caps7Right, backleft);
-	  if (caps7Left) serialize_promotion<PROMOTION_CAP>(caps7Left, backright);
-	}
+        {
+          U64 pawns7NoRightCol = pawns7 ^ (pawns7 & (stm == WHITE ? ColBB[COL8] : ColBB[COL1]));
+          U64 pawns7NoLeftCol = pawns7 ^ (pawns7 & (stm == WHITE ? ColBB[COL1] : ColBB[COL8]));
+          U64 caps7Right = move_pawns(stm, NE, pawns7NoRightCol) & enemies;
+          U64 caps7Left = move_pawns(stm, NW, pawns7NoLeftCol) & enemies;
+          if (caps7Right) serialize_promotion<PROMOTION_CAP>(caps7Right, backleft);
+          if (caps7Left) serialize_promotion<PROMOTION_CAP>(caps7Left, backright);
+        }
     }
   }
   //knight
@@ -311,15 +310,15 @@ MoveList * MoveGenerator::generate_evasions(Board& board, MoveType type)
   for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
     {
       if (type == QUIET || type == LEGAL)
-	{
-	  U64 quites = PseudoAttacksBB(KNIGHT, from) & target;
-	  if (quites) serialize<QUIET>(quites, from);
-	}
+        {
+          U64 quites = PseudoAttacksBB(KNIGHT, from) & target;
+          if (quites) serialize<QUIET>(quites, from);
+        }
       if (type == CAPTURE || type == LEGAL)
-	{
-	  U64 attackBB = PseudoAttacksBB(KNIGHT, from) & enemies;
-	  if (attackBB) serialize<CAPTURE>(attackBB, from);
-	}
+        {
+          U64 attackBB = PseudoAttacksBB(KNIGHT, from) & enemies;
+          if (attackBB) serialize<CAPTURE>(attackBB, from);
+        }
     }
   // bishop
   sqs = board.sq_of<BISHOP>(stm);
@@ -327,15 +326,15 @@ MoveList * MoveGenerator::generate_evasions(Board& board, MoveType type)
     {
       U64 bmvs = attacks<BISHOP>(mask, from);
       if (type == QUIET || type == LEGAL)
-	{
-	  U64 quites = bmvs & target;
-	  if (quites) serialize<QUIET>(quites, from);
-	}
+        {
+          U64 quites = bmvs & target;
+          if (quites) serialize<QUIET>(quites, from);
+        }
       if (type == CAPTURE || type == LEGAL)
-	{
-	  U64 attackBB = bmvs & enemies;
-	  if (attackBB) serialize<CAPTURE>(attackBB, from);
-	}
+        {
+          U64 attackBB = bmvs & enemies;
+          if (attackBB) serialize<CAPTURE>(attackBB, from);
+        }
     }
   // rook
   sqs = board.sq_of<ROOK>(stm);
@@ -343,15 +342,15 @@ MoveList * MoveGenerator::generate_evasions(Board& board, MoveType type)
     {
       U64 rmvs = attacks<ROOK>(mask, from);
       if (type == QUIET || type == LEGAL)
-	{
-	  U64 quites = rmvs & target;
-	  if (quites) serialize<QUIET>(quites, from);
-	}
+        {
+          U64 quites = rmvs & target;
+          if (quites) serialize<QUIET>(quites, from);
+        }
       if (type == CAPTURE || type == LEGAL)
-	{
-	  U64 attackBB = rmvs & enemies;
-	  if (attackBB) serialize<CAPTURE>(attackBB, from);
-	}
+        {
+          U64 attackBB = rmvs & enemies;
+          if (attackBB) serialize<CAPTURE>(attackBB, from);
+        }
     }
   // queen
   sqs = board.sq_of<QUEEN>(stm);
@@ -359,15 +358,15 @@ MoveList * MoveGenerator::generate_evasions(Board& board, MoveType type)
     {
       U64 qmvs = (attacks<BISHOP>(mask, from) | attacks<ROOK>(mask, from));
       if (type == QUIET || type == LEGAL)
-	{
-	  U64 quites = qmvs & target;
-	  if (quites) serialize<QUIET>(quites, from);
-	}
+        {
+          U64 quites = qmvs & target;
+          if (quites) serialize<QUIET>(quites, from);
+        }
       if (type == CAPTURE || type == LEGAL)
-	{
-	  U64 attackBB = qmvs & enemies;
-	  if (attackBB) serialize<CAPTURE>(attackBB, from);
-	}
+        {
+          U64 attackBB = qmvs & enemies;
+          if (attackBB) serialize<CAPTURE>(attackBB, from);
+        }
     }
   return list;
 }
@@ -384,22 +383,22 @@ MoveList * MoveGenerator::generate_legal_castle_moves(Board& b)
   if (cr & ks_c)
     {
       if (((empty & CastleMask[stm][1]) == CastleMask[stm][1]) && b.can_castle(ks_c))
-	{
-	  int frm = (stm == WHITE ? E1 : E8);
-	  int to = (stm == WHITE ? G1 : G8);
-	  U16 m = frm | (to << 6);
-	  append<CASTLE_KS>(m);
-	}
+        {
+          int frm = (stm == WHITE ? E1 : E8);
+          int to = (stm == WHITE ? G1 : G8);
+          U16 m = frm | (to << 6);
+          append<CASTLE_KS>(m);
+        }
     }
   if (cr & qs_c)
     {
       if ((empty & CastleMask[stm][0]) == CastleMask[stm][0] && b.can_castle(qs_c))
-	{
-	  int frm = (stm == WHITE ? E1 : E8);
-	  int to = (stm == WHITE ? C1 : C8);
-	  U16 m = frm | (to << 6);
-	  append<CASTLE_QS>(m);
-	}
+        {
+          int frm = (stm == WHITE ? E1 : E8);
+          int to = (stm == WHITE ? C1 : C8);
+          U16 m = frm | (to << 6);
+          append<CASTLE_QS>(m);
+        }
     }
   return list;
 }
@@ -448,9 +447,9 @@ MoveList * MoveGenerator::generate(Board& b, MoveType mt)
     {
       // allows accessing mvs.move() in move.h
       for (int i = 0; i < last; ++i)
-	{
-	  legal_i[i] = i;
-	}
+        {
+          legal_i[i] = i;
+        }
       return list;
     }
 
@@ -462,19 +461,19 @@ MoveList * MoveGenerator::generate(Board& b, MoveType mt)
       int ks = b.king_square();
       int ec = (b.whos_move() ^ 1);
       for (unsigned int i = 0; i < _sz; ++i)
-	{
-	  int frm = (list[i].m & 0x3f);
-	  int to = ((list[i].m & 0xfc0) >> 6);
-	  int mt = ((list[i].m & 0xf000) >> 12);
-	  int legal = 1;
-	  if (mt == EP || frm == ks || SquareBB[frm] & pinned)
-	    {
-	      if (mt == EP && !b.legal_ep(frm, to, ks, ec)) legal = 0;
-	      else if (frm == ks && !b.is_legal_km(ks, to, ec)) legal = 0;
-	      else if ((SquareBB[frm] & pinned) && !aligned(ks, frm, to)) legal = 0;
-	    }
-	  (legal == 1 ? legal_i[iter++] = i : last--);
-	}
+        {
+          int frm = (list[i].m & 0x3f);
+          int to = ((list[i].m & 0xfc0) >> 6);
+          int mt = ((list[i].m & 0xf000) >> 12);
+          int legal = 1;
+          if (mt == EP || frm == ks || SquareBB[frm] & pinned)
+            {
+              if (mt == EP && !b.legal_ep(frm, to, ks, ec)) legal = 0;
+              else if (frm == ks && !b.is_legal_km(ks, to, ec)) legal = 0;
+              else if ((SquareBB[frm] & pinned) && !aligned(ks, frm, to)) legal = 0;
+            }
+          (legal == 1 ? legal_i[iter++] = i : last--);
+        }
     }
   return list;
 }
@@ -504,13 +503,13 @@ MoveList * MoveGenerator::generate_qsearch_mvs(Board& b, MoveType mt, bool genCh
   if (_sz > 0)
     {
       for (unsigned int i = 0; i < _sz; ++i)
-	{
-	  int legal = 1;
-	  if (genChecks && (!b.gives_check(list[i].m) || !b.is_qsearch_mv(list[i].m))) legal = 0;
-	  if (!genChecks && !b.is_qsearch_mv(list[i].m)) legal = 0;
-	  //if (!b.is_qsearch_mv(list[i].m)) legal = 0;
-	  (legal == 1 ? legal_i[iter++] = i : last--);
-	}
+        {
+          int legal = 1;
+          if (genChecks && (!b.gives_check(list[i].m) || !b.is_qsearch_mv(list[i].m))) legal = 0;
+          if (!genChecks && !b.is_qsearch_mv(list[i].m)) legal = 0;
+          //if (!b.is_qsearch_mv(list[i].m)) legal = 0;
+          (legal == 1 ? legal_i[iter++] = i : last--);
+        }
     }
   return list;
 }
