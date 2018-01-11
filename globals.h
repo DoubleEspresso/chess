@@ -24,6 +24,9 @@ namespace Globals
   extern U64 CornersBB;
   extern U64 LongDiagonalsBB;
   extern U64 BoardEdgesBB;
+  extern U64 PawnMaskLeft[2];
+  extern U64 PawnMaskRight[2];
+  extern U64 PawnMaskAll[2];
 
   // evaluation/utility bitmaps
   extern U64 PawnAttacksBB[COLORS][SQUARES];          // the pawn attacks (by color)

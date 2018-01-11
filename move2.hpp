@@ -39,11 +39,8 @@ void MoveGenerator2<QUIETS, PAWN, WHITE>::generate(Board& b) {
 
   U64 empty = ~(b.all_pieces());
   U64 pawns = b.get_pieces(WHITE, PAWN);
-  U64 rank2 = RowBB[ROW2];
-  U64 rank7 = RowBB[ROW7];
-  U64 pawns7 = pawns & rank7;
-  U64 single_pushes = pawns ^ pawns7;
-  U64 double_pushes = pawns & rank2;
+  U64 single_pushes = pawns & PawnMaskAll[WHITE];
+  U64 double_pushes = pawns & RowBB[ROW2];
 
   shift<NORTH>(single_pushes);
   single_pushes &= empty;
@@ -63,13 +60,10 @@ void MoveGenerator2<CAPTURES, PAWN, WHITE>::generate(Board& b) {
 
   U64 enemies = b.colored_pieces(BLACK);
   U64 pawns = b.colored_pieces(WHITE);
-  U64 rank7 = RowBB[ROW7];
-  U64 pawns7 = pawns & rank7;
-  U64 pawnsNot7 = pawns ^ pawns7;
 
   // normal captures - non promotions
-  U64 left = pawnsNot7 ^ (pawnsNot7 & ColBB[COL8]);
-  U64 right = pawnsNot7 ^ (pawnsNot7 & ColBB[COL1]);  
+  U64 left = pawns & PawnMaskLeft[WHITE];
+  U64 right = pawns & PawnMaskRight[WHITE];
 
   if (left != 0ULL) {
     shift<NE>(left);
@@ -87,14 +81,14 @@ void MoveGenerator2<CAPTURES, PAWN, WHITE>::generate(Board& b) {
 template<>
 void MoveGenerator2<EP2, PAWN, WHITE>::generate(Board& b) {
 
-  U64 enemies = b.colored_pieces(BLACK);
   U64 pawns = b.colored_pieces(WHITE);
+  U64 row5 = RowBB[ROW5];
   int eps = b.get_ep_sq();
-
+  
   if (eps == SQUARE_NONE) return;
 
-  U64 ep_left = (pawns ^ (pawns & ColBB[COL8])) & RowBB[ROW5];
-  U64 ep_right = (pawns ^ (pawns & ColBB[COL1])) & RowBB[ROW5];
+  U64 ep_left = pawns & PawnMaskLeft[WHITE] & row5; 
+  U64 ep_right = pawns & PawnMaskRight[WHITE] & row5;
   
   // ep captures
   if (ep_left != 0ULL) {
@@ -110,17 +104,13 @@ void MoveGenerator2<EP2, PAWN, WHITE>::generate(Board& b) {
   }    
 }  
 
-
 template<>
 void MoveGenerator2<QUIETS, PAWN, BLACK>::generate(Board& b) {
   
   U64 empty = ~(b.all_pieces());
   U64 pawns = b.get_pieces(BLACK, PAWN);
-  U64 rank2 = RowBB[ROW7];
-  U64 rank7 = RowBB[ROW2];
-  U64 pawns7 = pawns & rank7;
-  U64 single_pushes = pawns ^ pawns7;
-  U64 double_pushes = pawns & rank2;
+  U64 single_pushes = pawns & PawnMaskAll[BLACK];
+  U64 double_pushes = pawns & RowBB[ROW7];
 
   shift<SOUTH>(single_pushes);
   single_pushes &= empty;
