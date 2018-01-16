@@ -259,10 +259,8 @@ void MoveGenerator2<CAPTURE_PROMOTIONS, PAWN, BLACK>::generate(Board& b) {
 //-----------------------------------------------------------------------------
 template<>
 void MoveGenerator2<QUIETS, KNIGHT, WHITE>::generate(Board& b) {
-
   U64  empty = ~b.all_pieces();
   int *sqs = b.sq_of<KNIGHT>(WHITE);
-
   for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs) {
     U64 quites = PseudoAttacksBB(KNIGHT, from) & empty;
     if (quites) serialize(quites, from);
@@ -271,10 +269,8 @@ void MoveGenerator2<QUIETS, KNIGHT, WHITE>::generate(Board& b) {
 
 template<>
 void MoveGenerator2<QUIETS, KNIGHT, BLACK>::generate(Board& b) {
-
   U64  empty = ~b.all_pieces();
   int *sqs = b.sq_of<KNIGHT>(BLACK);
-
   for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs) {
     U64 quites = PseudoAttacksBB(KNIGHT, from) & empty;
     if (quites != 0ULL) serialize(quites, from);
@@ -296,14 +292,159 @@ void MoveGenerator2<QUIETS, KING, BLACK>::generate(Board& b) {
 }
 
 template<>
+void MoveGenerator2<CAPTURES, KING, WHITE>::generate(Board& b) {
+  int f = b.king_square(WHITE);
+  U64 mvs = PseudoAttacksBB(KING, f) & (b.colored_pieces(BLACK));
+  if (mvs != 0ULL) serialize(mvs, f); 
+}
+
+template<>
+void MoveGenerator2<CAPTURES, KING, BLACK>::generate(Board& b) {
+  int f = b.king_square(BLACK);
+  U64 mvs = PseudoAttacksBB(KING, f) & (b.colored_pieces(WHITE));
+  if (mvs != 0ULL) serialize(mvs, f); 
+}
+
+template<>
 void MoveGenerator2<QUIETS, BISHOP, WHITE>::generate(Board& b) {
   int * sqs = b.sq_of<BISHOP>(WHITE);
   U64 mask = b.all_pieces();
   U64 empty = ~mask;
   for (int f = *++sqs; f != SQUARE_NONE; f = *++sqs) {
     U64 mvs = Magic::attacks<BISHOP>(mask, f);
-
     mvs &= empty;
+    if (mvs != 0ULL) serialize(mvs, f);
+  }
+}
+
+template<>
+void MoveGenerator2<QUIETS, BISHOP, BLACK>::generate(Board& b) {
+  int * sqs = b.sq_of<BISHOP>(BLACK);
+  U64 mask = b.all_pieces();
+  U64 empty = ~mask;
+  for (int f = *++sqs; f != SQUARE_NONE; f = *++sqs) {
+    U64 mvs = Magic::attacks<BISHOP>(mask, f);
+    mvs &= empty;
+    if (mvs != 0ULL) serialize(mvs, f);
+  }
+}
+
+template<>
+void MoveGenerator2<CAPTURES, BISHOP, WHITE>::generate(Board& b) {
+  int * sqs = b.sq_of<BISHOP>(WHITE);
+  U64 mask = b.all_pieces();
+  U64 enemies = b.colored_pieces(BLACK);
+  for (int f = *++sqs; f != SQUARE_NONE; f = *++sqs) {
+    U64 mvs = Magic::attacks<BISHOP>(mask, f);
+    mvs &= enemies;
+    if (mvs != 0ULL) serialize(mvs, f);
+  }
+}
+
+template<>
+void MoveGenerator2<CAPTURES, BISHOP, BLACK>::generate(Board& b) {
+  int * sqs = b.sq_of<BISHOP>(BLACK);
+  U64 mask = b.all_pieces();
+  U64 enemies = b.colored_pieces(WHITE);
+  for (int f = *++sqs; f != SQUARE_NONE; f = *++sqs) {
+    U64 mvs = Magic::attacks<BISHOP>(mask, f);
+    mvs &= enemies;
+    if (mvs != 0ULL) serialize(mvs, f);
+  }
+}
+
+template<>
+void MoveGenerator2<QUIETS, ROOK, WHITE>::generate(Board& b) {
+  int * sqs = b.sq_of<ROOK>(WHITE);
+  U64 mask = b.all_pieces();
+  U64 empty = ~mask;
+  for (int f = *++sqs; f != SQUARE_NONE; f = *++sqs) {
+    U64 mvs = Magic::attacks<ROOK>(mask, f);
+    mvs &= empty;
+    if (mvs != 0ULL) serialize(mvs, f);
+  }
+}
+
+template<>
+void MoveGenerator2<QUIETS, ROOK, BLACK>::generate(Board& b) {
+  int * sqs = b.sq_of<ROOK>(BLACK);
+  U64 mask = b.all_pieces();
+  U64 empty = ~mask;
+  for (int f = *++sqs; f != SQUARE_NONE; f = *++sqs) {
+    U64 mvs = Magic::attacks<ROOK>(mask, f);
+    mvs &= empty;
+    if (mvs != 0ULL) serialize(mvs, f);
+  }
+}
+
+template<>
+void MoveGenerator2<CAPTURES, ROOK, WHITE>::generate(Board& b) {
+  int * sqs = b.sq_of<ROOK>(WHITE);
+  U64 mask = b.all_pieces();
+  U64 enemies = b.colored_pieces(BLACK);
+  for (int f = *++sqs; f != SQUARE_NONE; f = *++sqs) {
+    U64 mvs = Magic::attacks<ROOK>(mask, f);
+    mvs &= enemies;
+    if (mvs != 0ULL) serialize(mvs, f);
+  }
+}
+
+template<>
+void MoveGenerator2<CAPTURES, ROOK, BLACK>::generate(Board& b) {
+  int * sqs = b.sq_of<ROOK>(BLACK);
+  U64 mask = b.all_pieces();
+  U64 enemies = b.colored_pieces(WHITE);
+  for (int f = *++sqs; f != SQUARE_NONE; f = *++sqs) {
+    U64 mvs = Magic::attacks<ROOK>(mask, f);
+    mvs &= enemies;
+    if (mvs != 0ULL) serialize(mvs, f);
+  }
+}
+
+template<>
+void MoveGenerator2<QUIETS, QUEEN, WHITE>::generate(Board& b) {
+  int * sqs = b.sq_of<QUEEN>(WHITE);
+  U64 mask = b.all_pieces();
+  U64 empty = ~mask;
+  for (int f = *++sqs; f != SQUARE_NONE; f = *++sqs) {
+    U64 mvs = (Magic::attacks<ROOK>(mask, f) | Magic::attacks<BISHOP>(mask, f));
+    mvs &= empty;
+    if (mvs != 0ULL) serialize(mvs, f);
+  }
+}
+
+template<>
+void MoveGenerator2<QUIETS, QUEEN, BLACK>::generate(Board& b) {
+  int * sqs = b.sq_of<QUEEN>(BLACK);
+  U64 mask = b.all_pieces();
+  U64 empty = ~mask;
+  for (int f = *++sqs; f != SQUARE_NONE; f = *++sqs) {
+    U64 mvs = (Magic::attacks<ROOK>(mask, f) | Magic::attacks<BISHOP>(mask, f));
+    mvs &= empty;
+    if (mvs != 0ULL) serialize(mvs, f);
+  }
+}
+
+template<>
+void MoveGenerator2<CAPTURES, QUEEN, WHITE>::generate(Board& b) {
+  int * sqs = b.sq_of<QUEEN>(WHITE);
+  U64 mask = b.all_pieces();
+  U64 enemies = b.colored_pieces(BLACK);
+  for (int f = *++sqs; f != SQUARE_NONE; f = *++sqs) {
+    U64 mvs = (Magic::attacks<ROOK>(mask, f) | Magic::attacks<BISHOP>(mask, f));
+    mvs &= enemies;
+    if (mvs != 0ULL) serialize(mvs, f);
+  }
+}
+
+template<>
+void MoveGenerator2<CAPTURES, QUEEN, BLACK>::generate(Board& b) {
+  int * sqs = b.sq_of<QUEEN>(BLACK);
+  U64 mask = b.all_pieces();
+  U64 enemies = b.colored_pieces(WHITE);
+  for (int f = *++sqs; f != SQUARE_NONE; f = *++sqs) {
+    U64 mvs = (Magic::attacks<ROOK>(mask, f) | Magic::attacks<BISHOP>(mask, f));
+    mvs &= enemies;
     if (mvs != 0ULL) serialize(mvs, f);
   }
 }

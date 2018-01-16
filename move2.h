@@ -49,7 +49,7 @@ class MoveGenerator2 {
   
  public:
   MoveGenerator2() : it(0), last(0) {}
-  MoveGenerator2<T,p,c>(Board& b) : it(0), last(0) { }
+  MoveGenerator2<T,p,c>(Board& b) : it(0), last(0) { generate(b); }
 
   void test_gen();
   void print();

@@ -64,11 +64,9 @@ void UCI::command(std::string cmd, int& GAME_OVER)
           std::cout << "Fen: " << b.to_fen() << std::endl;
         }
 
-      else if (command == "newmoves") {
-        MoveGenerator2<QUIETS, PAWN, WHITE> mvs(b);
-        MoveGenerator2<CAPTURE_PROMOTIONS, PAWN, WHITE> mvs2(b);
+      else if (command == "newmvs") {
+        MoveGenerator2<QUIETS, QUEEN, WHITE> mvs(b);
         mvs.print();
-        mvs2.print();
       }
       else if (command == "mc" || command == "mcsearch") {
         MCTree mc;
