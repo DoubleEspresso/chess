@@ -8,8 +8,7 @@
 
 // the basic table entry
 // notes: 5 * 16 + 16 bits = 96 bits / 8 = 12 bytes
-struct TableEntry
-{
+struct TableEntry {
 	int Depth() { return depth - 1; } // adjustment for qsearch depths which can be -1
 	U16 pkey; // higher 16 bits of poskey
 	U16 dkey; // higher 16 bits of data key
@@ -26,16 +25,14 @@ struct TableEntry
 // with 4 bytes of data to = cache line size of modern intel cpus
 const int ClusterSize = 5;
 
-struct HashCluster
-{
+struct HashCluster {
 	TableEntry cluster_entries[ClusterSize];
 	char padding[4];
 };
 
 // the transposition table class, the hash table consists of a power of 2 of 
 // clusters each containing 5 entries.
-class HashTable
-{
+class HashTable {
 private:
 	size_t sz_kb;
 	size_t clusterCount;
@@ -54,8 +51,7 @@ public:
 	U64 check_elts() { return nb_elts; }
 };
 
-inline TableEntry * HashTable::first_entry(U64 key)
-{
+inline TableEntry * HashTable::first_entry(U64 key) {
 	return &entry[key & (clusterCount - 1)].cluster_entries[0];
 }
 

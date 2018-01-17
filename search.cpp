@@ -28,9 +28,6 @@ namespace
 
   template<NodeType type>
   int search(Board& b, int alpha, int beta, int depth, Node* stack);
-
-  template<NodeType type>
-  int simulate(Board& b, int alpha, int beta, int depth, Node* stack);
   
   template<NodeType type>
   int qsearch(Board& b, int alpha, int beta, int depth, Node* stack, bool inCheck);
@@ -191,7 +188,10 @@ namespace {
     (stack + 1)->excludedMove = MOVE_NONE;
     U16 excluded_move = stack->excludedMove;
     stack->ply = (stack - 1)->ply++;
-    stack->currmove = stack->bestmove = (stack + 2)->killer[0] = (stack + 2)->killer[1] = (stack + 2)->killer[2] = (stack + 2)->killer[3] = MOVE_NONE;
+    stack->currmove = 
+      stack->bestmove = (stack + 2)->killer[0] = 
+      (stack + 2)->killer[1] = (stack + 2)->killer[2] = 
+      (stack + 2)->killer[3] = MOVE_NONE;
     stack->givescheck = false;
 
     // clear pv
@@ -258,7 +258,7 @@ namespace {
     // and saved the result in ttvalue .. so using ttvalue is typically better than static::Evaluate, but could still
     // be innaccurate.
     int static_eval = NINF;
-    if (!b.in_check()) static_eval = (ttvalue > NINF && pv_node ? ttvalue : Eval::evaluate(b));
+    if (!b.in_check()) static_eval = (ttvalue > NINF ? ttvalue : Eval::evaluate(b));
     stack->static_eval = static_eval;
 
     // dbg check on evaluate vs. search vs. ttvalue
@@ -277,7 +277,7 @@ namespace {
 
     // 4. -- drop into qsearch if we are losing
     float rm = RazorMargin(depth);
-    if (depth <= 4 &&
+    if (depth <= 4  &&
         !pv_node &&
         ttm == MOVE_NONE &&
         !stack->isNullSearch &&
@@ -363,19 +363,19 @@ namespace {
     if (ttm == MOVE_NONE &&
         depth >= (pv_node ? 8 : 6) &&
         (pv_node || static_eval + 250 >= beta) &&
-        !b.in_check()) {
-      
-      int R = (depth >= 8 ? depth / 2 : 2);
-      int iid = depth - R;// depth - 2 - (pv_node ? 0 : depth / 4);
-
-      stack->isNullSearch = true;
-	
-      if (pv_node) search<PV>(b, alpha, beta, iid, stack);	
-      else search<NONPV>(b, alpha, beta, iid, stack);
-
-      stack->isNullSearch = false;
-      if (hashTable.fetch(key, e)) ttm = e.move;
-    }
+        !b.in_check()) 
+      {        
+        int R = (depth >= 8 ? depth / 2 : 2);
+        int iid = depth - R;// depth - 2 - (pv_node ? 0 : depth / 4);
+        
+        stack->isNullSearch = true;
+        
+        if (pv_node) search<PV>(b, alpha, beta, iid, stack);	
+        else search<NONPV>(b, alpha, beta, iid, stack);
+        
+        stack->isNullSearch = false;
+        if (hashTable.fetch(key, e)) ttm = e.move;
+      }
 
     // check if singular extension node
     singular_extension = !ROOT &&

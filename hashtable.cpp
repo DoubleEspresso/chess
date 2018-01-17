@@ -7,18 +7,14 @@ HashTable hashTable;
 
 HashTable::HashTable() : entry(0) { }
 
-HashTable::~HashTable()
-{
-	if (entry)
-	{
+HashTable::~HashTable() {
+	if (entry) {
 		printf("..deleting TableEntry pointer\n");
 		delete[] entry; entry = 0;
 	}
 }
-void HashTable::clear()
-{
+void HashTable::clear() {
 	memset(entry, 0, sizeof(HashCluster) * clusterCount);
-	//printf("..cleared hash table\n");
 }
 
 bool HashTable::init()
@@ -30,12 +26,10 @@ bool HashTable::init()
 	clusterCount = nearest_power_of_2(clusterCount);
 	clusterCount = clusterCount <= 256 ? 256 : clusterCount;
 
-	if (!entry && (entry = new HashCluster[clusterCount]()))
-	{
+	if (!entry && (entry = new HashCluster[clusterCount]())) {
 		//printf("..initialized main hash table: size %3.1f kb, %lu elts.\n", float(clusterCount)*float(sizeof(HashCluster)) / float(1024.0), clusterCount);
 	}
-	else
-	{
+	else {
 		printf("..[HashTable] alloc failed\n");
 		return false;
 	}
@@ -43,15 +37,12 @@ bool HashTable::init()
 	return true;
 }
 
-bool HashTable::fetch(U64 key, TableEntry& ein)
-{
+bool HashTable::fetch(U64 key, TableEntry& ein) {
 	TableEntry * e = first_entry(key);
 	U16 key16 = key >> 48;
 
-	for (unsigned i = 0; i < ClusterSize; ++i, ++e)
-	{
-		if ((e->pkey > 0) && (((e->pkey) ^ (e->dkey)) == key16))
-		{
+	for (unsigned i = 0; i < ClusterSize; ++i, ++e) {
+		if ((e->pkey > 0) && (((e->pkey) ^ (e->dkey)) == key16)) {
 			ein = *e;
 			return true;
 		}
@@ -59,19 +50,16 @@ bool HashTable::fetch(U64 key, TableEntry& ein)
 	return false;
 }
 
-void HashTable::store(U64 key, U64 data, U8 depth, Bound bound, U16 m, int score, int static_value, bool pv_node)
-{
+void HashTable::store(U64 key, U64 data, U8 depth, Bound bound, U16 m, int score, int static_value, bool pv_node) {
 	TableEntry * e, *replace;
 	U16 key16 = key >> 48;
 	U16 data16 = data >> 48;
 
 	e = replace = first_entry(key);
 
-	for (unsigned i = 0; i < ClusterSize; ++i, ++e)
-	{
+	for (unsigned i = 0; i < ClusterSize; ++i, ++e) {
 		// empty entry or found collision
-		if ((!e->pkey) || (((e->pkey) ^ (e->dkey)) == key16))
-		{
+		if ((!e->pkey) || (((e->pkey) ^ (e->dkey)) == key16)) {
 			if (!m)
 				m = e->move;
 
@@ -81,8 +69,9 @@ void HashTable::store(U64 key, U64 data, U8 depth, Bound bound, U16 m, int score
 		}
 
 		// replacement strategy for each cluster -- needs work
-		if (e->depth > depth || (e->bound != BOUND_EXACT && bound == BOUND_EXACT))
-			replace = e;
+		if (e->depth > depth || 
+        (e->bound != BOUND_EXACT && bound == BOUND_EXACT))
+      replace = e;
 	}
 
 	replace->pkey = key16^data16;
