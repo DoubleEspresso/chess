@@ -49,7 +49,7 @@
 #define MATED_IN_MAXPLY MATED_VAL+MAXPLY
 
 // chess definitions
-  const std::string START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    const std::string START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 enum Color { WHITE, BLACK, COLORS, COLOR_NONE };
 
@@ -70,20 +70,19 @@ enum MoveType {
 };
 
 
-enum MaterialValue
-  {
-    PawnValueMG = 90,
-    KnightValueMG = 320,
-    BishopValueMG = 360,
-    RookValueMG = 550,
-    QueenValueMG = 990,
+enum MaterialValue {
+  PawnValueMG = 90,
+  KnightValueMG = 320,
+  BishopValueMG = 360,
+  RookValueMG = 550,
+  QueenValueMG = 990,
 
-    PawnValueEG = 100,
-    KnightValueEG = 335,
-    BishopValueEG = 395,
-    RookValueEG = 595,
-    QueenValueEG = 1045
-  };
+  PawnValueEG = 100,
+  KnightValueEG = 335,
+  BishopValueEG = 395,
+  RookValueEG = 595,
+  QueenValueEG = 1045
+};
 
 /*
   endgame material encoding reference : kxxk where xx is given by the following encodings

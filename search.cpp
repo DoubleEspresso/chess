@@ -248,7 +248,7 @@ namespace {
           if (ttm != MOVE_NONE) statistics.update(b, ttm, lastmove, stack, depth, eval, quiets);
           return e.value;
         }
-        else if (e.bound == BOUND_HIGH  && e.value <= alpha) return e.value;
+        else if (e.bound == BOUND_HIGH && e.value <= alpha) return e.value;
       }
     }
     
@@ -258,7 +258,7 @@ namespace {
     // and saved the result in ttvalue .. so using ttvalue is typically better than static::Evaluate, but could still
     // be innaccurate.
     int static_eval = NINF;
-    if (!b.in_check()) static_eval = (ttvalue > NINF ? ttvalue : Eval::evaluate(b));
+    if (!b.in_check()) static_eval = (ttvalue > NINF && pv_node ? ttvalue : Eval::evaluate(b));
     stack->static_eval = static_eval;
 
     // dbg check on evaluate vs. search vs. ttvalue
@@ -277,7 +277,7 @@ namespace {
 
     // 4. -- drop into qsearch if we are losing
     float rm = RazorMargin(depth);
-    if (depth <= 4  &&
+    if (depth <= 4  && 0 &&
         !pv_node &&
         ttm == MOVE_NONE &&
         !stack->isNullSearch &&
@@ -303,7 +303,7 @@ namespace {
         !pv_node &&
         !b.in_check() &&
         !stack->isNullSearch &&
-        static_eval - 200 * depth >= beta &&
+        static_eval - 100 * depth >= beta &&
         beta < INF - mate_dist &&
         b.non_pawn_material(b.whos_move())) {
       return beta; // fail hard
