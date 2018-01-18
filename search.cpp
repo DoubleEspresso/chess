@@ -303,7 +303,7 @@ namespace {
         !pv_node &&
         !b.in_check() &&
         !stack->isNullSearch &&
-        static_eval - 100 * depth >= beta &&
+        static_eval - 50 * depth >= beta &&
         beta < INF - mate_dist &&
         b.non_pawn_material(b.whos_move())) {
       return beta; // fail hard
