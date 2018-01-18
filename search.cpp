@@ -362,7 +362,7 @@ namespace {
     // 7. -- internal iterative deepening
     if (ttm == MOVE_NONE &&
         depth >= (pv_node ? 8 : 6) &&
-        (pv_node || static_eval + 250 >= beta) &&
+        //(pv_node || static_eval + 250 >= beta) &&
         !b.in_check()) 
       {        
         int R = (depth >= 8 ? depth / 2 : 2);
@@ -409,7 +409,8 @@ namespace {
       bool inCheck = b.in_check();
       bool isQuiet = b.is_quiet(move);
       bool pvMove = (moves_searched == 0 && pv_node);
-
+      int see_sign = b.see_sign(move);
+      
       // see pruning at shallow depths
       if (!pv_node && !ROOT && !pvMove &&
           !givesCheck &&
@@ -417,7 +418,7 @@ namespace {
           move != ttm &&
           !inCheck &&
           depth <= 3 &&
-          b.see_sign(move) < 0)
+          see_sign < 0)
         {
           ++pruned;
           continue;
@@ -425,7 +426,7 @@ namespace {
 
       // extension/reductions
       int extension = 0; int reduction = 1; // always reduce current depth by 1
-      if (givesCheck && b.see_sign(move) >= 0) extension += 1;
+      if (givesCheck && see_sign >= 0) extension += 1;
       if (threat_extension) extension += 1;
 
       // singular extension search (same implementation as stockfish)
