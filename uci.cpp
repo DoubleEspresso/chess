@@ -156,8 +156,6 @@ void UCI::command(std::string cmd, int& GAME_OVER)
             {
               int val = b.see_move(move);
               std::cout << "See score:  " << val << std::endl;
-              int val2 = b.see_move(move);
-              std::cout << "See2 score:  " << val2 << std::endl;
             }
           else std::cout << " (dbg) See : error, illegal move." << std::endl;
         }

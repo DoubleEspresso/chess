@@ -229,7 +229,7 @@ namespace {
       //printf("!!DBG (search-mated) mate distance pruning :: depth(%d) alpha(%d),mated_val(%d),beta(%d), bm=%s\n", depth, alpha, mated_val, beta, UCI::move_to_string(stack->bestmove).c_str());
       return mated_val;
     }
-
+    
     // 2. -- ttable lookup 
     data = b.data_key();
     key = b.pos_key();
@@ -238,7 +238,7 @@ namespace {
       //ttstatic_value = e.static_value;	
       ttvalue = e.value;
       ++hash_hits;
-
+      
       if (pv_node && e.Depth() >= depth) { 	  
         if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta) {
           stack->currmove = stack->bestmove = e.move;
@@ -362,11 +362,11 @@ namespace {
     // 7. -- internal iterative deepening
     if (ttm == MOVE_NONE &&
         depth >= (pv_node ? 8 : 6) &&
-        //(pv_node || static_eval + 250 >= beta) &&
+        (pv_node || static_eval + 250 >= beta) &&
         !b.in_check()) 
       {        
-        int R = (depth >= 8 ? depth / 2 : 2);
-        int iid = depth - R;// depth - 2 - (pv_node ? 0 : depth / 4);
+        int R = (depth >= 8 ? depth / 2 + (depth - 8) / 4 : 2);
+        int iid = depth - R; // depth - 2 - (pv_node ? 0 : depth / 4);
         
         stack->isNullSearch = true;
         
@@ -378,6 +378,7 @@ namespace {
       }
 
     // check if singular extension node
+    /*
     singular_extension = !ROOT &&
       depth >= 8 &&
       ttm != MOVE_NONE &&
@@ -385,7 +386,7 @@ namespace {
       e.depth > depth - 3 &&
       excluded_move == MOVE_NONE && // no recursion
       ttvalue < INF - mate_dist && beta < INF - mate_dist;
-    
+    */
     // 6. -- moves search
     BoardData pd;
     MoveSelect ms(statistics, MainSearch);
@@ -454,7 +455,7 @@ namespace {
           move != stack->killer[1])
         {
           reduction += 1;
-          if (depth > 8 && !pv_node) reduction += 1;
+          if (depth > 8 && !pv_node) reduction += (depth - 8) / 2; 
         }
 
       // adjust search depth based on reduction/extensions
@@ -493,21 +494,22 @@ namespace {
           //extension == 0 &&
           depth > 3 &&
           !b.pawn_on_7(b.whos_move()) &&
-          moves_searched > 3) {
-        int R = Reduction(pv_node, improving, newdepth, moves_searched)/3;
-        int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];
-        if (v <= (NINF - 1)) R += 1;
-        int LMR = newdepth - R;
-        eval = (LMR <= 1 ? -qsearch<NONPV>(b, -alpha - 1, -alpha, 0, stack + 1, givesCheck) : -search<NONPV>(b, -alpha - 1, -alpha, LMR, stack + 1));
-        if (eval > alpha) fulldepthSearch = true;
-      }
+          moves_searched > 3)
+	{
+	  int R = Reduction(pv_node, improving, newdepth, moves_searched)/3;
+	  int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];
+	  if (v <= (NINF - 1)) R += 1;
+	  int LMR = newdepth - R;
+	  eval = (LMR <= 1 ? -qsearch<NONPV>(b, -alpha - 1, -alpha, 0, stack + 1, givesCheck) : -search<NONPV>(b, -alpha - 1, -alpha, LMR, stack + 1));
+	  if (eval > alpha) fulldepthSearch = true;
+	}
       else fulldepthSearch = !pvMove;
-
+      
       if (fulldepthSearch) {
         //printf("!!DBG fulldepthSearch(true) move(%s) newdepth(%d), alpha(%d) eval(%d) beta(%d), nodes(%d), msnodes(%d), qsnodes(%d)\n", (b.whos_move() == WHITE ? "white" : "black"), newdepth, alpha, eval, beta, b.get_nodes_searched(), b.MSnodes(), b.QSnodes());
         eval = (newdepth <= 1 ? -qsearch<NONPV>(b, -alpha - 1, -alpha, 0, stack + 1, givesCheck) : -search<NONPV>(b, -alpha - 1, -alpha, newdepth, stack + 1));
       }
-
+      
       if (pvMove || eval > alpha) {
         //printf("!!DBG pvSearch(true) move(%s) newdepth(%d), alpha(%d) eval(%d) beta(%d), nodes(%d), msnodes(%d), qsnodes(%d)\n", (b.whos_move() == WHITE ? "white" : "black"), newdepth, alpha, eval, beta, b.get_nodes_searched(), b.MSnodes(), b.QSnodes());
         eval = (newdepth <= 1 ? -qsearch<PV>(b, -beta, -alpha, 0, stack + 1, givesCheck) : -search<PV>(b, -beta, -alpha, newdepth, stack + 1));
@@ -686,17 +688,18 @@ namespace {
         continue;
         }
       
-        if (move != ttm &&
-        !checksKing &&
-        !inCheck &&
-        !pv_node &&
-        eval + 850 < alpha &&
-        eval > NINF + mate_dist) {
+      if (move != ttm &&
+	  !checksKing &&
+	  !inCheck &&
+	  !pv_node &&
+	  eval + 750 < alpha &&
+	  eval > NINF + mate_dist) {
         ++pruned;
         continue;
-        }
+      }
       */
-      // prune captures which have see values < 0	
+      
+      // prune captures which have see values < 0      
       if (!inCheck
           && !pv_node
           && !checksKing
@@ -706,7 +709,7 @@ namespace {
           ++pruned;
           continue;
         }
-
+      
       BoardData pd;
       b.do_move(pd, move, true);
       eval = -qsearch<type>(b, -beta, -alpha, depth - 1, stack + 1, checksKing);

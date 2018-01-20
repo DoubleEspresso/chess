@@ -158,7 +158,7 @@ void Board::from_fen(std::istringstream& is)
   // the move counter
   is >> position->hmvs;
   position->dKey ^= position->hmvs;
-
+  
   //-------------------------------------
   // additional setup routines
   // 1. check if king in check, pinned pieces to king
@@ -171,7 +171,7 @@ void Board::from_fen(std::istringstream& is)
 
   // check info
   position->in_check = is_attacked(position->ks, position->stm, position->stm ^ 1);  
-  (position->in_check ? position->checkers = (attackers_of(position->ks) & colored_pieces(position->stm ^ 1)) : 0ULL);
+  (position->in_check ? position->checkers = (attackers_of(position->ks, position->stm^1)) : 0ULL);
 }
 void Board::do_null_move(BoardData& d)
 {
@@ -206,10 +206,12 @@ void Board::do_null_move(BoardData& d)
   position->king_square[WHITE] = square_of_arr[WHITE][KING][1];
   position->king_square[BLACK] = square_of_arr[BLACK][KING][1];
 }
+
 void Board::undo_null_move()
 {
   position = position->previous;
 }
+
 void Board::do_move(BoardData& d, U16 m, bool qsMove)
 {
   int from = int(m & 0x3f);
@@ -363,7 +365,7 @@ void Board::do_move(BoardData& d, U16 m, bool qsMove)
 
   // if in check, set the checkers bitmap
   position->in_check = is_attacked(position->ks, position->stm, us);
-  position->checkers = (position->in_check ? attackers_of(position->ks) & colored_pieces(position->stm ^ 1) : 0ULL);
+  position->checkers = (position->in_check ? attackers_of(position->ks, position->stm^1) : 0ULL);
 
 
   // update discovered checking candidates
@@ -466,22 +468,7 @@ void Board::undo_move(U16 m)
   // copy the position state back to previous
   position = position->previous;
 }
-bool Board::is_quiet(U16& move)
-{
-  int mt = ((move & 0xf000) >> 12);
-  return (mt != EP && mt != CAPTURE && mt != PROMOTION_CAP);
-}
-bool Board::is_qsearch_mv(U16& move)
-{
-  int mt = ((move & 0xf000) >> 12);
-  return mt != MOVE_NONE && (mt == EP || mt == CAPTURE || mt <= PROMOTION || (mt > PROMOTION && mt <= PROMOTION_CAP));
-}
-bool Board::is_promotion(const U16& m)
-{
-  int type = ((m & 0xf000) >> 12);
-  return ((type != MOVE_NONE && type <= PROMOTION) ||
-          (type > PROMOTION && type <= PROMOTION_CAP));
-}
+
 bool Board::is_legal(U16& move)
 {
   // note: assumed move is made by color = position->stm
@@ -496,103 +483,82 @@ bool Board::is_legal(U16& move)
   int mt = ((move & 0xf000) >> 12);
   int piece = piece_on(frm);
 
-  // sanity checks 
+  // sanity checks
   if (to == eks) return false;
   if (color_on(frm) != whos_move() || piece == PIECE_NONE) return false;
   if (color_on(to) == whos_move()) return false;
+
+  
   if ((mt == QUIET || is_quiet_promotion(move) || mt == EP) && color_on(to) != COLOR_NONE) return false;
   if ((mt == CAPTURE || is_cap_promotion(move)) && color_on(to) != ec) return false;
   if (mt <= PROMOTION && piece != PAWN) return false;
   if (mt > PROMOTION && mt <= PROMOTION_CAP && piece != PAWN) return false;
 
-  if (piece == KNIGHT)
-    {
-      U64 tmp = (SquareBB[to] & PseudoAttacksBB(KNIGHT, frm));
-      if (!tmp)
-        {
-          return false;
-        }
+  if (piece == KNIGHT) {
+    U64 tmp = (SquareBB[to] & PseudoAttacksBB(KNIGHT, frm));
+    if (tmp == 0ULL) return false;
+  }
+  
+  if (piece == KING) {
+    if (mt == CASTLE_KS || mt == CASTLE_QS) return true; // already checked
+    U64 tmp = (SquareBB[to] & PseudoAttacksBB(KING, frm));
+    if (tmp == 0ULL) return false;
+  }
+  
+  if (piece == PAWN) {
+    int cdiff = (COL(frm) - COL(to));
+    if (cdiff == -1 || cdiff == 1) {
+      if ((mt == CAPTURE || mt == PROMOTION_CAP)
+	  && mt != EP && color_on(to) == COLOR_NONE)
+	{
+	  return false;
+	}
     }
-
-  if (piece == KING)
-    {
-      if (mt == CASTLE_KS || mt == CASTLE_QS) return true; // assumed legal
-      U64 tmp = (SquareBB[to] & PseudoAttacksBB(KING, frm));
-      if (!tmp)
-        {
-          return false;
-        }
+    else if (cdiff == 0 && mt == QUIET) {
+      if (color_on(to) != COLOR_NONE) {
+	return false;
+      }
     }
-
-  if (piece == PAWN)
-    {
-      int cdiff = (COL(frm) - COL(to));
-      if (cdiff == -1 || cdiff == 1)
-        {
-          if ((mt == CAPTURE || mt == PROMOTION_CAP)
-              && mt != EP && color_on(to) == COLOR_NONE)
-            {
-              return false;
-            }
-        }
-      else if (cdiff == 0 && mt == QUIET)
-        {
-          if (color_on(to) != COLOR_NONE)
-            {
-              return false;
-            }
-        }
-    }
-
+  }
+  
   U64 mask = all_pieces();
-  if (piece == BISHOP)
-    {
-      U64 bmvs = attacks<BISHOP>(mask, frm);
-      U64 tmp = (SquareBB[to] & bmvs);
-      if (!tmp)
-        {
-          return false;
-        }
-    }
-  if (piece == ROOK)
-    {
-      U64 rmvs = attacks<ROOK>(mask, frm);
-      U64 tmp = (SquareBB[to] & rmvs);
-      if (!tmp)
-        {
-          return false;
-        }
-    }
-  if (piece == QUEEN)
-    {
-      U64 qmvs = attacks<BISHOP>(mask, frm) | attacks<ROOK>(mask, frm);
-      U64 tmp = (SquareBB[to] & qmvs);
-      if (!tmp)
-        {
-          return false;
-        }
-    }
-
-  if (mt == EP || frm == ks || SquareBB[frm] & pinnd)
-    {
-      if (mt == EP && !legal_ep(frm, to, ks, ec)) return false;
-      else if (frm == ks && !is_legal_km(ks, to, ec)) return false;
-      else if ((SquareBB[frm] & pinnd) && !aligned(ks, frm, to)) return false;
-    }
-
+  if (piece == BISHOP) {
+    U64 bmvs = attacks<BISHOP>(mask, frm);
+    U64 tmp = (SquareBB[to] & bmvs);
+    if (tmp == 0ULL) return false;
+  }
+  
+  if (piece == ROOK) {
+    U64 rmvs = attacks<ROOK>(mask, frm);
+    U64 tmp = (SquareBB[to] & rmvs);
+    if (tmp == 0ULL) return false;
+  }
+  
+  if (piece == QUEEN) {
+    U64 qmvs = attacks<BISHOP>(mask, frm) | attacks<ROOK>(mask, frm);
+    U64 tmp = (SquareBB[to] & qmvs);
+    if (tmp == 0ULL) return false;    
+  }
+  
+  
+  if (mt == EP || frm == ks || SquareBB[frm] & pinnd) {
+    if (mt == EP && !legal_ep(frm, to, ks, ec)) return false;
+    else if (frm == ks && !is_legal_km(ks, to, ec)) return false;
+    else if ((SquareBB[frm] & pinnd) && !aligned(ks, frm, to)) return false;
+  }
+  
   // catch quiet moves which block/capture checking piece
-  if (in_check() && frm != ks)
-    {
-      U64 frm_to = (SquareBB[frm] | SquareBB[to]); U64 t = SquareBB[to];
-      U64 m = all_pieces() ^ frm_to;
-
-      // ep already handled
-      if (mt == CAPTURE || mt == PROMOTION_CAP) { pieces[ec][piece_on(to)] ^= t; m |= t; }
-      bool incheck = is_attacked(ks, ec ^ 1, ec, m);
-      if (mt == CAPTURE || mt == PROMOTION_CAP)  pieces[ec][piece_on(to)] ^= t;
-
-      return !incheck;
-    }
+  if (in_check() && frm != ks) {
+    U64 frm_to = (SquareBB[frm] | SquareBB[to]); U64 t = SquareBB[to];
+    U64 m = all_pieces() ^ frm_to;
+    
+    // ep already handled
+    if (mt == CAPTURE || mt == PROMOTION_CAP) { pieces[ec][piece_on(to)] ^= t; m |= t; }
+    bool incheck = is_attacked(ks, ec ^ 1, ec, m);
+    if (mt == CAPTURE || mt == PROMOTION_CAP)  pieces[ec][piece_on(to)] ^= t;    
+    return !incheck;
+  }
+  
   return true;
 }
 int Board::phase()
@@ -714,20 +680,20 @@ void Board::clear()
   castled[WHITE] = castled[BLACK] = false;
   position = &start;
 }
+
 // note : perf testing on linux reveals this method takes approx ~13% of execution time! (try to avoid using)
-U64 Board::attackers_of(int s) 
+U64 Board::attackers_of(int s, int c)
 {
   U64 mask = all_pieces();
   U64 battck = attacks<BISHOP>(mask, s);
   U64 rattck = attacks<ROOK>(mask, s);
   U64 qattck = battck | rattck;
-  return ((PawnAttacksBB[BLACK][s] & pieces[WHITE][PAWN]) |
-          (PawnAttacksBB[WHITE][s] & pieces[BLACK][PAWN]) |
-          (PseudoAttacksBB(KNIGHT, s) & (pieces[BLACK][KNIGHT] | pieces[WHITE][KNIGHT])) |
-          (PseudoAttacksBB(KING, s) & (pieces[BLACK][KING] | pieces[WHITE][KING])) |
-          (battck & (pieces[WHITE][BISHOP] | pieces[BLACK][BISHOP])) |
-          (rattck & (pieces[WHITE][ROOK] | pieces[BLACK][ROOK])) |
-          (qattck & (pieces[WHITE][QUEEN] | pieces[BLACK][QUEEN])));
+  return ((PawnAttacksBB[c^1][s] & pieces[c][PAWN]) |
+          (PseudoAttacksBB(KNIGHT, s) & pieces[c][KNIGHT]) |
+          (PseudoAttacksBB(KING, s) & (pieces[c][KING])) |
+          (battck & (pieces[c][BISHOP])) |
+          (rattck & (pieces[c][ROOK])) |
+          (qattck & (pieces[c][QUEEN])));
 }
 U64 Board::attackers_of(int s, U64& mask)
 {
@@ -763,20 +729,7 @@ bool Board::is_attacked(const U8 &ks, const U8 &fc, const U8 &ec) {
   return (attacks<BISHOP>(m, ks) & (get_pieces(ec, QUEEN) | get_pieces(ec, BISHOP))) ||
     (attacks<ROOK>(m, ks) & (get_pieces(ec, QUEEN) | get_pieces(ec, ROOK)));
 }
-int Board::smallest_attacker(int sq, int color, int& from)
-{
-  U64 occupied = SquareBB[sq] & pieces_by_color[whos_move() == WHITE ? BLACK : WHITE];
-  U64 attackers = attackers_of(sq) & pieces_by_color[color];
-  int minv = 20; // largest value of any piece
-  while (attackers && occupied && piece_on(sq) != KING)
-    {
-      int sq = pop_lsb(attackers);
-      int pv = (int)piece_on(sq);
-      if (pv < PIECES && minv > pv) { minv = pv; from = sq; }
-    }
-  if (minv == 20) minv = -1;
-  return minv;
-}
+
 U64 Board::xray_attackers(const int& s, const int& c)
 {
   U64 tmp = all_pieces(); 
@@ -794,8 +747,7 @@ U64 Board::xray_attackers(const int& s, const int& c)
   return attackers & colored_pieces(c);
 }
 
-struct SeePiece
-{
+struct SeePiece {
   Piece p;
   U16 v;
 };
@@ -811,8 +763,15 @@ int Board::see_move(const U16& move) {
   int to = get_to(move); int widx = 0; int bidx = 0;
   U64 tmp = all_pieces();
   U64 attackers = 0ULL;
-  U64 white_bb = colored_pieces(WHITE); 
+  
+  U64 white_bb = colored_pieces(WHITE);
+  //U64 tw = white_bb & pinned(WHITE);
+  //white_bb ^= tw;
+  
   U64 black_bb = colored_pieces(BLACK);
+  //U64 tb = black_bb & pinned(BLACK);
+  //black_bb ^= tb;
+  
   SeePiece black_list[16];
   SeePiece white_list[16]; // final storage   
 
@@ -856,7 +815,7 @@ int Board::see_move(const U16& move) {
     int victim = (color == WHITE ? black_list[b++].p : white_list[w++].p);
     color ^= 1;
     int d = material.material_value(victim, MIDDLE_GAME);
-    score += (i%2 == 0 ? -d : d);
+    score += ((i&1) == 0 ? -d : d);
   }
   return score;
 }
@@ -873,33 +832,6 @@ int Board::see_sign(U16& move)
   return see_move(move);
 }
 
-// note: standard method to return a score based on the "most reasonable"
-// capturing order at a given square.  Negative values imply the capture is losing, positive imply 
-// winning (for side on the move).
-// todo: pins + checks + handle king captures .. promotion captures??
-int Board::see(int to)
-{
-  int value = 0;
-  int from = -1;
-
-  // sets the from square of the smallest attacking piece
-  int piece = smallest_attacker(to, whos_move(), from);
-
-  // return if no more attacking pieces
-  if (piece >= 0)
-    {
-      U16 m = MOVE_NONE;
-      int val = 0;
-      m = (from | (to << 6) | (CAPTURE << 12));
-      val = material.material_value(piece_on(to), phase());
-
-      BoardData pd;
-      do_move(pd, m);
-      value = val - see(to);
-      undo_move(m);
-    }
-  return value;
-}
 // return if we are in check or not (updated from do/undo move)
 bool Board::in_check()
 {
@@ -985,6 +917,25 @@ U64 Board::pinned()
     } while (sliders);
   return pinned & colored_pieces(fc);
 }
+
+U64 Board::pinned(int color)
+{
+  int fc = color;
+  int ec = (fc ^ 1);
+  int ks = king_square(fc);
+  U64 pinned = 0ULL;
+  U64 sliders = ((pieces[ec][BISHOP] & PseudoAttacksBB(BISHOP, ks)) |
+                 (pieces[ec][ROOK] & PseudoAttacksBB(ROOK, ks)) |
+                 (pieces[ec][QUEEN] & PseudoAttacksBB(QUEEN, ks)));
+  if (!sliders) return pinned;
+  do
+    {
+      int sq = pop_lsb(sliders);
+      U64 tmp = (BetweenBB[sq][ks] & all_pieces()) ^ (SquareBB[ks] | SquareBB[sq]);
+      if (!more_than_one(tmp)) pinned |= tmp;
+    } while (sliders);
+  return pinned & colored_pieces(fc);
+}
 U64 Board::discovered_checkers(int c)
 {
   return position->disc_checkers[c];
@@ -1018,7 +969,7 @@ bool Board::dangerous_check(U16& move, bool discoveredBlocker)
 
   if (is_contact && (p >= ROOK || p == PAWN)) return true;
 
-  bool is_defended = attackers_of(to) & colored_pieces(them);
+  bool is_defended = attackers_of(to, them);
   if (!is_defended && (p == PAWN || p == KNIGHT)) return true;
 
   bool is_discovered = position->disc_checkers[us] & SquareBB[from];

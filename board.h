@@ -87,10 +87,8 @@ class Board {
   inline void add_piece(int c, int p, int s);
 
   // sequential exchange evaluation during search (quality of captures)
-  int see(int to);
   int see_move(const U16& move);
   int see_sign(U16& move);
-  int smallest_attacker(int sq, int enemy_color, int& from); // returns ordered list from least to greatest value.
 
   // search data access
   inline void set_nodes_searched(int nodes);
@@ -133,17 +131,18 @@ class Board {
   U64 discovered_checkers(int c);
   U64 discovered_blockers(int c);
   U64 pinned();
+  U64 pinned(int color);
   U64 pinned_to(int s);
   U64 pinned(int c, int * pinners);	
   inline int king_square(); // returns king square of color on the move
   inline int king_square(int c); // returns king square of either color
   U64 attackers_of(int s, U64& mask);
-  U64 attackers_of(int s);
+  U64 attackers_of(int s, int c);
   U64 xray_attackers(const int& s, const int& c);
   // castling related
   bool can_castle(const U16& cr);
   bool is_castled(Color c);
-  bool is_promotion(const U16& m);
+  inline bool is_promotion(const U16& m);
   void unset_castle_rights(U16 cr);
   U16 get_castle_rights(int c);
 
@@ -153,8 +152,8 @@ class Board {
 
   // move properties access/types
   inline U64 checkers();
-  bool is_quiet(U16& m);
-  bool is_qsearch_mv(U16 & move);
+  inline bool is_quiet(U16& m);
+  inline bool is_qsearch_mv(U16 & move);
   bool is_legal(U16& move);
   bool legal_ep(int frm, int to, int ks, int ec);
   bool is_legal_km(const U8 &ks, const U8 &to, const U8 &ec);
@@ -237,91 +236,90 @@ inline U64 Board::pos_key()
   return position->pKey;
 }
 
-inline U64 Board::data_key()
-{
+inline U64 Board::data_key() {
   return position->dKey;
 }
 
-inline U64 Board::material_key() const
-{
+inline U64 Board::material_key() const {
   return position->mKey;
 }
 
-inline int * Board::piece_deltas()
-{
+inline int * Board::piece_deltas() {
   return piece_diff;
 }
 
-inline int Board::whos_move()
-{
+inline int Board::whos_move() {
   return position->stm;
 }
 
-inline U64 Board::get_pieces(int c, int p)
-{
+inline U64 Board::get_pieces(int c, int p) {
   return pieces[c][p];
 }
 
-inline U64 Board::colored_pieces(int c)
-{
+inline U64 Board::colored_pieces(int c) {
   return pieces_by_color[c];
 }
 
-inline int Board::king_square()
-{
+inline int Board::king_square() {
   return position->ks;
 }
 
-inline int Board::king_square(int c)
-{
+inline int Board::king_square(int c) {
   return position->king_square[c];
 }
 
-inline U64 Board::checkers()
-{
+inline U64 Board::checkers() {
   return position->checkers;
 }
 
-inline int Board::get_ep_sq()
-{
+inline int Board::get_ep_sq() {
   return position->eps;
 }
 
-inline Piece Board::piece_on(int s)
-{
+inline Piece Board::piece_on(int s) {
   return Piece(piece_on_arr[s]);
 }
 
-template<Piece p>
-inline bool Board::has_any(int c)
-{
+template<Piece p> inline bool Board::has_any(int c) {
   return number_of_arr[c][p] > 0;
 }
 
-template<Piece p>
-inline int * Board::sq_of(int c)
-{
+template<Piece p> inline int * Board::sq_of(int c) {
   return square_of_arr[c][p];
 }
 
-inline U64 Board::all_pieces()
-{
+inline U64 Board::all_pieces() {
   return (pieces_by_color[WHITE] | pieces_by_color[BLACK]);
 }
 
-inline U16 Board::get_castle_rights(int c)
-{
+inline U16 Board::get_castle_rights(int c) {
   return (c == WHITE ? (position->crights & 0x3) : (position->crights & 0xC));
 }
 
-inline bool Board::has_position()
-{
+inline bool Board::has_position() {
   return position != 0;
 }
 
-inline int Board::half_moves()
-{
+inline int Board::half_moves() {
   return position->hmvs;
+}
+
+// exclude promotions for quiet moves!
+inline bool Board::is_quiet(U16& move) {
+  int mt = ((move & 0xf000) >> 12);
+  //return !is_qsearch_mv(move);
+  return (mt != MOVE_NONE && mt != EP && mt != CAPTURE && mt != PROMOTION_CAP);
+}
+
+inline bool Board::is_qsearch_mv(U16& move) {
+  int mt = ((move & 0xf000) >> 12);
+  return mt != MOVE_NONE && (mt == EP || mt == CAPTURE || mt <= PROMOTION || (mt > PROMOTION && mt <= PROMOTION_CAP));
+}
+
+inline bool Board::is_promotion(const U16& m) {
+  int type = ((m & 0xf000) >> 12);
+  return ((type != MOVE_NONE && type <= PROMOTION) ||
+          (type > PROMOTION && type <= PROMOTION_CAP));
 }
 
 extern Board ROOT_BOARD;

@@ -113,32 +113,32 @@ namespace {
     // pawn sqs
     int * sqs = b.sq_of<PAWN>(c);
     for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
-      score += square_score<c, PAWN>(e.phase, from);
+      score += square_score<c>(e.phase, from, PAWN);
     
     // knight sqs
     sqs = b.sq_of<KNIGHT>(c);
     for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
-      score += square_score<c, KNIGHT>(e.phase, from);
+      score += square_score<c>(e.phase, from, KNIGHT);
 
     // bishop sqs
     sqs = b.sq_of<BISHOP>(c);
     for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
-      score += square_score<c, BISHOP>(e.phase, from);
+      score += square_score<c>(e.phase, from, BISHOP);
 
     // rook sqs
     sqs = b.sq_of<ROOK>(c);
     for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
-      score += square_score<c, ROOK>(e.phase, from);
+      score += square_score<c>(e.phase, from, ROOK);
 
     // queen sqs
     sqs = b.sq_of<QUEEN>(c);
     for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
-      score += square_score<c, QUEEN>(e.phase, from);
+      score += square_score<c>(e.phase, from, QUEEN);
 
     // king sq
     sqs = b.sq_of<KING>(c);
     for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs)
-      score += square_score<c, KING>(e.phase, from);
+      score += square_score<c>(e.phase, from, KING);
 
     if (e.do_trace)
       {
@@ -511,10 +511,10 @@ namespace {
   template <Color c> int eval_threats(Board &b, EvalInfo& ei) {
     int score = 0;
     int them = c ^ 1;
-    U64 knights = b.get_pieces(them, KNIGHT);
-    U64 bishops = b.get_pieces(them, BISHOP);
-    U64 queens = b.get_pieces(them, QUEEN);
-    U64 rooks = b.get_pieces(them, ROOK);
+    U64 knights = b.get_pieces(c, KNIGHT);
+    U64 bishops = b.get_pieces(c, BISHOP);
+    U64 queens = b.get_pieces(c, QUEEN);
+    U64 rooks = b.get_pieces(c, ROOK);
 
     // are there any discovered check candidates in the position? These would be slider pieces that are pointed at the king,
     // but are blocked (only once) by their own friendly pieces & (friends | enemies)
@@ -548,7 +548,7 @@ namespace {
 
 	int sq = pop_lsb(pawn_targets);
 	//int target_value = square_score<c, PAWN>(ei.phase, sq); // ranges from 5-100
-	U64 attackers = b.attackers_of(sq);
+	U64 attackers = b.attackers_of(sq, c);
 	if ((attackers & knights) != 0ULL) score += 1;// target_value;
 	if ((attackers & bishops) != 0ULL) score += 1;// target_value;
 	if ((attackers & queens) != 0ULL) score += 1;// target_value;

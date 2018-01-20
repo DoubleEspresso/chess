@@ -38,7 +38,7 @@ namespace {
 	  -10,  0,  0,  0,  0,  0,  0,-10,
 	  -10,  0,  1, 0, 0,  1,  0,-10,
 	  -10,  2,  2, 10, 10,  2,  2,-10,
-	  -10,  0, 10, 10, 10, 10,  0,-10,
+	  -10,  0, 10, 20, 20, 10,  0,-10,
 	  -10, 10, 10, 10, 10, 10, 10,-10,
 	  -10,  0,  0,  0,  0,  0,  0,-10,
 	  -20,-10,-10,-10,-10,-10,-10,-20
@@ -59,8 +59,8 @@ namespace {
 	  0, 0, 2, 4, 4, 2, 0, 0,
 	  0, 0, 0, 0, 0, 0, 0, 0,
 	  0, 0, 0, 0, 0, 0, 0, 0,
-	  0, 0, 4, 10, 10, 4, 2, 0,
-	  0, 2, 4, 10, 10, 4, 2, 0,
+	  0, 0, 4, 15, 15, 4, 2, 0,
+	  0, 2, 4, 15, 15, 4, 2, 0,
 	  0, 2, 4, 8, 8, 4, 2, 0,
 	  0, 2, 2, 4, 4, 2, 0, 0,
 	  0, 0, 0, 0, 0, 0, 0, 0
@@ -107,7 +107,7 @@ namespace {
 	  -10,  0,  0,  0,  0,  0,  0,-10,
 	  -10,  0,  1, 0, 0,  1,  0,-10,
 	  -10,  2,  2, 10, 10,  2,  2,-10,
-	  -10,  0, 10, 10, 10, 10,  0,-10,
+	  -10,  0, 10, 20, 20, 10,  0,-10,
 	  -10, 10, 10, 10, 10, 10, 10,-10,
 	  -10,  0,  0,  0,  0,  0,  0,-10,
 	  -20,-10,-10,-10,-10,-10,-10,-20
@@ -128,8 +128,8 @@ namespace {
 	  0, 0, 2, 4, 4, 2, 0, 0,
 	  0, 0, 0, 0, 0, 0, 0, 0,
 	  0, 0, 0, 0, 0, 0, 0, 0,
-	  0, 0, 4, 8, 8, 4, 2, 0,
-	  0, 2, 4, 8, 8, 4, 2, 0,
+	  0, 0, 4, 15, 15, 4, 2, 0,
+	  0, 2, 4, 15, 15, 4, 2, 0,
 	  0, 2, 4, 8, 8, 4, 2, 0,
 	  0, 2, 2, 4, 4, 2, 0, 0,
 	  0, 0, 0, 0, 0, 0, 0, 0
@@ -147,29 +147,16 @@ namespace {
 	}
       }
     };
-
-
-  template<Color c, Piece p>
-    inline int square_score(int phase, int square)
-  {
-    if (c == BLACK)
-      {
-	square = 56 - 8 * ROW(square) + COL(square);
-      }
-    return square_scores2[phase][p][square];
+      
+  template<Color c> inline int square_score(int phase, int square, Piece p);
+  
+  template<> inline int square_score<BLACK>(int phase, int square, Piece p) {
+    return square_scores2[phase][p][56 - 8 * ROW(square) + COL(square)];
   }
-
-  // non-templated version (drops the const color and piece requirements)
-  inline int square_score(int c, int p, int phase, int square)
-  {
-    if (c == BLACK)
-      {
-	square = 56 - 8 * ROW(square) + COL(square);
-      }
+  
+  template<> inline int square_score<WHITE>(int phase, int square, Piece p) {
     return square_scores2[phase][p][square];
-  }
-
-
+  }  
 } // end namespace
 
 #endif
