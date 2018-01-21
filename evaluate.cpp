@@ -78,6 +78,10 @@ namespace {
     score += (ei.stm == WHITE ? ei.tempoBonus : -ei.tempoBonus);
     score += ei.me->value;
     score += ei.pe->value;
+
+    // simple lazy eval
+    if (abs(score) >= 400) return b.whos_move() == WHITE ? score : -score;
+    
     score += (eval_squares<WHITE>(b, ei) - eval_squares<BLACK>(b, ei));
     score += (eval_knights<WHITE>(b, ei) - eval_knights<BLACK>(b, ei));
     score += (eval_bishops<WHITE>(b, ei) - eval_bishops<BLACK>(b, ei));

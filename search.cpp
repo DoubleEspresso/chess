@@ -317,7 +317,8 @@ namespace {
         !b.in_check() &&
         b.non_pawn_material(b.whos_move())) {
       
-      int R = (depth >= 8 ? depth / 2 : 2);
+      //int R = (depth >= 8 ? depth / 2 : 2);
+      int R = (depth >= 8 ? depth / 2 + (depth - 8) / 4 : 2);
       BoardData pd;
 
       (stack + 1)->isNullSearch = true;
@@ -427,7 +428,7 @@ namespace {
 
       // extension/reductions
       int extension = 0; int reduction = 1; // always reduce current depth by 1
-      if (givesCheck && see_sign >= 0) extension += 1;
+      if (givesCheck) extension += 1;
       if (threat_extension) extension += 1;
 
       // singular extension search (same implementation as stockfish)
