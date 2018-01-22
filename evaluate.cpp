@@ -494,7 +494,7 @@ namespace {
 
     // only connected pawns.
     pawn_bm ^= ei.pe->isolatedPawns[c];
-
+    
     if (pawn_bm == 0ULL) return 0;
 
     // loop over pawns and count the squares behind them
@@ -504,7 +504,7 @@ namespace {
       space |= SpaceBehindBB[c][s];
     }
     space &= (ColBB[COL2] | ColBB[COL3] | ColBB[COL4] | ColBB[COL5]);
-    score += count(space);// * SpaceBonus[ei.phase];
+    score += count(space)/2;// * SpaceBonus[ei.phase];
 
     if (ei.do_trace) {
       (c == WHITE ? ei.s.space_sc[WHITE] = score : ei.s.space_sc[BLACK] = score);
@@ -519,7 +519,7 @@ namespace {
     U64 bishops = b.get_pieces(c, BISHOP);
     U64 queens = b.get_pieces(c, QUEEN);
     U64 rooks = b.get_pieces(c, ROOK);
-
+    
     // are there any discovered check candidates in the position? These would be slider pieces that are pointed at the king,
     // but are blocked (only once) by their own friendly pieces & (friends | enemies)
     /*
@@ -549,16 +549,15 @@ namespace {
     U64 pawn_targets = (chain_bases | doubled_pawns | backward_pawns | isolated_pawns | passed_pawns);
     if (pawn_targets) {
       while (pawn_targets) {
-
 	int sq = pop_lsb(pawn_targets);
 	//int target_value = square_score<c, PAWN>(ei.phase, sq); // ranges from 5-100
 	U64 attackers = b.attackers_of(sq, c);
-	if ((attackers & knights) != 0ULL) score += 1;// target_value;
-	if ((attackers & bishops) != 0ULL) score += 1;// target_value;
+	if ((attackers & knights) != 0ULL) score += 3;// target_value;
+	if ((attackers & bishops) != 0ULL) score += 3;// target_value;
 	if ((attackers & queens) != 0ULL) score += 1;// target_value;
-	if ((attackers & rooks) != 0ULL) score += 1;// target_value;
+	if ((attackers & rooks) != 0ULL) score += 3;// target_value;
       }
-    }
+    }    
     
     // advanced passed pawns
     U64 our_passed_pawns = ei.pe->passedPawns[c];

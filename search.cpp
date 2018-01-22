@@ -456,7 +456,7 @@ namespace {
           move != stack->killer[1])
         {
           reduction += 1;
-          if (depth > 8 && !pv_node) reduction += (depth - 8) / 2; 
+          if (depth > 8 && !pv_node) reduction += (depth - 8); 
         }
 
       // adjust search depth based on reduction/extensions
@@ -636,8 +636,9 @@ namespace {
 
     // stand pat lower bound -- tried using static_eval for the stand-pat value, play was weak		
     int stand_pat = 0;
-		
-    if (!inCheck && !b.in_check()) stand_pat = Eval::evaluate(b);  //(ttval > NINF && pv_node ? ttval : Eval::evaluate(b));
+    bool kattacked = inCheck || b.in_check();
+    
+    if (!kattacked) stand_pat = Eval::evaluate(b);
 
     // note: what to do when ttval << stand_pat || ttval >> stand_pat (?)
     // in either case one result is innaccurate 
@@ -656,11 +657,11 @@ namespace {
 
 
     // delta pruning                 		
-    if (stand_pat < alpha - 650 && !inCheck && !b.in_check()) {
+    if (stand_pat < alpha - 650 && !kattacked) {
       return alpha;
     }
-    if (alpha < stand_pat && !inCheck && !b.in_check()) alpha = stand_pat;
-    if (alpha >= beta && !inCheck && !b.in_check()) return beta;
+    if (alpha < stand_pat && !kattacked) alpha = stand_pat;
+    if (alpha >= beta && !kattacked) return beta;
     
     MoveSelect ms(statistics, QsearchCaptures, genChecks);
     int moves_searched = 0, pruned = 0;
@@ -700,7 +701,8 @@ namespace {
       }
       */
       
-      // prune captures which have see values < 0      
+      // prune captures which have see values < 0
+      
       if (!inCheck
           && !pv_node
           && !checksKing
@@ -710,6 +712,7 @@ namespace {
           ++pruned;
           continue;
         }
+      
       
       BoardData pd;
       b.do_move(pd, move, true);
