@@ -552,10 +552,10 @@ namespace {
 	int sq = pop_lsb(pawn_targets);
 	//int target_value = square_score<c, PAWN>(ei.phase, sq); // ranges from 5-100
 	U64 attackers = b.attackers_of(sq, c);
-	if ((attackers & knights) != 0ULL) score += 3;// target_value;
-	if ((attackers & bishops) != 0ULL) score += 3;// target_value;
+	if ((attackers & knights) != 0ULL) score += 1;// target_value;
+	if ((attackers & bishops) != 0ULL) score += 1;// target_value;
 	if ((attackers & queens) != 0ULL) score += 1;// target_value;
-	if ((attackers & rooks) != 0ULL) score += 3;// target_value;
+	if ((attackers & rooks) != 0ULL) score += 1;// target_value;
       }
     }    
     
