@@ -1,70 +1,28 @@
 #pragma once
 
-#ifndef SBC_INFO_H
-#define SBC_INFO_H
+#ifndef INFO_H
+#define INFO_H
 
 #include <stdio.h>
 #include <time.h>
 #include <new>
 #include <string>
 
-#include "definitions.h"
+#define ENGINE_NAME "Sanbox Chess"
+#define AUTHOR "M.Glatzmaier"
+#define VERSION "0.0.0"
 
-namespace Info
-{
-  namespace BuildInfo
-  {
-    void greeting();
-  }
-  namespace Date
-  {
-    bool today(char tbuff[], size_t sz);
-  }
-  namespace GpuSupport
-  {
+namespace info {
 
-  }
-}
-
-void Info::BuildInfo::greeting()
-{
-  char mode[256];
-  if (sizeof(size_t) == 4) {
+  void greeting() {
+    bool dbg = false;
 #ifdef DEBUG
-    sprintf(mode, "32-bit (dbg)");
-#else
-    sprintf(mode, "32-bit");
+    dbg = true;
 #endif
-  }
-  else {      
-#ifdef DEBUG
-    sprintf(mode, "64-bit (dbg)");
-#else
-    sprintf(mode, "64-bit");
-#endif
-  }
-  printf("%s %s by %s\n", ENGINE_NAME, mode, AUTHOR);
+    std::string bits = (sizeof(size_t) == 4 ? "32-bit" : "64-bit");
+    std::string debug = (dbg ? "debug" : "");
+    std::cout << ENGINE_NAME  << " " << bits << " by "  << AUTHOR << std::endl;
+  }  
 }
-
-bool Info::Date::today(char tbuff[], size_t sz)
-{
-  try {
-    time_t now = time(0);
-    struct tm * tinfo = new tm();
-    
-#ifdef _WIN32		
-    localtime_s(tinfo, &now);
-#else
-    tinfo = localtime(&now);
-#endif
-    strftime(tbuff, sz, "%m/%d/%Y %X", tinfo);
-  }
-  catch (const std::exception& e) {
-    printf("..[Info] Date::today() exception %s\n", e.what());
-    return false;
-  }
-  return true;
-}
-
 
 #endif

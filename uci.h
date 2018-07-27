@@ -1,23 +1,42 @@
-#pragma once
+#ifndef UCI_H
+#define UCI_H
 
-#ifndef SBC_UCI_H
-#define SBC_UCI_H
-
-#include <vector>
+#include <iostream>
+#include <cstring>
+#include <stdio.h>
+#include <algorithm>
 #include <string>
-#include <sstream>
 
-#include "board.h"
 
-namespace UCI {
+namespace uci {
   void loop();
-  void command(std::string cmd, int& GAME_OVER);
-  void load_position(std::string& pos);
-  void move_from_string(std::string& move);
-  std::string move_to_string(U16& m);
-  U16 get_move(std::string& move);
-  void analyze(Board& b);
+  bool parse_command(const std::string& input);
+}
+
+
+void uci::loop() {
+  std::string input = "";
+  while (std::getline(std::cin, input)) {
+    if (!parse_command(input)) break;
+  }
+}
+
+bool uci::parse_command(const std::string& input) {
+  std::istringstream instream(input);
+  std::string cmd;
+  bool running = true;
+  
+  while (instream >> std::skipws >> cmd) {
+    std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::tolower);
+    
+    if (cmd == "exit" || cmd == "quit") {
+      running = false;
+      break;
+    }
+    else std::cout << "unknown command: " << cmd << std::endl;
+    
+  }
+  return running;
 }
 
 #endif
-

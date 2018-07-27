@@ -1,8 +1,8 @@
 #pragma once
-#ifndef SBC_TYPES_H
-#define SBC_TYPES_H
+#ifndef TYPES_H
+#define TYPES_H
 
-#include <iostream>
+#include <vector>
 
 #ifdef _MSC_VER
 #include <cstdint>
@@ -31,37 +31,39 @@ typedef uint16_t U16;
 typedef uint8_t U8;
 #endif
 
+// enums
+enum Piece { pawn, knight, bishop, rook, queen, king, pieces, no_piece };
+enum Color { white, black, colors, no_color };
+enum Square {
+  A1, B1, C1, D1, E1, F1, G1, H1,
+  A2, B2, C2, D2, E2, F2, G2, H2,
+  A3, B3, C3, D3, E3, F3, G3, H3,
+  A4, B4, C4, D4, E4, F4, G4, H4,
+  A5, B5, C5, D5, E5, F5, G5, H5,
+  A6, B6, C6, D6, E6, F6, G6, H6,
+  A7, B7, C7, D7, E7, F7, G7, H7,
+  A8, B8, C8, D8, E8, F8, G8, H8,
+  squares, no_square
+};
+enum Row { A, B, C, D, E, F, G, H, rows, no_row };
+enum Col { c1, c2, c3, c4, c5, c6, c7, c8, cols, no_col };
 
-#ifdef DEBUG
-#define dbg(x) do { x } while(0)
-#else
-#define dbg(x) do {} while(0)
-#endif
+// enum type enabled iterators
+template<typename T> struct is_enum : std::false_type {};
+template<> struct is_enum<Piece> : std::true_type {};
+template<> struct is_enum<Color> : std::true_type {};
+template<> struct is_enum<Square> : std::true_type {};
+template<> struct is_enum<Row> : std::true_type {};
+template<> struct is_enum<Col> : std::true_type {};
 
-#define U64(x) 1ULL<<x
+template<typename T, 
+  typename = typename std::enable_if<is_enum<T>::value>::type >
+  int operator++(T& e) {
+  e = T((int)e + 1); return int(e);
+}  
 
-
-#ifdef _MSC_VER
-#  define FORCE_INLINE  __forceinline
-#elif defined(__GNUC__)
-#  define FORCE_INLINE  inline __attribute__((always_inline))
-#else
-#  define FORCE_INLINE  inline
-#endif
-
-#define align4   __attribute__((aligned(  4)))
-#define align8   __attribute__((aligned(  8)))
-#define align16  __attribute__((aligned( 16)))
-#define align32  __attribute__((aligned( 32)))
-#define align64  __attribute__((aligned( 64)))
-#define align128 __attribute__((aligned(128)))
-
-#ifdef __linux
-#ifdef BUILD32
-const bool _64BIT = false;
-#else
-const bool _64BIT = true;
-#endif
-#endif
+// arrays for iteration
+const std::vector<Piece> Pieces { Piece::pawn, Piece::knight, Piece::bishop, Piece::rook, Piece::queen, Piece::king, Piece::pieces, Piece::no_piece };
+const std::vector<Color> Colors { Color::white, Color::black, Color::colors, Color::no_color };
 
 #endif
