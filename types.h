@@ -62,6 +62,20 @@ template<typename T,
   e = T((int)e + 1); return int(e);
 }  
 
+
+template<typename T1, typename T2,
+  typename = typename std::enable_if<is_enum<T1>::value>::type >
+  T1& operator-=(T1& lhs, const T2& rhs) {
+  lhs = T1(lhs - rhs); return lhs;
+}
+
+template<typename T1, typename T2,
+  typename = typename std::enable_if<is_enum<T1>::value>::type >
+  T1& operator+=(T1& lhs, const T2& rhs) {
+  lhs = T1(lhs + rhs); return lhs;
+}
+  
+  
 // arrays for iteration
 const std::vector<Piece> Pieces { Piece::pawn, Piece::knight, Piece::bishop, Piece::rook, Piece::queen, Piece::king, Piece::pieces, Piece::no_piece };
 const std::vector<Color> Colors { Color::white, Color::black, Color::colors, Color::no_color };

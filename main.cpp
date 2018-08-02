@@ -11,6 +11,7 @@
 #include "bits.h"
 #include "magics.h"
 #include "uci.h"
+#include "position.h"
 
 std::unique_ptr<options> opts;
 
@@ -20,7 +21,7 @@ int main(int argc, char * argv[]) {
   
   {
     // setup
-    info::greeting();
+    greeting();
     bitboards::load();  
     magics::load();
   }

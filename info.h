@@ -12,8 +12,8 @@
 #define AUTHOR "M.Glatzmaier"
 #define VERSION "0.0.0"
 
-namespace info {
-
+namespace {
+  
   void greeting() {
     bool dbg = false;
 #ifdef DEBUG
