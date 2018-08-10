@@ -8,10 +8,6 @@
 #include <new>
 #include <string>
 
-#define ENGINE_NAME "Sanbox Chess"
-#define AUTHOR "M.Glatzmaier"
-#define VERSION "0.0.0"
-
 namespace {
   
   void greeting() {
@@ -21,7 +17,7 @@ namespace {
 #endif
     std::string bits = (sizeof(size_t) == 4 ? "32-bit" : "64-bit");
     std::string debug = (dbg ? "debug" : "");
-    std::cout << ENGINE_NAME  << " " << bits << " by "  << AUTHOR << std::endl;
+    std::cout << "sandbox chess by M.Glatzmaier" << std::endl;
   }  
 }
 

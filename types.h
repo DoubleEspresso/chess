@@ -79,5 +79,7 @@ template<typename T1, typename T2,
 // arrays for iteration
 const std::vector<Piece> Pieces { Piece::pawn, Piece::knight, Piece::bishop, Piece::rook, Piece::queen, Piece::king, Piece::pieces, Piece::no_piece };
 const std::vector<Color> Colors { Color::white, Color::black, Color::colors, Color::no_color };
+const std::vector<char> SanPiece{'P','N','B','R','Q','K','p','n','b','r','q','k'};
+const std::vector<char> SanCols{'a','b','c','d','e','f','g','h'};
 
 #endif

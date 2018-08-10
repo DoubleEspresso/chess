@@ -8,6 +8,7 @@
 
 #include "types.h"
 #include "utils.h"
+#include "bitboards.h"
 
   struct checkinfo {
     U64 checkers;
@@ -72,8 +73,7 @@ struct piece_data {
   void add_piece(const Color& c, const Piece& p, const Square& s);
 };
 
-class position {
-  
+class position {  
   std::thread owner;  
   std::unique_ptr<checkinfo> ci;
   std::queue<info> history;
@@ -82,7 +82,8 @@ class position {
   
  public:
   position();
-  position(const std::istringstream& s);
+  position(std::istringstream& s);
+  position(const std::string& fen);
   position(const position& p, const std::thread& t);
   position(const position& p);
   position(const position&& p);
@@ -90,6 +91,11 @@ class position {
   position& operator=(const position&&);
   ~position();
 
+  // setup/clear a position
+  void setup(std::istringstream& fen);
+  void clear();
+  void set_piece(const char& p, const Square& s);
+  void print();
   //void do_move(info &ifo, const U16& m);
   //void undo_move(const U16& m);
 };
@@ -156,11 +162,11 @@ template<Color c, Piece p>
   add_piece(c, p, t);
 }
 
-void piece_data::remove_piece(const Color& c, const Piece& p, const Square& s) {
+inline void piece_data::remove_piece(const Color& c, const Piece& p, const Square& s) {
   U64 sq = bitboards::squares[s];
   bycolor[c] ^= sq;
   bitmap[c][p] ^= sq;
-
+  
   int idx = piece_idx[c][p][s];
   piece_idx[c][p][s] = 0;
   square_of[c][p][idx] = no_square;
@@ -170,7 +176,7 @@ void piece_data::remove_piece(const Color& c, const Piece& p, const Square& s) {
   // zobrist update 
 }
 
-void piece_data::add_piece(const Color& c, const Piece& p, const Square& s) {  
+inline void piece_data::add_piece(const Color& c, const Piece& p, const Square& s) {  
   U64 sq = bitboards::squares[s];
   bycolor[c] |= sq;
   bitmap[c][p] |= sq;

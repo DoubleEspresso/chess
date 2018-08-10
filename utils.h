@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <random>
 #include <climits>
+#include <memory>
 
 // std::make_unique is part of c++14
 template<typename T, typename... Args>
