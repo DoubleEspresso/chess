@@ -4,14 +4,11 @@ BITS = $(shell uname -m)
 OS = $(shell uname) 
 OSFLAVOR =
 
-USERMACROS = -DNDEBUG -DTHREADED
-CFLAGS = -Wall -pedantic -O3 -fomit-frame-pointer -fstrict-aliasing -ffast-math -std=c++11 -pthread
+USERMACROS = -DNDEBUG
+CFLAGS = -Wall -pedantic -O3 -fomit-frame-pointer -fstrict-aliasing -ffast-math -std=c++11
 DFLAGS =
-LFLAGS = -lpthread -lrt
+LFLAGS = -lrt
 INSTALL = /usr/local/bin
-EXE_BITS =
-EXE_OS =
-THREADED =
 GIT_VERSION =
 
 # build info
