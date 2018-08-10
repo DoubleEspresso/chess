@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <vector>
 #include <queue>
+#include <iostream>
 
 #include "types.h"
 #include "utils.h"
@@ -89,7 +90,7 @@ class position {
   position(const position&& p);
   position& operator=(const position&);
   position& operator=(const position&&);
-  ~position();
+  ~position() {}
 
   // setup/clear a position
   void setup(std::istringstream& fen);

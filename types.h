@@ -45,8 +45,8 @@ enum Square {
   A8, B8, C8, D8, E8, F8, G8, H8,
   squares, no_square
 };
-enum Row { A, B, C, D, E, F, G, H, rows, no_row };
-enum Col { c1, c2, c3, c4, c5, c6, c7, c8, cols, no_col };
+enum Row { r1, r2, r3, r4, r5, r6, r7, r8, rows, no_row };
+enum Col { A, B, C, D, E, F, G, H, cols, no_col };
 
 // enum type enabled iterators
 template<typename T> struct is_enum : std::false_type {};
@@ -60,6 +60,12 @@ template<typename T,
   typename = typename std::enable_if<is_enum<T>::value>::type >
   int operator++(T& e) {
   e = T((int)e + 1); return int(e);
+}
+
+template<typename T, 
+  typename = typename std::enable_if<is_enum<T>::value>::type >
+  int operator--(T& e) {
+  e = T((int)e - 1); return int(e);
 }  
 
 

@@ -27,9 +27,9 @@ void bitboards::load() {
   for (Square s = A1; s <= H8; ++s) squares[s] = (1ULL << s);
 
   // row/col masks
-  for (Row r = A; r <= H; ++r) {
+  for (Row r = r1; r <= r8; ++r) {
     U64 rw = 0ULL; U64 cl = 0ULL;    
-    for (Col c = c1; c <= c8; ++c) {
+    for (Col c = A; c <= H; ++c) {
       cl |= squares[c * 8 + r];
       rw |= squares[r * 8 + c];
     }
@@ -38,7 +38,7 @@ void bitboards::load() {
   }
 
   // helpful definitions for board corners/edges
-  edges = row[A] | col[c1] | row[H] | col[c8];
+  edges = row[r1] | col[A] | row[r8] | col[H];
   corners = squares[A1] | squares[H1] | squares[H8] | squares[A8];
   
   for (Square s = A1; s <= H8; ++s) {
