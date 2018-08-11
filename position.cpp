@@ -18,14 +18,8 @@ void position::setup(std::istringstream& fen) {
   
   for(auto& c : token) {
     if (isdigit(c)) s += int(c - '0');
-    else switch (c) {
-      case '/':
-        s -= 16;
-        break;
-      default:
-        set_piece(c, s); ++s;
-        break;
-      }
+    else if (c == '/') s -= 16;
+    else { set_piece(c, s); ++s; }
   }
   
   // side to move
@@ -83,10 +77,11 @@ void position::set_piece(const char& p, const Square& s) {
   // update pawn keys
 }
 
-// utilities
 void position::clear() {
   pcs.clear();
+  history.clear();
   ifo = {};
+  ci.reset();
 }
 
 void position::print() {

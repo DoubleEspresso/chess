@@ -18,15 +18,11 @@ std::unique_ptr<options> opts;
 int main(int argc, char * argv[]) {
 
   opts = std::unique_ptr<options>(new options(argc, argv));
-  
-  {
-    // setup
-    greeting();
-    bitboards::load();  
-    magics::load();
-  }
+   
+  greeting();
+  bitboards::load();  
+  magics::load();    
 
-  uci::loop();
-  
+  uci::loop();  
   return 0;
 }
