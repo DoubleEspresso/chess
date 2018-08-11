@@ -28,7 +28,7 @@
     Piece captured;
     U8 move50;
     U16 hmvs;
-    U16 castle_mask;
+    U16 cmask; // castle mask
     U64 key; // position
     U64 mKey; // material
     U64 pKey; // pawn

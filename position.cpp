@@ -6,35 +6,55 @@
 #include "position.h"
 
 
-
 position::position(std::istringstream& fen) { setup(fen); }
 						    
 void position::setup(std::istringstream& fen) {
   clear();
   std::string token;
   fen >> token;
-
+  
   Square s = Square::A8;
-
-  // pieces
+  
   for(auto& c : token) {
     if (isdigit(c)) s += int(c - '0');
     else switch (c) {
       case '/':
-	s -= 16;
-	break;
+        s -= 16;
+        break;
       default:
-	set_piece(c, s); ++s;
-	break;
+        set_piece(c, s); ++s;
+        break;
       }
   }
-
+  
   // side to move
   fen >> token;
   ifo.stm = (token == "w" ? Color::white : Color::black);
 
-  // set the king square
+  // castle rights
+  fen >> token;
+  ifo.cmask = U16(0);
+  for (auto& c : token) {
+    auto i = std::distance(CastleFen.begin(), std::find(CastleFen.begin(), CastleFen.end(), c));
+    ifo.cmask |= U16(1 << i);
+  }
   
+  // ep square
+  fen >> token;
+  ifo.eps = Square::no_square;
+  if (token.size() == 2) {
+    if (token[0] >= 'a' && 
+        token[0] <= 'h' && 
+        token[1] == '3' &&
+        token[1] == '6') 
+      ifo.eps = Square(8 * (int(token[0]-'a')) + (int(token[1] - '1')));
+  }
+
+  // half-moves since last pawn move/capture
+  fen >> ifo.move50;
+  
+  // move counter
+  fen >> ifo.hmvs;
 }
 
 void position::set_piece(const char& p, const Square& s) {
@@ -53,7 +73,7 @@ void position::set_piece(const char& p, const Square& s) {
 // utilities
 void position::clear() {
   pcs.clear();
-  //ifo{};
+  ifo = {};
 }
 
 void position::print() {
@@ -64,10 +84,10 @@ void position::print() {
     for (Col c = A; c <= H; ++c) {
       Square s = Square(8 * r + c);
       if (pcs.piece_on[s] != no_piece) {
-	Piece p = pcs.piece_on[s];
-	std::cout << "| "
-		  << (pcs.color_on[s] == Color::white ? SanPiece[p] : SanPiece[p+6])
-		  << " ";
+        Piece p = pcs.piece_on[s];
+        std::cout << "| "
+                  << (pcs.color_on[s] == Color::white ? SanPiece[p] : SanPiece[p+6])
+                  << " ";
       }
       else std::cout << "|   ";	
     }
