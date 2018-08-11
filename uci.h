@@ -33,15 +33,12 @@ bool uci::parse_command(const std::string& input) {
   
   while (instream >> std::skipws >> cmd) {
     std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::tolower);
-
-    
+  
     if (cmd == "position") {
       instream >> cmd;
        std::istringstream fen(START_FEN);
        position p(fen);
        p.print();
-       U64 tst = U64(1 << Square::E4);
-       bits::print(tst);
     }
     
     else if (cmd == "exit" || cmd == "quit") {

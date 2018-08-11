@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <cstring>
 
 #include "position.h"
 
@@ -55,6 +56,18 @@ void position::setup(std::istringstream& fen) {
   
   // move counter
   fen >> ifo.hmvs;
+}
+
+void position::do_move(const U16& m) {
+  history.emplace_back(ifo);
+  
+  // update ks if king move, castle rights
+  // update castle rights if rook move
+  // clear captured piece
+  // switch type of move
+  // update eps, captured piece, pinned, in check, stm
+  // update move 50, half-mvs, check-info
+
 }
 
 void position::set_piece(const char& p, const Square& s) {

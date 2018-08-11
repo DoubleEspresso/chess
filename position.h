@@ -4,7 +4,6 @@
 #include <thread>
 #include <algorithm>
 #include <vector>
-#include <queue>
 #include <iostream>
 
 #include "types.h"
@@ -78,12 +77,12 @@ struct piece_data {
 class position {  
   std::thread owner;  
   std::unique_ptr<checkinfo> ci;
-  std::queue<info> history;
+  std::vector<info> history;
   info ifo;
   piece_data pcs;
   
  public:
-  position();
+  position() {}
   position(std::istringstream& s);
   position(const std::string& fen);
   position(const position& p, const std::thread& t);
@@ -98,7 +97,7 @@ class position {
   void clear();
   void set_piece(const char& p, const Square& s);
   void print();
-  //void do_move(info &ifo, const U16& m);
+  void do_move(const U16& m);
   //void undo_move(const U16& m);
 };
 
