@@ -1,4 +1,5 @@
 #include "bitboards.h"
+#include "bits.h"
 
 namespace bitboards {
   U64 row[8];

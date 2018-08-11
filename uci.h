@@ -8,6 +8,8 @@
 #include <string>
 
 #include "position.h"
+#include "bits.h"
+#include "types.h"
 
 std::string START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -38,6 +40,8 @@ bool uci::parse_command(const std::string& input) {
        std::istringstream fen(START_FEN);
        position p(fen);
        p.print();
+       U64 tst = U64(1 << Square::E4);
+       bits::print(tst);
     }
     
     else if (cmd == "exit" || cmd == "quit") {

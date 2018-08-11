@@ -1,22 +1,24 @@
 #ifndef BITS_H
 #define BITS_H
 
+#include <iostream>
 
-namespace bits {  
-  
+#include "types.h"
+#include "bitboards.h"
+
+namespace bits {
+    
   inline void print(const U64& b) {
-    printf("   +---+---+---+---+---+---+---+---+\n");
-    for (int r = 7; r >= 0; --r) {
-      for (int c = 0; c < 8; ++c) {
-        int t = 8 * r + c;
-        U64 s = (1ULL << t);
-        if (b & s)  (c == 0 ? printf(" %d | X ", r + 1) : printf("| X "));
-        else (c == 0 ? printf(" %d |   ", r + 1) : printf("|   "));
+    printf("+---+---+---+---+---+---+---+---+\n");
+    for (Row r = r8; r >= r1; --r) {
+      for (Col c = A; c <= H; ++c) {
+        U64 s = bitboards::squares[8*r+c];
+        std::cout << (b & s ? "| X " : "|   ");
       }
-      printf("|\n");
-      printf("   +---+---+---+---+---+---+---+---+\n");
+      std::cout << "|" << std::endl;
+      std::cout << "+---+---+---+---+---+---+---+---+" << std::endl;
     }
-    printf("     a   b   c   d   e   f   g   h\n\n");
+    std::cout << "  a   b   c   d   e   f   g   h" << std::endl;
   }
 
   inline int count(const U64& b) { return __builtin_popcountll(b); }  
