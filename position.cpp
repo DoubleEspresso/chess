@@ -38,9 +38,16 @@ void position::setup(std::istringstream& fen) {
 }
 
 void position::set_piece(const char& p, const Square& s) {
-  for(auto& c : SanPiece) {
+  auto idx = std::distance(SanPiece.begin(), std::find(SanPiece.begin(), SanPiece.end(), p));
+  if (idx < 0) return; // error
+  
+  Color color = (idx < 6 ? white : black);
+  Piece piece = Piece(idx < 6 ? idx : idx - 6);  
+  pcs.set(color, piece, s);
     
-  }
+  // update zobrist keys
+  // update material entries
+  // update pawn keys
 }
 
 // utilities

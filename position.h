@@ -35,19 +35,20 @@
     U64 dKey; // data ?
   };
 
-struct piece_data {  
-  std::vector<U64> bycolor{std::vector<U64>(2)};
-  std::vector<std::vector<U64>> bitmap{std::vector<std::vector<U64>>(2, std::vector<U64>(squares))};
-  std::vector<Square> king_sq { std::vector<Square>(2) };
-  std::vector<Color> color_on { std::vector<Color>(squares) };
-  std::vector<std::vector<std::vector<Square>>> square_of{std::vector< std::vector< std::vector<Square>>>(2, std::vector<std::vector<Square>>(Piece::pieces, std::vector<Square>(11)))}; 
-  std::vector<Piece> piece_on { std::vector<Piece>(squares) }; 
-  std::vector<std::vector<int>> number_of {std::vector<std::vector<int>>(2, std::vector<int>(Piece::pieces))};
-  std::vector<std::vector<std::vector<int>>> piece_idx{std::vector<std::vector<std::vector<int>>>(2, std::vector<std::vector<int>>(Piece::pieces, std::vector<int>(squares)))};
-  
+struct piece_data {
+  std::array<U64, 2> bycolor;
+  std::array<Square, 2> king_sq;
+  std::array<Color, squares> color_on;
+  std::array<Piece, squares> piece_on;
+  std::array<std::array<int, pieces>, 2> number_of;
+  std::array<std::array<U64, squares>, colors> bitmap;
+  std::array<std::array<std::array<int, squares>, pieces>, 2> piece_idx;
+  std::array<std::array<std::array<Square, 11>, pieces>, 2> square_of;
   
   // utility methods for moving pieces
   void clear();
+
+  void set(const Color& c, const Piece& p, const Square& s);
   
   template<Color c, Piece p>
   void do_quiet(const Square& f, const Square& t);
@@ -104,13 +105,14 @@ class position {
 
 inline void piece_data::clear() {  
   std::fill(bycolor.begin(), bycolor.end(), 0);
-  for (auto& v : bitmap) std::fill(v.begin(), v.end(), 0ULL);
   std::fill(king_sq.begin(), king_sq.end(), Square::no_square);
   std::fill(color_on.begin(), color_on.end(), Color::no_color);
-  for (auto& v: square_of) { for (auto& w : v) { std::fill(w.begin(), w.end(), Square::no_square); } }
   std::fill(piece_on.begin(), piece_on.end(), Piece::no_piece);
+
   for (auto& v: number_of) std::fill(v.begin(), v.end(), 0);
+  for (auto& v : bitmap) std::fill(v.begin(), v.end(), 0ULL);
   for (auto& v: piece_idx) { for (auto& w : v) { std::fill(w.begin(), w.end(), 0); } }
+  for (auto& v: square_of) { for (auto& w : v) { std::fill(w.begin(), w.end(), Square::no_square); } }
 }
 
 template<Color c, Piece p>
@@ -190,6 +192,15 @@ inline void piece_data::add_piece(const Color& c, const Piece& p, const Square& 
   //zobrist update
 }
 
-
+inline void piece_data::set(const Color& c, const Piece& p, const Square& s) {
+  bitmap[c][p] |= bitboards::squares[s];
+  bycolor[c] |= bitboards::squares[s];
+  color_on[s] = c;
+  number_of[c][p] += 1;
+  piece_idx[c][p][s] = number_of[c][p];
+  square_of[c][p][number_of[c][p]] = s;
+  piece_on[s] = p;
+  if (p == Piece::king) king_sq[c] = s;
+}
 
 #endif

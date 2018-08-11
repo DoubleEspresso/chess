@@ -7,7 +7,7 @@ OSFLAVOR =
 USERMACROS = -DNDEBUG
 CFLAGS = -Wall -pedantic -O3 -fomit-frame-pointer -fstrict-aliasing -ffast-math -std=c++11
 DFLAGS =
-LFLAGS = -lrt
+LFLAGS =
 INSTALL = /usr/local/bin
 GIT_VERSION =
 
