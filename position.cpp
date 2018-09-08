@@ -26,24 +26,20 @@ void position::setup(std::istringstream& fen) {
   fen >> token;
   ifo.stm = (token == "w" ? Color::white : Color::black);
 
-  // castle rights
+  // the castle rights
   fen >> token;
   ifo.cmask = U16(0);
-  for (auto& c : token) {
-    auto i = std::distance(CastleFen.begin(), std::find(CastleFen.begin(), CastleFen.end(), c));
-    ifo.cmask |= U16(1 << i);
-  }
+  for (auto& c : token) ifo.cmask |= CastleRights.at(c);
   
   // ep square
   fen >> token;
   ifo.eps = Square::no_square;
-  if (token.size() == 2) {
-    if (token[0] >= 'a' && 
-        token[0] <= 'h' && 
-        token[1] == '3' &&
-        token[1] == '6') 
-      ifo.eps = Square(8 * (int(token[0]-'a')) + (int(token[1] - '1')));
+  Row row = Row::no_row; Col col = Col::no_col;
+  for (auto& c : token) {
+    if (c >= 'a' && c <= 'h') col = Col(c - 'a');
+    if (c == '3' || c == '6') row = Row(c - '1');
   }
+  ifo.eps = Square(8 * row + col);
 
   // half-moves since last pawn move/capture
   fen >> ifo.move50;
@@ -61,7 +57,6 @@ void position::do_move(const U16& m) {
   // switch type of move
   // update eps, captured piece, pinned, in check, stm
   // update move 50, half-mvs, check-info
-
 }
 
 void position::set_piece(const char& p, const Square& s) {
