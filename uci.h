@@ -34,11 +34,10 @@ bool uci::parse_command(const std::string& input) {
   while (instream >> std::skipws >> cmd) {
     std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::tolower);
   
-    if (cmd == "position") {
-      instream >> cmd;
-       std::istringstream fen(START_FEN);
-       position p(fen);
-       p.print();
+    if (cmd == "position" && instream >> cmd) {
+      std::istringstream fen(START_FEN);
+      position p(cmd == "start_pos" ? fen : instream);
+      p.print();
     }
     
     else if (cmd == "exit" || cmd == "quit") {

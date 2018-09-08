@@ -13,7 +13,7 @@ void position::setup(std::istringstream& fen) {
   clear();
   std::string token;
   fen >> token;
-  
+  std::cout << token << std::endl;
   Square s = Square::A8;
   
   for(auto& c : token) {
@@ -24,12 +24,14 @@ void position::setup(std::istringstream& fen) {
   
   // side to move
   fen >> token;
+  std::cout << token << std::endl;
   ifo.stm = (token == "w" ? Color::white : Color::black);
 
   // the castle rights
   fen >> token;
+  std::cout << token << std::endl;
   ifo.cmask = U16(0);
-  for (auto& c : token) ifo.cmask |= CastleRights.at(c);
+  for (auto& c : token) { std::cout << c << std::endl; ifo.cmask |= CastleRights.at(c); }
   
   // ep square
   fen >> token;
