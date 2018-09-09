@@ -99,6 +99,12 @@ class position {
   void print();
   void do_move(const U16& m);
   //void undo_move(const U16& m);
+
+  // piece access wrappers
+  inline U64 all_pieces() const { return pcs.bycolor[white] | pcs.bycolor[black]; }
+  
+  template<Color c, Piece p>
+  inline U64 get_pieces() const { return pcs.bitmap[c][p]; }
 };
 
 

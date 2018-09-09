@@ -1,7 +1,6 @@
 #ifndef MOVE_H
 #define MOVE_H
 
-
 #include "types.h"
 #include "position.h"
 
@@ -45,8 +44,6 @@
 //-------------------------------------------------
 
 class move {
-  U16 m;
-  int v; 
  public:
   move() {}
   move(const U16& mv, int val = 0) : m(mv), v(val) {}
@@ -58,19 +55,27 @@ class move {
 
   bool operator()(const move& o) const { return o.m == m; }
   bool operator==(const move& o) { return o.m == m; }
+
+  inline int from() { return int(m & 0x3f); }
+  inline int to() { return int((m & 0xfc0) >> 6); }
+  inline int type() { return int((m & 0xf000) >> 12); }  
+  inline std::string to_string() { return SanSquares[from()] + SanSquares[to()]; }
+  
+  U16 m;
+  int v; 
 };
 //inline bool mvgreater(const move& x, const move& y) { return x.v > y.v; }
 
-
+enum Dir { N, S, NN, SS, NW, NE, SW, SE, none };
 enum Movetype {
-  promotions = 4,
-  capture_promotions = 8,
+  promotion,
+  capture_promotion,
   castle_ks,
   castle_qs,
-  quiets,
-  captures,
-  evasions,
-  checks,
+  quiet,
+  capture,
+  evasion,
+  check,
   castles,
   quiet_checks,
   quiet_nochecks,
@@ -81,20 +86,27 @@ enum Movetype {
   all_pseudo_legal
 };
 
-template<Movetype T, Color c>
+template<Movetype mt, Piece p, Color c>
 class movegen {
   int it, last;
   move list[218]; // max moves in any chess position
-
-  inline void generate(const position& p);
-
+  
+  inline void generate(const position& pos);
+  inline void encode(U64& b, const int& f);
+  inline void encode_pawn_pushes(U64& b, const int& dir);
+  inline void encode_promotions(U64& b, const int& f);
+  
  public:
   movegen() : it(0), last(0) {}
-  movegen(const position& p) : it(0), last(0) { generate(p); }
+  movegen(const position& pos) : it(0), last(0) { generate(pos); }
   movegen(const movegen& o) = delete;
   movegen(const movegen&& o) = delete;
   movegen& operator=(const movegen& o) = delete;
   movegen& operator=(const movegen&& o) = delete;
+
+  void print();
 };
+
+#include "move.hpp"
 
 #endif

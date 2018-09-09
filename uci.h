@@ -10,6 +10,7 @@
 #include "position.h"
 #include "bits.h"
 #include "types.h"
+#include "move.h"
 
 std::string START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -36,8 +37,11 @@ bool uci::parse_command(const std::string& input) {
   
     if (cmd == "position" && instream >> cmd) {
       std::istringstream fen(START_FEN);
-      position p(cmd == "start_pos" ? fen : instream);
+      position p(cmd == "startpos" ? fen : instream);      
       p.print();
+
+      movegen<quiet, pawn, white> pawn_mvs(p);
+      pawn_mvs.print();
     }
     
     else if (cmd == "exit" || cmd == "quit") {

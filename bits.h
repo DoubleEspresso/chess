@@ -22,7 +22,23 @@ namespace bits {
   }
 
   inline int count(const U64& b) { return __builtin_popcountll(b); }  
+
   
+  inline int lsb(U64& b) {
+#ifdef _MSC_VER
+    unsigned long r = 0; builtin_lsb(&r, b);
+    return r;
+#else
+    return __builtin_ffsll(b) - 1; // needs benchmarking
+#endif
+  }
+  
+  
+  inline int pop_lsb(U64& b) {
+    const int s = lsb(b); 
+    b &= (b - 1);
+    return s;
+  }
 }
 
 #endif
