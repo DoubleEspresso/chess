@@ -121,7 +121,7 @@ namespace {
     unsigned long r = 0; builtin_lsb(&r, b);
     return r;
 #else
-    return __builtin_ffsll(b) - 1; // lsb64(b);
+    return __builtin_ffsll(b) - 1;
 #endif
   }
   
