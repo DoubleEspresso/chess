@@ -35,13 +35,13 @@ inline void movegen<mt, p, c>::encode_pawn_pushes(U64& b, const int& dir) {
 }
 
 template<Movetype mt, Piece p, Color c>
-inline void movegen<mt, p, c>::encode_promotions(U64& b, const int& f) {
+inline void movegen<mt, p, c>::encode_promotions(U64& b, const int& dir) {
   while (b) {
     int to = pop_lsb(b);
-    list[last++].m = (f | (pop_lsb(b) << 6) | (mt << 12));     // queen
-    list[last++].m = (f | (pop_lsb(b) << 6) | ((mt+2) << 12)); // rook
-    list[last++].m = (f | (pop_lsb(b) << 6) | ((mt+4) << 12)); // bishop
-    list[last++].m = (f | (pop_lsb(b) << 6) | ((mt+6) << 12)); // knight   
+    list[last++].m = ((to + dir) | (pop_lsb(b) << 6) | (mt << 12));     // queen
+    list[last++].m = ((to + dir) | (pop_lsb(b) << 6) | ((mt+2) << 12)); // rook
+    list[last++].m = ((to + dir) | (pop_lsb(b) << 6) | ((mt+4) << 12)); // bishop
+    list[last++].m = ((to + dir) | (pop_lsb(b) << 6) | ((mt+6) << 12)); // knight   
   }
 }
 
@@ -54,7 +54,7 @@ template<Movetype mt, Piece p, Color c> void movegen<mt, p, c>::print() {
 
 
 //------------------------------
-// pawn moves
+// white pawn moves
 //------------------------------
 template<>
 void movegen<quiet, pawn, white>::generate(const position& p) {
@@ -77,3 +77,83 @@ void movegen<quiet, pawn, white>::generate(const position& p) {
   if (double_pushes != 0ULL) encode_pawn_pushes(double_pushes, -16);
 }
 
+
+template<>
+void movegen<capture, pawn, white>::generate(const position& p) {
+  
+  U64 enemies = p.get_pieces<black>();
+  U64 pawns = p.get_pieces<white, pawn>();
+  
+  // normal captures - non promotions
+  U64 left = pawns & pawnmaskleft[white];
+  U64 right = pawns & pawnmaskright[white];
+  
+  if (left != 0ULL) {
+    shift<NE>(left);
+    left &= enemies;
+    if (left != 0ULL) encode_pawn_pushes(left, -9);
+  }
+  
+  if (right != 0ULL) {
+    shift<NW>(right);
+    right &= enemies;
+    if (right != 0ULL) encode_pawn_pushes(right, -7);
+  }
+}
+
+
+template<>
+void movegen<ep, pawn, white>::generate(const position& p) {
+
+  U64 pawns = p.get_pieces<white, pawn>();
+  int eps = p.eps();
+  if (eps == Square::no_square) return;
+
+  U64 ep_left = pawns & pawnmaskleft[white] & row[Row::r5]; 
+  U64 ep_right = pawns & pawnmaskright[white] & row[Row::r5];
+  
+  // ep captures
+  if (ep_left != 0ULL) {
+    shift<NW>(ep_left);
+    ep_left &= bitboards::squares[eps]; 
+    if (ep_left != 0ULL) encode_pawn_pushes(ep_left, -9);
+  }
+  
+  if (ep_right != 0ULL) {
+    shift<NE>(ep_right);
+    ep_right &= bitboards::squares[eps];   
+    if (ep_right != 0ULL) encode_pawn_pushes(ep_right, -7); 
+  }    
+}
+
+
+template<>
+void movegen<promotion, pawn, white>::generate(const position& p) {
+  U64 pawns = p.get_pieces<white, pawn>();
+  U64 pawns7 = pawns & row[Row::r7];
+  if (pawns7 == 0ULL) return;
+  
+  shift<N>(pawns7);
+  encode_promotions(pawns7, -8);
+}
+
+
+template<>
+void movegen<capture_promotion, pawn, white>::generate(const position& p) {
+  U64 pawns = p.get_pieces<white>(); 
+  U64 enemies = p.get_pieces<black>() & row[Row::r8];
+  U64 right_caps = pawns;
+  U64 left_caps = pawns;
+  
+  shift<NE>(right_caps);
+  right_caps &= enemies;
+  if (right_caps != 0ULL) encode_promotions(right_caps, -9);
+  
+  shift<NW>(left_caps);
+  left_caps &= enemies;
+  if (left_caps != 0ULL) encode_promotions(left_caps, -7);
+}
+
+//------------------------------
+// black pawn moves
+//------------------------------

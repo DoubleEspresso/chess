@@ -40,8 +40,12 @@ bool uci::parse_command(const std::string& input) {
       position p(cmd == "startpos" ? fen : instream);      
       p.print();
 
-      movegen<quiet, pawn, white> pawn_mvs(p);
+      movegen<quiet, pawn, white> pawn_mvs(p);      
       pawn_mvs.print();
+
+      movegen<capture, pawn, white> pawn_caps(p);
+      pawn_caps.print();
+      
     }
     
     else if (cmd == "exit" || cmd == "quit") {

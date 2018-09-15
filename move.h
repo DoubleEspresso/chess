@@ -74,6 +74,7 @@ enum Movetype {
   castle_qs,
   quiet,
   capture,
+  ep,
   evasion,
   check,
   castles,
