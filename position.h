@@ -112,6 +112,8 @@ class position {
   template<Color c>
   inline U64 get_pieces() const { return pcs.bycolor[c]; }
 
+  template<Color c, Piece p>
+  inline std::array<Square, 11> squares_of() const { return pcs.square_of[c][p]; }
   
 };
 
@@ -209,9 +211,9 @@ inline void piece_data::set(const Color& c, const Piece& p, const Square& s) {
   bitmap[c][p] |= bitboards::squares[s];
   bycolor[c] |= bitboards::squares[s];
   color_on[s] = c;
+  square_of[c][p][number_of[c][p]] = s;
   number_of[c][p] += 1;
   piece_idx[c][p][s] = number_of[c][p];
-  square_of[c][p][number_of[c][p]] = s;
   piece_on[s] = p;
   if (p == Piece::king) king_sq[c] = s;
 }

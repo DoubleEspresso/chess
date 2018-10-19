@@ -51,6 +51,9 @@ bool uci::parse_command(const std::string& input) {
 
       movegen<capture, pawn, black> bpawn_caps(p);
       bpawn_caps.print();
+
+      movegen<quiet, knight, white> wknight_mvs(p);
+      wknight_mvs.print();
       
     }
     

@@ -254,3 +254,26 @@ void movegen<capture_promotion, pawn, black>::generate(const position& p) {
   left_caps &= enemies;
   if (left_caps != 0ULL) encode_promotions(left_caps, 9);
 }
+
+//------------------------------
+// knight moves
+//------------------------------
+template<>
+void movegen<quiet, knight, white>::generate(const position& p) {  
+  U64 empty = ~p.all_pieces();  
+  for (auto& s : p.squares_of<white, knight>()) {
+    if (s == Square::no_square) break;    
+    U64 mvs = bitboards::nmask[s] & empty;
+    if (mvs != 0ULL)  { encode(mvs, s); }    
+  }
+}
+
+template<>
+void movegen<quiet, knight, black>::generate(const position& p) {  
+  U64 empty = ~p.all_pieces();  
+  for (auto& s : p.squares_of<black, knight>()) {
+    if (s == Square::no_square) break;    
+    U64 mvs = bitboards::nmask[s] & empty;
+    if (mvs != 0ULL)  { encode(mvs, s); }    
+  }
+}

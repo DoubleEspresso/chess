@@ -9,6 +9,7 @@ namespace bitboards {
   U64 pawnmask[2]; // 2nd - 6th rank mask for pawns (to exclude promotion candidates)
   U64 pawnmaskleft[2];
   U64 pawnmaskright[2];
+  U64 nmask[64]; // step attacks for teh knight
   U64 rmask[64]; // rook mask (outer board edges are trimmed)
   U64 squares[64];
   U64 diagonals[64];
@@ -21,7 +22,7 @@ void bitboards::load() {
   std::vector<std::vector<int>> steps = 
     { 
       { }, // pawn 
-      { }, // knight
+      { 10, -6, -10, 6, 17, 15, -15, -17}, // knight
       { -7, -9, 7, 9 }, // bishop
       { -1, 1, 8, -8 }, // rook
       { }, // queen
@@ -57,12 +58,21 @@ void bitboards::load() {
     }
   }
 
-    
   
   for (Square s = A1; s <= H8; ++s) {
 
-    // bishop diagonal masks (outer bits trimmed)
+    // knight step attacks
     U64 bm = 0ULL;
+    for (auto& step : steps[Piece::knight]) {
+      int to = s + step;
+      if (util::on_board(to) &&
+	  util::col_dist(s, to) <= 2 &&
+	  util::row_dist(s, to) <= 2) bm |= squares[to];
+    }
+    nmask[s] = bm;
+    
+    // bishop diagonal masks (outer bits trimmed)
+    bm = 0ULL;
     U64 trim = 0ULL;
     for (auto& step : steps[Piece::bishop]) {
       int j = 0;

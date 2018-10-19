@@ -14,6 +14,7 @@ namespace bitboards {
   extern U64 pawnmask[2]; // 2nd - 6th rank mask for pawns (to exclude promotion candidates)
   extern U64 pawnmaskleft[2]; // 2nd - 6th rank mask for pawn captures
   extern U64 pawnmaskright[2]; // 2nd - 6th rank mask for pawn captures
+  extern U64 nmask[64]; // step attacks for the knight
   extern U64 bmask[64]; // bishop mask (outer board edges are trimmed)
   extern U64 rmask[64]; // rook mask (outer board edges are trimmed)
   extern U64 squares[64];
