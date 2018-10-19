@@ -269,11 +269,78 @@ void movegen<quiet, knight, white>::generate(const position& p) {
 }
 
 template<>
+void movegen<capture, knight, white>::generate(const position& p) {  
+  U64 enemies = p.get_pieces<black>();  
+  for (auto& s : p.squares_of<white, knight>()) {
+    if (s == Square::no_square) break;    
+    U64 mvs = bitboards::nmask[s] & enemies;
+    if (mvs != 0ULL)  { encode(mvs, s); }    
+  }
+}
+
+template<>
 void movegen<quiet, knight, black>::generate(const position& p) {  
   U64 empty = ~p.all_pieces();  
   for (auto& s : p.squares_of<black, knight>()) {
     if (s == Square::no_square) break;    
     U64 mvs = bitboards::nmask[s] & empty;
+    if (mvs != 0ULL)  { encode(mvs, s); }    
+  }
+}
+
+template<>
+void movegen<capture, knight, black>::generate(const position& p) {  
+  U64 enemies = p.get_pieces<white>();  
+  for (auto& s : p.squares_of<black, knight>()) {
+    if (s == Square::no_square) break;    
+    U64 mvs = bitboards::nmask[s] & enemies;
+    if (mvs != 0ULL)  { encode(mvs, s); }    
+  }
+}
+
+//------------------------------
+// bishop moves
+//------------------------------
+template<>
+void movegen<quiet, bishop, white>::generate(const position& p) {  
+  U64 mask = p.all_pieces();
+  U64 empty = ~mask;
+  for (auto& s : p.squares_of<white, bishop>()) {
+    if (s == Square::no_square) break;
+    U64 mvs = magics::attacks<bishop>(mask, s) & empty;
+    if (mvs != 0ULL)  { encode(mvs, s); }    
+  }
+}
+
+template<>
+void movegen<capture, bishop, white>::generate(const position& p) {  
+  U64 mask = p.all_pieces();
+  U64 enemies = p.get_pieces<black>();
+  for (auto& s : p.squares_of<white, bishop>()) {
+    if (s == Square::no_square) break;
+    U64 mvs = magics::attacks<bishop>(mask, s) & enemies;
+    if (mvs != 0ULL)  { encode(mvs, s); }    
+  }
+}
+
+template<>
+void movegen<quiet, bishop, black>::generate(const position& p) {  
+  U64 mask = p.all_pieces();
+  U64 empty = ~mask;
+  for (auto& s : p.squares_of<black, bishop>()) {
+    if (s == Square::no_square) break;
+    U64 mvs = magics::attacks<bishop>(mask, s) & empty;
+    if (mvs != 0ULL)  { encode(mvs, s); }    
+  }
+}
+
+template<>
+void movegen<capture, bishop, black>::generate(const position& p) {  
+  U64 mask = p.all_pieces();
+  U64 enemies = p.get_pieces<white>();
+  for (auto& s : p.squares_of<black, bishop>()) {
+    if (s == Square::no_square) break;
+    U64 mvs = magics::attacks<bishop>(mask, s) & enemies;
     if (mvs != 0ULL)  { encode(mvs, s); }    
   }
 }

@@ -52,9 +52,14 @@ bool uci::parse_command(const std::string& input) {
       movegen<capture, pawn, black> bpawn_caps(p);
       bpawn_caps.print();
 
+      movegen<quiet, knight, black> bknight_mvs(p);
+      bknight_mvs.print();
+
       movegen<quiet, knight, white> wknight_mvs(p);
       wknight_mvs.print();
-      
+
+      movegen<quiet, bishop, white> wbish_mvs(p);
+      wbish_mvs.print();
     }
     
     else if (cmd == "exit" || cmd == "quit") {
