@@ -344,3 +344,50 @@ void movegen<capture, bishop, black>::generate(const position& p) {
     if (mvs != 0ULL)  { encode(mvs, s); }    
   }
 }
+
+//------------------------------
+// rook moves
+//------------------------------
+template<>
+void movegen<quiet, rook, white>::generate(const position& p) {  
+  U64 mask = p.all_pieces();
+  U64 empty = ~mask;
+  for (auto& s : p.squares_of<white, rook>()) {
+    if (s == Square::no_square) break;
+    U64 mvs = magics::attacks<rook>(mask, s) & empty;
+    if (mvs != 0ULL) { encode(mvs, s); }    
+  }
+}
+
+template<>
+void movegen<capture, rook, white>::generate(const position& p) {  
+  U64 mask = p.all_pieces();
+  U64 enemies = p.get_pieces<black>();
+  for (auto& s : p.squares_of<white, rook>()) {
+    if (s == Square::no_square) break;
+    U64 mvs = magics::attacks<rook>(mask, s) & enemies;
+    if (mvs != 0ULL) { encode(mvs, s); }    
+  }
+}
+
+template<>
+void movegen<quiet, rook, black>::generate(const position& p) {  
+  U64 mask = p.all_pieces();
+  U64 empty = ~mask;
+  for (auto& s : p.squares_of<black, rook>()) {
+    if (s == Square::no_square) break;
+    U64 mvs = magics::attacks<rook>(mask, s) & empty;
+    if (mvs != 0ULL) { encode(mvs, s); }    
+  }
+}
+
+template<>
+void movegen<capture, rook, black>::generate(const position& p) {  
+  U64 mask = p.all_pieces();
+  U64 enemies = p.get_pieces<white>();
+  for (auto& s : p.squares_of<black, rook>()) {
+    if (s == Square::no_square) break;
+    U64 mvs = magics::attacks<rook>(mask, s) & enemies;
+    if (mvs != 0ULL) { encode(mvs, s); }    
+  }
+}
