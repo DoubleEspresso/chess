@@ -66,6 +66,10 @@ bool uci::parse_command(const std::string& input) {
 
       movegen<quiet, queen, white> wq_mvs(p);
       wq_mvs.print();
+
+      movegen<quiet, king, white> wk_mvs(p);
+      wk_mvs.print();
+      
     }
     
     else if (cmd == "exit" || cmd == "quit") {

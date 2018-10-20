@@ -443,3 +443,46 @@ void movegen<capture, queen, black>::generate(const position& p) {
     if (mvs != 0ULL) { encode(mvs, s); }    
   }
 }
+
+//------------------------------
+// king moves
+//------------------------------
+template<>
+void movegen<quiet, king, white>::generate(const position& p) {  
+  U64 empty = ~p.all_pieces();  
+  for (auto& s : p.squares_of<white, king>()) {
+    if (s == Square::no_square) break;    
+    U64 mvs = bitboards::kmask[s] & empty;
+    if (mvs != 0ULL) { encode(mvs, s); }    
+  }
+}
+
+template<>
+void movegen<capture, king, white>::generate(const position& p) {  
+  U64 enemies = p.get_pieces<black>();  
+  for (auto& s : p.squares_of<white, king>()) {
+    if (s == Square::no_square) break;    
+    U64 mvs = bitboards::kmask[s] & enemies;
+    if (mvs != 0ULL) { encode(mvs, s); }    
+  }
+}
+
+template<>
+void movegen<quiet, king, black>::generate(const position& p) {  
+  U64 empty = ~p.all_pieces();  
+  for (auto& s : p.squares_of<black, king>()) {
+    if (s == Square::no_square) break;    
+    U64 mvs = bitboards::kmask[s] & empty;
+    if (mvs != 0ULL) { encode(mvs, s); }    
+  }
+}
+
+template<>
+void movegen<capture, king, black>::generate(const position& p) {  
+  U64 enemies = p.get_pieces<white>();  
+  for (auto& s : p.squares_of<black, king>()) {
+    if (s == Square::no_square) break;    
+    U64 mvs = bitboards::kmask[s] & enemies;
+    if (mvs != 0ULL) { encode(mvs, s); }    
+  }
+}
