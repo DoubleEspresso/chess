@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    div.Pp { margin: 1ex 0ex; }
+  </style>
+  <link rel="stylesheet" href="man-style.css" type="text/css" media="all"/>
+  <title>CUTECHESS-CLI(6)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">CUTECHESS-CLI(6)</td>
+    <td class="head-vol">Games Manual</td>
+    <td class="head-rtitle">CUTECHESS-CLI(6)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<h1 class="Sh" id="NAME">NAME</h1>
+<b class="Nm">cutechess-cli</b> &#8212; <span class="Nd">Automate chess engine
+  tournaments</span>
+<h1 class="Sh" id="SYNOPSIS">SYNOPSIS</h1>
+<table class="Nm">
+  <colgroup>
+    <col style="width: 13.00ex;"/>
+    <col/>
+  </colgroup>
+  <tr>
+    <td><b class="Nm">cutechess-cli</b></td>
+    <td><b class="Fl">-engine</b> <var class="Ar">engine-options</var>
+      <b class="Fl">-engine</b> <var class="Ar">engine-options</var>
+      [<span class="Op"><b class="Fl">-engine</b> <var class="Ar">engine-options
+      ...</var></span>] [<span class="Op">options</span>]</td>
+  </tr>
+</table>
+<h1 class="Sh" id="DESCRIPTION">DESCRIPTION</h1>
+The <b class="Nm">cutechess-cli</b> utility automates chess engine tournaments.
+<div class="Pp"></div>
+Its options are as follows:
+<dl class="Bl-tag" style="margin-left: 6.00ex;">
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-engine</b>
+    <var class="Ar">engine-options</var></dt>
+  <dd class="It-tag">Add an engine defined by
+      <var class="Ar">engine-options</var> to the tournament. See
+      <a class="Sx" href="#Engine_Options">Engine Options</a>.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-each</b>
+    <var class="Ar">engine-options</var></dt>
+  <dd class="It-tag">Apply <var class="Ar">engine-options</var> to each engine
+      in the tournament. See <a class="Sx" href="#Engine_Options">Engine
+      Options</a>.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-variant</b>
+    <var class="Ar">variant</var></dt>
+  <dd class="It-tag">Set the chess variant, where <var class="Ar">variant</var>
+      is one of:
+    <div class="Pp"></div>
+    <div class="Bl-tag" style="margin-left: 5.00ex;">
+    <dl class="Bl-tag" style="margin-left: 13.00ex;">
+      <dt class="It-tag" style="margin-left: -13.00ex;">3check</dt>
+      <dd class="It-tag">Three-check Chess</dd>
+      <dt class="It-tag" style="margin-left: -13.00ex;">5check</dt>
+      <dd class="It-tag">Five-check Chess</dd>
+      <dt class="It-tag" style="margin-left: -13.00ex;">atomic</dt>
+      <dd class="It-tag">Atomic Chess</dd>
+      <dt class="It-tag" style="margin-left: -13.00ex;">berolina</dt>
+      <dd class="It-tag">Berolina Chess</dd>
+      <dt class="It-tag" style="margin-left: -13.00ex;">capablanca</dt>
+      <dd class="It-tag">Capablanca Chess</dd>
+      <dt class="It-tag" style="margin-left: -13.00ex;">caparandom</dt>
+      <dd class="It-tag">Capablanca Random Chess</dd>
+      <dt class="It-tag" style="margin-left: -13.00ex;">checkless</dt>
+      <dd class="It-tag">Checkless Chess</dd>
+      <dt class="It-tag" style="margin-left: -13.00ex;">chessgi</dt>
+      <dd class="It-tag">Chessgi / Drop Chess</dd>
+      <dt class="It-tag" style="margin-left: -13.00ex;">crazyhouse</dt>
+      <dd class="It-tag">Crazyhouse (Drop Chess Variant)</dd>
+      <dt class="It-tag" style="margin-left: -13.00ex;">extinction</dt>
+      <dd class="It-tag">Extinction Chess</dd>
+      <dt class="It-tag" style="margin-left: -13.00ex;">fischerandom</dt>
+      <dd class="It-tag">Fischer Random Chess / Chess 960</dd>
+      <dt class="It-tag" style="margin-left: -13.00ex;">gothic</dt>
+      <dd class="It-tag">Gothic Chess</dd>
+      <dt class="It-tag" style="margin-left: -13.00ex;">horde</dt>
+      <dd class="It-tag">Horde Chess (v2)</dd>
+      <dt class="It-tag" style="margin-left: -13.00ex;">janus</dt>
+      <dd class="It-tag">Janus Chess</dd>
+      <dt class="It-tag" style="margin-left: -13.00ex;">kinglet</dt>
+      <dd class="It-tag">Kinglet Chess</dd>
+      <dt class="It-tag" style="margin-left: -13.00ex;">kingofthehill</dt>
+      <dd class="It-tag">King of the Hill Chess</dd>
+      <dt class="It-tag" style="margin-left: -13.00ex;">loop</dt>
+      <dd class="It-tag">Loop Chess (Drop Chess Variant)</dd>
+      <dt class="It-tag" style="margin-left: -13.00ex;">losers</dt>
+      <dd class="It-tag">Loser's Chess</dd>
+      <dt class="It-tag" style="margin-left: -13.00ex;">racingkings</dt>
+      <dd class="It-tag">Racing Kings Chess</dd>
+      <dt class="It-tag" style="margin-left: -13.00ex;">standard</dt>
+      <dd class="It-tag">Standard Chess (default)</dd>
+    </dl>
+    </div>
+  </dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-concurrency</b>
+    <var class="Ar">n</var></dt>
+  <dd class="It-tag">Set the maximum number of concurrent games to
+      <var class="Ar">n</var>.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-draw</b>
+    <b class="Cm">movenumber</b>=<var class="Ar">number</var>
+    <b class="Cm">movecount</b>=<var class="Ar">count</var>
+    <b class="Cm">score</b>=<var class="Ar">score</var></dt>
+  <dd class="It-tag">Adjudicate the game as draw if the score of both engines is
+      within <var class="Ar">score</var> centipawns from zero for at least
+      <var class="Ar">count</var> consecutive moves, and at least
+      <var class="Ar">number</var> full moves have been played.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-resign</b>
+    <b class="Cm">movecount</b>=<var class="Ar">count</var>
+    <b class="Cm">score</b>=<var class="Ar">score</var></dt>
+  <dd class="It-tag">Adjudicate the game as a loss if an engine's score is at
+      least <var class="Ar">score</var> centipawns below zero for at least
+      <var class="Ar">count</var> consecutive moves.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-tb</b>
+    <var class="Ar">paths</var></dt>
+  <dd class="It-tag">Adjudicate games using Syzygy tablebases.
+      <var class="Ar">Paths</var> should be semicolon-delimited list of paths to
+      the compressed tablebase files. Only the DTZ tablebase files are
+    required.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-tbpieces</b>
+    <var class="Ar">N</var></dt>
+  <dd class="It-tag">Only use tablebase adjudication for positions with
+      <var class="Ar">N</var> pieces or less.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-tbignore50</b></dt>
+  <dd class="It-tag">Disable the fifty move rule for tablebase
+    adjudication.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-tournament</b>
+    <var class="Ar">type</var></dt>
+  <dd class="It-tag">Set the tournament type, where <var class="Ar">type</var>
+      is one of:
+    <div class="Pp"></div>
+    <div class="Bl-tag" style="margin-left: 5.00ex;">
+    <dl class="Bl-tag" style="margin-left: 13.00ex;">
+      <dt class="It-tag" style="margin-left: -13.00ex;">round-robin</dt>
+      <dd class="It-tag">Round-robin tournament (default)</dd>
+      <dt class="It-tag" style="margin-left: -13.00ex;">gauntlet</dt>
+      <dd class="It-tag">First engine plays against the rest</dd>
+      <dt class="It-tag" style="margin-left: -13.00ex;">knockout</dt>
+      <dd class="It-tag">Single-elimination tournament</dd>
+    </dl>
+    </div>
+  </dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-event</b>
+    <var class="Ar">arg</var></dt>
+  <dd class="It-tag">Set the event name to <var class="Ar">arg</var>.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-games</b>
+    <var class="Ar">n</var></dt>
+  <dd class="It-tag">Play <var class="Ar">n</var> games per encounter. This
+      value should be set to an even number in tournaments with more than two
+      players to make sure that each player plays an equal number of games with
+      white and black pieces.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-rounds</b>
+    <var class="Ar">n</var></dt>
+  <dd class="It-tag">Multiply the number of rounds to play by
+      <var class="Ar">n</var>. For two-player tournaments this option should be
+      used to set the total number of games to play.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-sprt</b>
+    <b class="Cm">elo0</b>=<var class="Ar">E0</var>
+    <b class="Cm">elo1</b>=<var class="Ar">E1</var>
+    <b class="Cm">alpha</b>=<var class="Ar">&#945;</var>
+    <b class="Cm">beta</b>=<var class="Ar">&#946;</var></dt>
+  <dd class="It-tag">Use a Sequential Probability Ratio Test as a termination
+      criterion for the match.
+    <div class="Pp"></div>
+    This option should only be used in matches between two players to test if
+      engine P1 is stronger than engine P2. Hypothesis H1 is that P1 is stronger
+      than P2 by at least <var class="Ar">E0</var> ELO points, and H0 (the null
+      hypothesis) is that P1 is not stronger than P2 by at least
+      <var class="Ar">E1</var> ELO points. The maximum probabilities for type I
+      and type II errors outside the interval [ <var class="Ar">E0</var>,
+      <var class="Ar">E1</var> ] are <var class="Ar">&#945;</var> and
+      <var class="Ar">&#946;</var>.
+    <div class="Pp"></div>
+    The match is stopped if either H0 or H1 is accepted or if the maximum number
+      of games set by <b class="Fl">-rounds</b> and / or
+      <b class="Fl">-games</b> is reached.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-ratinginterval</b>
+    <var class="Ar">n</var></dt>
+  <dd class="It-tag">Set the interval for printing the ratings to
+      <var class="Ar">n</var> games.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-debug</b></dt>
+  <dd class="It-tag">Display all engine input and output.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-openings</b>
+    <b class="Cm">file</b>=<var class="Ar">file</var>
+    <b class="Cm">format</b>=[<b class="Cm">epd</b> | <b class="Cm">pgn</b>]
+    <b class="Cm">order</b>=[<b class="Cm">random</b> |
+    <b class="Cm">sequential</b>]
+    <b class="Cm">plies</b>=<var class="Ar">plies</var>
+    <b class="Cm">start</b>=<var class="Ar">start</var></dt>
+  <dd class="It-tag">Pick game openings from <var class="Ar">file</var>. The
+      file can be either in <b class="Cm">epd</b> (Extended Position
+      Description) or <b class="Cm">pgn</b> (Portable Game Notation) format. The
+      default format is <b class="Cm">pgn</b>. Openings can be picked in
+      <b class="Cm">random</b> or <b class="Cm">sequential</b> (default) order.
+      The opening depth is limited to <var class="Ar">plies</var> number of
+      plies. If <var class="Ar">plies</var> is not set the opening depth is
+      unlimited. In sequential mode <var class="Ar">start</var> is the number of
+      the first opening that will be played. The minimum value for
+      <var class="Ar">start</var> is 1 (default).</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-bookmode</b>
+    <var class="Ar">mode</var></dt>
+  <dd class="It-tag">Set Polyglot book access mode, where
+      <var class="Ar">mode</var> is either <b class="Cm">ram</b> (the whole book
+      is loaded into RAM) or <b class="Cm">disk</b> (the book is accessed
+      directly on disk). The default mode is <b class="Cm">ram</b>.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-pgnout</b>
+    <var class="Ar">file</var> [<b class="Cm">min</b>]</dt>
+  <dd class="It-tag">Save the games to <var class="Ar">file</var> in PGN format.
+      Use the <b class="Cm">min</b> argument to save in a minimal PGN
+    format.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-recover</b></dt>
+  <dd class="It-tag">Restart crashed engines instead of stopping the game.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-repeat</b></dt>
+  <dd class="It-tag">Play each opening twice so that both players get to play it
+      on both sides.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-seeds</b>
+    <var class="Ar">n</var></dt>
+  <dd class="It-tag">Set the first <var class="Ar">n</var> engines as seeds in
+      the tournament. The default is 0.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-site</b>
+    <var class="Ar">arg</var></dt>
+  <dd class="It-tag">Set the site / location to <var class="Ar">arg</var>.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-srand</b>
+    <var class="Ar">seed</var></dt>
+  <dd class="It-tag">Set the random seed for the book move selector.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-wait</b>
+    <var class="Ar">n</var></dt>
+  <dd class="It-tag">Wait <var class="Ar">n</var> milliseconds between games.
+      The default is 0.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-version</b></dt>
+  <dd class="It-tag">Display the version information.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-help</b></dt>
+  <dd class="It-tag">Display help information.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Fl">-engines</b></dt>
+  <dd class="It-tag">Display a list of configured engines and exit.</dd>
+</dl>
+<h2 class="Ss" id="Engine_Options">Engine Options</h2>
+<dl class="Bl-tag" style="margin-left: 6.00ex;">
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">conf</b>=<var class="Ar">arg</var></dt>
+  <dd class="It-tag">Use an engine with the name <var class="Ar">arg</var> from
+      engine configuration file.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">name</b>=<var class="Ar">arg</var></dt>
+  <dd class="It-tag">Set the name to <var class="Ar">arg</var>.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">cmd</b>=<var class="Ar">arg</var></dt>
+  <dd class="It-tag">Set the command to <var class="Ar">arg</var>.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">dir</b>=<var class="Ar">arg</var></dt>
+  <dd class="It-tag">Set the working directory to
+    <var class="Ar">arg</var>.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">stderr</b>=<var class="Ar">arg</var></dt>
+  <dd class="It-tag">Redirect standard error output to file
+      <var class="Ar">arg</var>.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">proto</b>=[<b class="Cm">uci</b>
+    | <b class="Cm">xboard</b>]</dt>
+  <dd class="It-tag">Set the chess protocol.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">tc</b>=[<var class="Ar">tcformat</var>
+    | <b class="Cm">inf</b>]</dt>
+  <dd class="It-tag">Set the time control. The format is moves/time+increment,
+      where <var class="Ar">moves</var> is the number of moves per tc,
+      <var class="Ar">time</var> is time per tc (either seconds or
+      minutes:seconds), and <var class="Ar">increment</var> is the time
+      increment per move in seconds.
+    <div class="Pp"></div>
+    Infinite time control can be set with <b class="Cm">inf</b>.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">option.</b><var class="Ar">name</var>=<var class="Ar">value</var></dt>
+  <dd class="It-tag">Set custom engine option.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">arg</b>=<var class="Ar">arg</var></dt>
+  <dd class="It-tag">Pass <var class="Ar">arg</var> to the engine as a command
+      line argument.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">initstr</b>=<var class="Ar">arg</var></dt>
+  <dd class="It-tag">Send <var class="Ar">arg</var> to the engine's standard
+      input at startup.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">restart</b>=[<b class="Cm">auto</b>
+    | <b class="Cm">on</b> | <b class="Cm">off</b>]</dt>
+  <dd class="It-tag">Set the engine restart mode. <b class="Cm">auto</b> means
+      the engine decides whether to restart (default), <b class="Cm">on</b>
+      means the engine is always restarted between games and
+      <b class="Cm">off</b> means the engine is never restarted between games.
+      Setting this option does not prevent engines from being restarted between
+      rounds in a tournament featuring more than two engines.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">trust</b></dt>
+  <dd class="It-tag">Trust result claims from the engine without validation. By
+      default all claims are validated.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">st</b>=<var class="Ar">n</var></dt>
+  <dd class="It-tag">Set the time limit for each move to <var class="Ar">n</var>
+      seconds. This option cannot be used in combination with the
+      <b class="Ic">tc</b> option.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">timemargin</b>=<var class="Ar">n</var></dt>
+  <dd class="It-tag">Let engines go <var class="Ar">n</var> milliseconds over
+      the time limit.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">book</b>=<var class="Ar">file</var></dt>
+  <dd class="It-tag">Use <var class="Ar">file</var> (Polyglot book file) as the
+      opening book.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">bookdepth</b>=<var class="Ar">n</var></dt>
+  <dd class="It-tag">Set the maximum book depth (in fullmoves) to
+      <var class="Ar">n</var>.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">whitepov</b></dt>
+  <dd class="It-tag">Invert the engine's scores when it plays black. This option
+      should be used with engines that always report scores from white's
+      perspective.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">ponder</b></dt>
+  <dd class="It-tag">Enable pondering if the engine supports it.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">depth</b>=<var class="Ar">plies</var></dt>
+  <dd class="It-tag">Set the search depth limit.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">nodes</b>=<var class="Ar">count</var></dt>
+  <dd class="It-tag">Set the node count limit.</dd>
+</dl>
+<h1 class="Sh" id="EXAMPLES">EXAMPLES</h1>
+Play ten games between two Sloppy engines with a time control of 40 moves in 60
+  seconds:
+<div class="Pp"></div>
+<div class="D1"><code class="Li">$ cutechess-cli -engine cmd=sloppy -engine
+  cmd=sloppy -each proto=xboard tc=40/60 -rounds 10</code></div>
+<div class="Pp"></div>
+Play a single game between Atak and Glaurung engines with a time control of 40
+  moves in one minute and 30 seconds with one second increment:
+<div class="Pp"></div>
+<div class="D1"><code class="Li">$ cutechess-cli -engine name=Atak
+  cmd=Atak32.exe dir=C:\atak proto=xboard -engine cmd=glaurung proto=uci
+  option.Threads=1 -both tc=40/1:30+1</code></div>
+<ul class="Bl-bullet">
+  <li class="It-bullet">Use the name=Atak parameter because it's a Xboard
+      protocol 1 engine and doesn't tell its name.</li>
+  <li class="It-bullet">Use the dir=C:\atak parameter to point the location of
+      the executable.</li>
+  <li class="It-bullet">Glaurung can tell its name and is in the PATH variable
+      so only the command is needed.</li>
+  <li class="It-bullet">Set Glaurung to use 1 thread.</li>
+  <li class="It-bullet">Set the time control to 40 moves in one minute and 30
+      seconds with one second increment.</li>
+</ul>
+<div class="Pp"></div>
+Play a Round-Robin tournament between Fruit, Crafty, Stockfish and Sloppy:
+<div class="Pp"></div>
+<div class="D1"><code class="Li">$ cutechess-cli -engine conf=Fruit -engine
+  conf=Crafty -engine conf=Stockfish -engine conf=Sloppy -each tc=4
+  book=book.bin -games 2 -rounds 10 -repeat</code></div>
+<ul class="Bl-bullet">
+  <li class="It-bullet">Play two games per encounter, effectively multiplying
+      the number of games by 2.</li>
+  <li class="It-bullet">Play 10 times the minimum amount of rounds (3). So the
+      total number of rounds to play will be 30, and the total number of games
+      120.</li>
+  <li class="It-bullet">In each two-game encounter colors are switched between
+      games and the same opening line is played in both games.</li>
+</ul>
+<h1 class="Sh" id="SEE_ALSO">SEE ALSO</h1>
+<a class="Xr">engines.json(5)</a>
+<h1 class="Sh" id="AUTHORS">AUTHORS</h1>
+The <b class="Nm">cutechess-cli</b> utility was written by
+  <span class="An">Ilari Pihlajisto</span>,
+  <a class="Mt" href="mailto:ilari.pihlajisto@mbnet.fi">ilari.pihlajisto@mbnet.fi</a>;
+  and
+<br/>
+<span class="An">Arto Jonsson</span>,
+  <a class="Mt" href="mailto:ajonsson@kapsi.fi">ajonsson@kapsi.fi</a>.
+<h1 class="Sh" id="RESOURCES">RESOURCES</h1>
+<ul class="Bl-bullet">
+  <li class="It-bullet">Project page:
+      <a class="Lk" href="http://github.com/cutechess/cutechess">http://github.com/cutechess/cutechess</a></li>
+  <li class="It-bullet">Mailing list:
+      <a class="Lk" href="https://list.kapsi.fi/listinfo/cutechess">https://list.kapsi.fi/listinfo/cutechess</a></li>
+</ul>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">October 27, 2015</td>
+    <td class="foot-os">Linux 4.4.0-83-generic</td>
+  </tr>
+</table>
+</body>
+</html>

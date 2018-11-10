@@ -25,6 +25,8 @@ namespace
   U64 last_time_ms = 0; // print pv frequently
   MoveStats statistics;
   int hash_hits = 0;
+  bool fixed_depth = true;
+  int stop_depth = 10;
 
   template<NodeType type>
   int search(Board& b, int alpha, int beta, int depth, Node* stack);
@@ -141,6 +143,9 @@ namespace Search
         pv_from_tt(b, eval, depth, (stack + 2)->pv);
         last_time_ms = timer_thread->elapsed;        
       }
+
+      if (fixed_depth && depth == stop_depth) break;
+      
     }
   }
 
@@ -754,25 +759,22 @@ namespace {
   
   void pv_from_tt(Board b, int eval, int d, U16 * pv) {
     TableEntry e;  int j = 0; std::string pv_str = "";
-    BoardData pd;
-    if (BestMoves[0] == MOVE_NONE || pv_str == "") {
-      while (U16 m = pv[j]) {
-        if (m == MOVE_NONE) break;
-        pv_str += UCI::move_to_string(m) + " ";
-        if (j < 2) BestMoves[j] = m;
-        j++;
-      }
+    BoardData pd; BestMoves[0] = MOVE_NONE;
+
+    if (b.is_legal(pv[0])) {
+      BestMoves[0] = pv[0];
+      BestMoves[1] = pv[1];
     }
-    if (pv_str == "") {
-      for (j = 0; hashTable.fetch(b.pos_key(), e) && e.move != MOVE_NONE && j < d; ++j) {
-        if (b.is_legal(e.move)) {
-          if (j < 2) BestMoves[j] = e.move;
-          pv_str += UCI::move_to_string(e.move) + " ";
-          b.do_move(pd, e.move);
-        }
-        else break;
+      
+    for (j = 0; hashTable.fetch(b.pos_key(), e) && e.move != MOVE_NONE && j < d; ++j) {
+      if (b.is_legal(e.move)) {
+	if (j < 2 && BestMoves[j] == MOVE_NONE) BestMoves[j] = e.move;
+	pv_str += UCI::move_to_string(e.move) + " ";
+	b.do_move(pd, e.move);
       }
+      else break;
     }
+    
     printf("info score cp %d depth %d seldepth %d nodes %d time %d pv ",
            eval,
            d,

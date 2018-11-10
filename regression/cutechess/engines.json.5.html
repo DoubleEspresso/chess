@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    div.Pp { margin: 1ex 0ex; }
+  </style>
+  <link rel="stylesheet" href="man-style.css" type="text/css" media="all"/>
+  <title>ENGINES.JSON(5)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ENGINES.JSON(5)</td>
+    <td class="head-vol">File Formats Manual</td>
+    <td class="head-rtitle">ENGINES.JSON(5)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<h1 class="Sh" id="NAME">NAME</h1>
+<b class="Nm">engines.json</b> &#8212; <span class="Nd">Cute Chess engine
+  configuration file</span>
+<h1 class="Sh" id="DESCRIPTION">DESCRIPTION</h1>
+<b class="Nm">engines.json</b> is the chess engine configuration file for
+  <a class="Xr">cutechess-cli(6)</a>. An engine configuration defines a name, a
+  command, a working directory and many other options. Engine configurations can
+  be used in <a class="Xr">cutechess-cli(6)</a> with the <b class="Cm">conf</b>
+  command-line option.
+<div class="Pp"></div>
+Engine configurations are defined in JavaScript Object Notation (JSON) format.
+  See <a class="Sx" href="#JSON_FORMAT">JSON FORMAT</a>.
+<h1 class="Sh" id="JSON_FORMAT">JSON FORMAT</h1>
+JavaScript Object Notation (JSON) is a text-based format for structured data.
+  JSON is a subset of ECMAScript (JavaScript).
+<h2 class="Ss" id="Values">Values</h2>
+A JSON value must be one of: <var class="Ar">object</var>,
+  <var class="Ar">array</var>, <var class="Ar">number</var>,
+  <var class="Ar">string</var>, <b class="Cm">false</b>, <b class="Cm">true</b>
+  or <b class="Cm">null</b>.
+<h2 class="Ss" id="Objects">Objects</h2>
+An <var class="Ar">object</var> is structure of name-<var class="Ar">value</var>
+  pairs enclosed in curly brackets. A name is a <var class="Ar">string</var>.
+  Name and value are separated by a single colon. Pairs are separated by commas.
+<div class="Pp"></div>
+Example objects would be:
+<div class="Pp"></div>
+<div class="Bd" style="margin-left: 5.00ex;">
+<pre class="Li">
+{ &quot;Finland&quot; : &quot;.fi&quot;, &quot;Sweden&quot; : &quot;.se&quot; } 
+ 
+{ 
+  &quot;firstName&quot; : &quot;JC&quot;, 
+  &quot;lastName&quot;  : &quot;Denton&quot;, 
+  &quot;age&quot;       : 28, 
+  &quot;languages&quot; : [ &quot;English&quot;, &quot;French&quot;, &quot;Spanish&quot; ] 
+}
+</pre>
+</div>
+<h2 class="Ss" id="Arrays">Arrays</h2>
+An <var class="Ar">array</var> is a structure of zero or more
+  <var class="Ar">values</var> enclosed in square brackets. Values are separated
+  by commas.
+<div class="Pp"></div>
+Example arrays would be:
+<div class="Pp"></div>
+<div class="Bd" style="margin-left: 5.00ex;">
+<pre class="Li">
+[ &quot;Cute&quot;, &quot;Chess&quot; ] 
+ 
+[ 
+  [ 1, 0, 0 ], 
+  [ 0, 1, 0 ], 
+  [ 0, 0, 1 ] 
+]
+</pre>
+</div>
+<h2 class="Ss" id="Numbers">Numbers</h2>
+A <var class="Ar">number</var> consists of an integer part and optional
+  fractional and/or exponent part. The integer part can be prefixed with a minus
+  sign. Fractional part is a decimal point followed by one or more digits.
+  Exponent part begins with a letter E in upper or lowercase which may be
+  followed by a plus or minus sign. The E and optional sign are followed by one
+  or more digits.
+<div class="Pp"></div>
+Octal and hex forms are not allowed.
+<div class="Pp"></div>
+Example numbers would be:
+<div class="Pp"></div>
+<div class="Bd" style="margin-left: 5.00ex;">
+<pre class="Li">
+128 
+-1.04 
+2e32 
+-18E-20
+</pre>
+</div>
+<h2 class="Ss" id="Strings">Strings</h2>
+A <var class="Ar">string</var> is sequence of characters enclosed in quotation
+  marks. All Unicode characters may be placed within the quotation marks except
+  for the characters that must be escaped: quotation mark, backslash, and
+  control characters.
+<div class="Pp"></div>
+Available two-character escape sequences are as follows:
+<div class="Pp"></div>
+<div class="Bl-tag" style="margin-left: 6.00ex;">
+<dl class="Bl-tag" style="margin-left: 6.00ex;">
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Cm">\\</b></dt>
+  <dd class="It-tag">Backslash character.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Cm">\/</b></dt>
+  <dd class="It-tag">Forward slash character.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Cm">\&quot;</b></dt>
+  <dd class="It-tag">Quotation mark.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Cm">\b</b></dt>
+  <dd class="It-tag">Bell character.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Cm">\f</b></dt>
+  <dd class="It-tag">Form feed character.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Cm">\n</b></dt>
+  <dd class="It-tag">Line feed character.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Cm">\t</b></dt>
+  <dd class="It-tag">Vertical tab character.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Cm">\u</b><var class="Ar">num</var></dt>
+  <dd class="It-tag">Unicode character where <var class="Ar">num</var> is a four
+      hexadecimal digits that encode the character's code point.</dd>
+</dl>
+</div>
+<div class="Pp"></div>
+Example strings would be:
+<div class="Pp"></div>
+<div class="Bd" style="margin-left: 5.00ex;">
+<pre class="Li">
+&quot;Hello, world!&quot; 
+ 
+&quot;Please place all items \&quot;carefully\&quot; in bins.&quot; 
+ 
+&quot;\u03a6 is one of the letters of Greek alphabet.&quot;
+</pre>
+</div>
+<h1 class="Sh" id="ENGINE_CONFIGURATION">ENGINE CONFIGURATION</h1>
+The configuration file consist of an <var class="Ar">array</var> of
+  <var class="Ar">objects</var>. Each object defines a single engine
+  configuration. Required options for each engine configuration are:
+<dl class="Bl-tag" style="margin-left: 6.00ex;">
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">name</b>
+    <span class="No">:</span> <var class="Ar">string</var></dt>
+  <dd class="It-tag">The name of the engine.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">command</b>
+    <span class="No">:</span> <var class="Ar">string</var></dt>
+  <dd class="It-tag">The engine command.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">protocol</b>
+    <span class="No">: &quot;uci&quot;</span> |
+    <span class="No">&quot;xboard&quot;</span></dt>
+  <dd class="It-tag">The chess engine protocol used by this engine.</dd>
+</dl>
+<div class="Pp"></div>
+Other available options for an engine configuration are:
+<dl class="Bl-tag" style="margin-left: 6.00ex;">
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">workingDirectory</b>
+    <span class="No">:</span> <var class="Ar">string</var></dt>
+  <dd class="It-tag">The working directory of the engine.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">stderrFile</b>
+    <span class="No">:</span> <var class="Ar">string</var></dt>
+  <dd class="It-tag">File where the engine's standard error output is
+      redirected.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">initStrings</b>
+    <span class="No">:</span> <var class="Ar">array</var>
+    <span class="No">of</span> <var class="Ar">string</var></dt>
+  <dd class="It-tag">Array of strings sent to the engine's standard input at
+      startup.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">whitepov</b>
+    <span class="No">:</span> <b class="Cm">true</b> |
+    <b class="Cm">false</b></dt>
+  <dd class="It-tag">When <b class="Cm">true</b> invert the engine's scores when
+      it plays black. The default is <b class="Cm">false</b>.
+    <div class="Pp"></div>
+    This option should be used with engines that always report scores from
+      white's perspective.</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;">&#160;</dt>
+  <dd class="It-tag">&#160;</dd>
+  <dt class="It-tag" style="margin-left: -6.00ex;"><b class="Ic">ponder</b>
+    <span class="No">:</span> <b class="Cm">true</b> |
+    <b class="Cm">false</b></dt>
+  <dd class="It-tag">When <b class="Cm">true</b> enable pondering if the engine
+      supports it. The default is <b class="Cm">false</b>.</dd>
+</dl>
+<h1 class="Sh" id="EXAMPLES">EXAMPLES</h1>
+A minimal engine configuration file for the Sloppy chess engine:
+<div class="Pp"></div>
+<div class="Bd" style="margin-left: 5.00ex;">
+<pre class="Li">
+[ 
+  { 
+    &quot;name&quot;: &quot;Sloppy&quot;, 
+    &quot;command&quot;: &quot;sloppy&quot;, 
+    &quot;protocol&quot;: &quot;xboard&quot; 
+  } 
+]
+</pre>
+</div>
+<div class="Pp"></div>
+Using the above engine configuration file with the <b class="Cm">conf</b>
+  command-line option:
+<div class="Pp"></div>
+<div class="D1"><code class="Li">$ cutechess-cli -engine conf=Sloppy -engine
+  conf=Sloppy -each tc=40/60 -rounds 10</code></div>
+<h1 class="Sh" id="SEE_ALSO">SEE ALSO</h1>
+<a class="Xr">cutechess-cli(6)</a>
+<div class="Pp"></div>
+<cite class="Rs"><span class="RsT">The application/json Media Type for
+  JavaScript Object Notation (JSON)</span>, <span class="RsR">RFC 4627</span>,
+  <span class="RsD">July 2006</span>.</cite></div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">October 27, 2015</td>
+    <td class="foot-os">Linux 4.4.0-83-generic</td>
+  </tr>
+</table>
+</body>
+</html>
