@@ -25,7 +25,7 @@ namespace {
       float weights_mg[4] = { bpWeightMG, 1.50, rrWeightMG, qrWeightMG };
       float weights_eg[4] = { bpWeightEG, 3.00, rrWeightEG, qrWeightEG };*/
 
-  float weights_mg[4] = { 8.0, 1.50, 3, 0.25 };
+  float weights_mg[4] = { 12.0, 1.50, 3, 0.25 };
   float weights_eg[4] = { 10.0, 3.00, 1.15, 0.125 };
 }
 
