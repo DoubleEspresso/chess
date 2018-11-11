@@ -25,9 +25,9 @@ namespace
   U64 last_time_ms = 0; // print pv frequently
   MoveStats statistics;
   int hash_hits = 0;
-  bool fixed_depth = true;
+  bool fixed_depth = false;
   int stop_depth = 10;
-
+  
   template<NodeType type>
   int search(Board& b, int alpha, int beta, int depth, Node* stack);
   
@@ -101,7 +101,7 @@ namespace Search
     timer_thread->sleep_condition.signal();
     // main entry point for the fail-hard alpha-beta search
     // the main iterative deepening loop
-    int delta = 65;
+    int delta = 25;
 
     for (int depth = 1; depth <= dpth; depth += 1) {      
 
@@ -127,7 +127,7 @@ namespace Search
         std::sort(RootMoves.begin(), RootMoves.end(), MLGreater);
 
         if (timer_thread->elapsed - last_time_ms >= 3000) ReadoutRootMoves(depth);
-
+	
         if (eval <= alpha) {
           alpha -= delta;
           delta += delta / 2;
@@ -138,14 +138,17 @@ namespace Search
         }
         else break;
       }
+
       
       if (!UCI_SIGNALS.stop) {
         pv_from_tt(b, eval, depth, (stack + 2)->pv);
         last_time_ms = timer_thread->elapsed;        
       }
 
-      if (fixed_depth && depth == stop_depth) break;
-      
+      if (fixed_depth && depth == stop_depth) {
+	break;
+      }
+	    
     }
   }
 
@@ -263,7 +266,7 @@ namespace {
     // and saved the result in ttvalue .. so using ttvalue is typically better than static::Evaluate, but could still
     // be innaccurate.
     int static_eval = NINF;
-    if (!b.in_check()) static_eval = (ttvalue > NINF && pv_node ? ttvalue : Eval::evaluate(b));
+    if (!b.in_check()) static_eval = ttvalue > NINF && pv_node ? ttvalue : Eval::evaluate(b);
     stack->static_eval = static_eval;
 
     // dbg check on evaluate vs. search vs. ttvalue
@@ -452,7 +455,7 @@ namespace {
           if (eval < rbeta) extension += 1;
         }
 
-      if (depth >= 6 &&
+      if (depth >= 4 &&
           !inCheck &&
           !givesCheck &&
           isQuiet &&
@@ -461,7 +464,7 @@ namespace {
           move != stack->killer[1])
         {
           reduction += 1;
-          if (depth > 8 && !pv_node) reduction += (depth - 8); 
+          if (depth > 8 && !pv_node) reduction += (depth - 8);
         }
 
       // adjust search depth based on reduction/extensions
@@ -766,6 +769,7 @@ namespace {
       BestMoves[1] = pv[1];
     }
       
+
     for (j = 0; hashTable.fetch(b.pos_key(), e) && e.move != MOVE_NONE && j < d; ++j) {
       if (b.is_legal(e.move)) {
 	if (j < 2 && BestMoves[j] == MOVE_NONE) BestMoves[j] = e.move;
