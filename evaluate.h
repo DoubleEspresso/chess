@@ -35,9 +35,16 @@ namespace Eval
 
   struct KingSafety {
     U64 attackedSquareBB;
-    int attackScore[6]; // pawn, knight, bithop, rook, queen, king
+    int attackScore[6]; // pawn, knight, bishop, rook, queen, king
     int numAttackers;
     int kingRingAttackers[2][2][6];
+  };
+
+  struct CenterControl {
+    U64 attackedSquareBB;
+    int attackScore[5]; // pawn, knight, bishop, rook, queen
+    int numAttackers;
+    int numPawns;
   };
 
   struct EvalInfo {
@@ -61,6 +68,7 @@ namespace Eval
     MaterialEntry * me;
     PawnEntry * pe;
     KingSafety ks[2];
+    CenterControl center[2];
     Scores s;
   };
   extern int evaluate(Board& b);

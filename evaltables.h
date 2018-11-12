@@ -35,6 +35,7 @@ namespace {
       }
     };
   int KingAttackBonus[6] = { 6, 14, 10, 12, 14, 24 }; // pawn, knight, bishop, rook, queen, king
+  int CenterAttackBonus[6] = { 4, 1, 1, 1, 1, 0 }; // pawn, knight, bishop, rook, queen, king
   int KingExposureBonus[2] = { 2, 0 };
   int CastleBonus[2] = { 6, 1 };
   int PawnLeverScore[64] =

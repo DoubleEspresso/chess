@@ -285,7 +285,7 @@ namespace {
 
     // 4. -- drop into qsearch if we are losing
     float rm = RazorMargin(depth);
-    if (depth <= 4  && 0 &&
+    if (depth <= 4 && 0 &&
         !pv_node &&
         ttm == MOVE_NONE &&
         !stack->isNullSearch &&
@@ -505,7 +505,7 @@ namespace {
           !b.pawn_on_7(b.whos_move()) &&
           moves_searched > 3)
 	{
-	  int R = Reduction(pv_node, improving, newdepth, moves_searched)/3;
+	  int R = Reduction(pv_node, improving, newdepth, moves_searched)/2;
 	  int v = statistics.history[b.whos_move()][get_from(move)][get_to(move)];
 	  if (v <= (NINF - 1)) R += 1;
 	  int LMR = newdepth - R;

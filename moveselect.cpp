@@ -160,9 +160,10 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs,
       int score = statistics->score(m, b.whos_move());
 
       // countermove bonus
+      
       if (lastmove != MOVE_NONE &&
 	  m == statistics->countermoves[get_from(lastmove)][get_to(lastmove)])
-	score += 15;
+	score += 10;
       
       
       // bonus for avoiding the capture from the threat move (from null search)

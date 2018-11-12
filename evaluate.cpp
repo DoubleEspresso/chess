@@ -61,7 +61,10 @@ namespace {
     }
     ei.pinned[WHITE] = b.pinned(WHITE, ei.pinners[BLACK]);
     ei.pinned[BLACK] = b.pinned(BLACK, ei.pinners[WHITE]);
+    
     memset(ei.ks, 0, 2 * sizeof(KingSafety));
+    memset(ei.center, 0, 2*sizeof(CenterControl));
+    
     //U64 defended = b.non_pawn_material(WHITE) & ei.pe->attacks[WHITE];
     //ei.weak_enemies[WHITE] = b.non_pawn_material(WHITE) ^ defended;
     //defended = b.non_pawn_material(BLACK) & ei.pe->attacks[BLACK];
@@ -88,7 +91,7 @@ namespace {
     score += (eval_rooks<WHITE>(b, ei) - eval_rooks<BLACK>(b, ei));
     score += (eval_queens<WHITE>(b, ei) - eval_queens<BLACK>(b, ei));
     score += (eval_kings<WHITE>(b, ei) - eval_kings<BLACK>(b, ei));
-    //score += (eval_center<WHITE>(b, ei) - eval_center<BLACK>(b, ei));
+    score += (eval_center<WHITE>(b, ei) - eval_center<BLACK>(b, ei));
     score += (eval_space<WHITE>(b, ei) - eval_space<BLACK>(b, ei));
     score += (eval_threats<WHITE>(b, ei) - eval_threats<BLACK>(b, ei));
     score += (eval_pawn_levers<WHITE>(b, ei) - eval_pawn_levers<BLACK>(b, ei));
@@ -157,6 +160,7 @@ namespace {
     int them = c ^ 1;
     U64 pinned = ei.pinned[c];
     KingSafety * kingScores = &ei.ks[c];
+    CenterControl * centerScores = &ei.center[c];
     int *sqs = b.sq_of<KNIGHT>(c);
     
     for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs) {      
@@ -181,6 +185,14 @@ namespace {
 	int to = pop_lsb(attacks);
 	int p = b.piece_on(to);
 	score += int(AttackBonus[ei.phase][KNIGHT][p]);
+      }
+
+      // center attacks
+      U64 center_attacks = PseudoAttacksBB(KNIGHT, from) & BigCenterBB;
+      if (center_attacks) {
+	centerScores->attackScore[KNIGHT] += CenterAttackBonus[KNIGHT];
+	centerScores->numAttackers++;
+	centerScores->attackedSquareBB |= center_attacks;
       }
       
       // king attacks
@@ -209,6 +221,7 @@ namespace {
     U64 center_pawns = ei.all_pawns & CenterMaskBB;
     int center_nb = count(center_pawns);
     KingSafety * kingScores = &ei.ks[c];
+    CenterControl * centerScores = &ei.center[c];
     int *sqs = b.sq_of<BISHOP>(c);
     
     for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs) {
@@ -242,6 +255,14 @@ namespace {
       // note: did try including color penalties for few pawn targets
       if (center_nb <= 2) score += BishopCenterBonus[ei.phase];
 
+      // center attacks
+      U64 center_attacks = mvs & BigCenterBB;
+      if (center_attacks) {
+	centerScores->attackScore[BISHOP] += CenterAttackBonus[BISHOP];
+	centerScores->numAttackers++;
+	centerScores->attackedSquareBB |= center_attacks;
+      }
+      
       // threats to king 
       U64 king_threats = mvs & PseudoAttacksBB(KING, eks);
       if (king_threats) {
@@ -267,6 +288,7 @@ namespace {
     U64 pinned = ei.pinned[c];
     U64 mask = ei.all_pieces;
     KingSafety * kingScores = &ei.ks[c];
+    CenterControl * centerScores = &ei.center[c];
     int eks = ei.kingsq[them];
     U64 pawns = ei.all_pawns;
     U64 rank7 = (c == WHITE ? RowBB[ROW7] : RowBB[ROW2]);
@@ -316,6 +338,13 @@ namespace {
       // rank-7
       U64 on7 = SquareBB[from] & rank7;
       if (!empty(on7)) score += 2;
+
+      U64 center_attacks = mvs & BigCenterBB;
+      if (center_attacks) {
+	centerScores->attackScore[ROOK] += CenterAttackBonus[ROOK];
+	centerScores->numAttackers++;
+	centerScores->attackedSquareBB |= center_attacks;
+      }
       
       U64 king_threats = mvs & KingSafetyBB[them][eks];
       if (!empty(king_threats)) {
@@ -350,6 +379,7 @@ namespace {
     U64 enemy_bishops = b.get_pieces(them, BISHOP);
     U64 enemy_rooks = b.get_pieces(them, ROOK);
     U64 pawns = ei.all_pawns;
+    CenterControl * centerScores = &ei.center[c];
     KingSafety * kingScores = &ei.ks[c];
     int *sqs = b.sq_of<QUEEN>(c);
     
@@ -379,6 +409,14 @@ namespace {
       int center_nb = count(center_pawns);
       if (center_nb <= 2) score += BishopCenterBonus[ei.phase];
 
+      // center control
+      U64 center_attacks = mvs & BigCenterBB;
+      if (center_attacks) {
+	centerScores->attackScore[QUEEN] += CenterAttackBonus[QUEEN];
+	centerScores->numAttackers++;
+	centerScores->attackedSquareBB |= center_attacks;
+      }
+      
       U64 king_threats = mvs & KingSafetyBB[them][eks];
       if (king_threats) {
 	kingScores->attackScore[QUEEN] += KingAttackBonus[QUEEN];
@@ -423,30 +461,33 @@ namespace {
       if (unsafeBB != 0ULL) {
 	escapeBB ^= unsafeBB;
 	escapeBB ^= (escapeBB & ei.pieces[them]);
-
+	
 	if (escapeBB != 0ULL) {
 	  int nb_safe = count(escapeBB);
 	  if (nb_safe <= 1) score += 3 * attack_score;
 	}
-	//else if (escapeBB == 0ULL)
-	//{
-	//	score += (int)kingScores->numAttackers * attack_score * 0.10;
-	//	U64 queens = KingVisionBB[them][QUEEN][ei.kingsq[them]] & b.get_pieces(c, QUEEN);
-	//	if (queens != 0ULL) score += 14;
-
-	//	U64 rooks = KingVisionBB[them][ROOK][ei.kingsq[them]] & b.get_pieces(c, ROOK);
-	//	if (rooks != 0ULL) score += 12;
-
-	//	U64 bishops = KingVisionBB[them][BISHOP][ei.kingsq[them]] & b.get_pieces(c, BISHOP);
-	//	if (bishops != 0ULL) score += 4;
-
-	//	U64 knights = KingVisionBB[them][KNIGHT][ei.kingsq[them]] & b.get_pieces(c, KNIGHT);
-	//	if (knights != 0ULL) score += 8;
-
-	//	//U64 pawns = KingVisionBB[them][PAWN][ei.kingsq[them]] & b.get_pieces(c, PAWN);
-	//	//if (pawns != 0ULL) score += 1;
-	//}
-      }
+	//else if (escapeBB == 0ULL) score += 4 * attack_score;
+	/*
+	else if (escapeBB == 0ULL)
+	  {
+	    //score += (int)kingScores->numAttackers * attack_score * 0.10;
+	    U64 queens = KingVisionBB[them][QUEEN][ei.kingsq[them]] & b.get_pieces(c, QUEEN);
+	    if (queens != 0ULL) score += 3;
+	    
+	    U64 rooks = KingVisionBB[them][ROOK][ei.kingsq[them]] & b.get_pieces(c, ROOK);
+	    if (rooks != 0ULL) score += 3;
+	    
+	    U64 bishops = KingVisionBB[them][BISHOP][ei.kingsq[them]] & b.get_pieces(c, BISHOP);
+	    if (bishops != 0ULL) score += 2;
+	    
+	    U64 knights = KingVisionBB[them][KNIGHT][ei.kingsq[them]] & b.get_pieces(c, KNIGHT);
+	    if (knights != 0ULL) score += 2;
+	    
+	    //U64 pawns = KingVisionBB[them][PAWN][ei.kingsq[them]] & b.get_pieces(c, PAWN);
+	    //if (pawns != 0ULL) score += 1;
+	  }
+	*/
+      }      
     }
     // pawn cover around king -- based on game phase
     if (ei.phase == MIDDLE_GAME) {
@@ -467,7 +508,7 @@ namespace {
       piece_cover ^= ei.pawns[them];
       int nb_covering = count(piece_cover);
       if (nb_covering <= 0 && kingScores->numAttackers > 0) score += 4 * kingScores->numAttackers;
-    }
+      }
 
     if (!castled) score -= 4 * CastleBonus[ei.phase] * KingExposureBonus[ei.phase];
 
@@ -504,7 +545,7 @@ namespace {
       space |= SpaceBehindBB[c][s];
     }
     space &= (ColBB[COL2] | ColBB[COL3] | ColBB[COL4] | ColBB[COL5]);
-    score += count(space)/2;// * SpaceBonus[ei.phase];
+    score += count(space) / 2; // * SpaceBonus[ei.phase];
 
     if (ei.do_trace) {
       (c == WHITE ? ei.s.space_sc[WHITE] = score : ei.s.space_sc[BLACK] = score);
@@ -597,45 +638,32 @@ namespace {
 
   template<Color c> int eval_center(Board &b, EvalInfo& ei) {
     int score = 0;
-    int them = c ^ 1;
-    U64 bigCenter = CenterMaskBB;
-
+    U64 bigCenter = BigCenterBB; //CenterMaskBB;
+    int them = c^1;
+    CenterControl * centerScores = &ei.center[c];
     U64 pawns = ei.pawns[c];
-    U64 knights = b.get_pieces(c, KNIGHT);
-    U64 bishops = b.get_pieces(c, BISHOP);
-    U64 queens = b.get_pieces(c, QUEEN);
-    U64 rooks = b.get_pieces(c, ROOK);
 
     if (pawns) {
       U64 pawn_bm = pawns & bigCenter;
-      if (pawn_bm) score += 2 * count(pawn_bm);// add weight for pawn attacks - helps opening play
-    }
-    if (knights) {
-      U64 knight_bm = knights & bigCenter;
-      if (knight_bm) score += 1;
-    }
-    if (bishops) {
-      U64 bish_bm = bishops & bigCenter;
-      if (bish_bm) score += 1;
+      if (pawn_bm) score += count(pawn_bm);
     }
 
-    // minor/major in infront of center pawn penalty
-    if (ei.phase == MIDDLE_GAME) {
-      U64 target_sqs = (c == WHITE ? SquareBB[E3] | SquareBB[D3] : SquareBB[E6] | SquareBB[D6]);
-      U64 pawns_2nd_rank = (c == WHITE ? pawns & (SquareBB[E2] | SquareBB[D2]) : pawns & (SquareBB[E7] | SquareBB[D7]));
-      if (pawns_2nd_rank != 0ULL) {
-	U64 bad_positioned_pieces = (bishops | queens | rooks) & target_sqs;
-	if (bad_positioned_pieces != 0ULL) score -= 16; // it really hurts the middlegame .. 
+    if (centerScores->numAttackers > 0) {
+      int attack_score = 0;
+      for (int p = KNIGHT; p <= QUEEN; ++p) {
+	attack_score += centerScores->attackScore[p];
+	score += (int)centerScores->numAttackers * attack_score;
       }
-    }
+      score += count(centerScores->attackedSquareBB);
+    }   
 
-    // central weaknesses
+    // central weaknesses    
     U64 doubled_pawns = ei.pe->doubledPawns[them];
     U64 weaknesses = doubled_pawns & bigCenter;// | undefended_pawns) & bigCenter;
     if (ei.phase == MIDDLE_GAME && weaknesses != 0ULL) {
       score += 1;
     }
-
+        
     if (ei.do_trace) {
       (c == WHITE ? ei.s.center_sc[WHITE] = score : ei.s.center_sc[BLACK] = score);
     };

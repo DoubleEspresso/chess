@@ -13,9 +13,10 @@ namespace Penalty {
   float shelterPawn[2] = { 4.0, 1.0 };
   float isolatedPawn[2] = { -5.0,-10.0 };
   float backwardPawn[2] = { -5.0,-1.0 };
+  float backwardOpen[2] = { -8.0, -4.0 };
   float chainPawn[2] = { 4.0, 8.0 };
   float passedPawn[2] = { 10.0, 20.0 };
-  float semiOpen[2] = { -5.0,-9.0 };
+  float semiOpen[2] = { -1.0, -1.0 };
 }
 
 // sz for 16 pawns distributed among 48 sqrs. ~ 454,253,679 elts
@@ -100,6 +101,7 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx) {
       // king shelter pawn
       if (PseudoAttacksBB(KING, b.sq_of<KING>(c)[1]) & fbb) {
 	table[idx].kingPawns[c] |= fbb;
+	//std::cout << " .. dbg shelter " << std::endl;
 	base += Penalty::shelterPawn[gp];
       }
 
@@ -107,6 +109,7 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx) {
       U64 tmp = PassedPawnBB[c][from] & their_pawns;
       if (empty(tmp)) {
 	table[idx].passedPawns[c] |= fbb;
+	//std::cout << " .. dbg passed " << std::endl;
 	base += Penalty::passedPawn[gp];
       }
 
@@ -114,6 +117,7 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx) {
       tmp = NeighborColsBB[COL(from)] & our_pawns;
       if (empty(tmp)) {
 	table[idx].isolatedPawns[c] |= fbb;
+	//std::cout << " .. dbg isolated " << std::endl;
 	base += Penalty::isolatedPawn[gp];
       }
 
@@ -126,7 +130,8 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx) {
 	  table[idx].backwardPawns[c] |= fbb;
 	  U64 isopen = ColBB[COL(from)] & all_pawns;
 	  if (count(isopen) == 1)
-	    base += Penalty::backwardPawn[gp];
+	    //std::cout << " .. dbg backward " << std::endl;
+	    base += Penalty::backwardOpen[gp];
 	}
       }
 
@@ -135,6 +140,7 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx) {
 	int sq1 = pop_lsb(tmp);
 	if ((c == WHITE ? ROW(sq1) >= ROW(from) : ROW(sq1) <= ROW(from))) {
 	  table[idx].backwardPawns[c] |= fbb;
+	  //std::cout << " .. dbg backward 1 neighbor" << std::endl;
 	  base += Penalty::backwardPawn[gp];
 	}
       }
@@ -147,6 +153,7 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx) {
 
 	// ..and isolated
 	tmp = NeighborColsBB[COL(from)] & our_pawns;
+	//std::cout << " .. dbg double isolated" << std::endl;
 	if (empty(tmp)) base += Penalty::isolatedPawn[gp];
       }
 
@@ -154,7 +161,10 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx) {
       tmp = ColBB[COL(from)] & all_pawns;
       if (count(tmp) == 1) {
 	U64 ourpawn = ColBB[COL(from)] & our_pawns;
-	if (!empty(ourpawn)) base += Penalty::semiOpen[gp];
+	if (!empty(ourpawn)) {
+	  //std::cout << " .. dbg open file" << std::endl;
+	  base += Penalty::semiOpen[gp];
+	}
       }
       
       // chain pawns (track chain-base)
@@ -164,6 +174,6 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx) {
       }
       else table[idx].chainBase[c] |= fbb;      
     }
-  
-  return (int)(base * 0.65);
+  //std::cout << "base = " << base << std::endl;
+  return (int)(0.65 * base); 
 }
