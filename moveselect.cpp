@@ -121,7 +121,7 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs,
   for (; !mvs.end(); ++mvs) {
     U16 m = mvs.move();
     int mt = int((m & 0xf000) >> 12);
-    bool checks = b.gives_check(m);
+    //bool checks = b.gives_check(m);
 
     if (m == ttm) continue;
     if (m == killer1 || m == killer2 || m == mate1 || m == mate2) continue;

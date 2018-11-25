@@ -167,10 +167,12 @@ namespace {
     return std::find(RootMoves.begin(), RootMoves.end(), 
                      MoveList(move)) != RootMoves.end();
   }
-  
+
+  /*
   float RazorMargin(int depth) {
     return 330 + 200 * log( (float)depth );
   }
+  */
   
   template<NodeType type>
   int search(Board& b, int alpha, int beta, int depth, Node* stack) {
