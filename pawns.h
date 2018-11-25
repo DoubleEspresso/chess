@@ -14,6 +14,8 @@ struct PawnEntry
   U64 backwardPawns[2];
   U64 chainPawns[2];
   U64 passedPawns[2];
+  U64 darkSquarePawns[2];
+  U64 lightSquarePawns[2];
   U64 kingPawns[2];
   U64 attacks[2];
   U64 undefended[2];

@@ -1,6 +1,8 @@
 #ifdef __linux
 #include <cstring>
 #endif
+#include <fstream>
+
 #include "evaluate.h"
 #include "endgame.h"
 #include "squares.h"
@@ -35,6 +37,11 @@ namespace {
   template<Color c> int eval_xray_bishop(Board& b, EvalInfo& ei);
   template<Color c> int eval_xray_rook(Board& b, EvalInfo& ei);
   template<Color c> int eval_xray_queen(Board& b, EvalInfo& ei);
+
+  U64 pawn_targets_white = 0ULL;
+  U64 pawn_targets_black = 0ULL;
+  U64 weak_squares_black = 0ULL;
+  U64 weak_squares_white = 0ULL;
   
   int eval(Board &b) {
     EvalInfo ei;
@@ -84,6 +91,36 @@ namespace {
 
     // simple lazy eval
     if (abs(score) >= 400) return b.whos_move() == WHITE ? score : -score;
+
+
+    // pre-compute weak squares from weak pawns
+    weak_squares_white = ((ei.pe->passedPawns[BLACK] |
+			   ei.pe->isolatedPawns[BLACK] |
+			   ei.pe->doubledPawns[BLACK] |
+			   ei.pe->backwardPawns[BLACK]) >> NORTH);
+    weak_squares_white ^= (weak_squares_white & b.get_pieces(BLACK, PAWN)); // remove the occupied weak squares
+    
+    weak_squares_black = (ei.pe->passedPawns[WHITE]| 
+			  ei.pe->isolatedPawns[WHITE] |
+			  ei.pe->doubledPawns[WHITE] |
+			  ei.pe->backwardPawns[WHITE]) << NORTH;
+    weak_squares_black ^= (weak_squares_black & b.get_pieces(WHITE, PAWN)); // remove the occupied weak squares
+    
+
+    
+    // pre-compute pawn targets    
+    pawn_targets_white = (ei.pe->chainBase[BLACK] |
+			  ei.pe->passedPawns[BLACK] |
+			  ei.pe->isolatedPawns[BLACK] |
+			  ei.pe->doubledPawns[BLACK] |
+			  ei.pe->backwardPawns[BLACK]);
+
+    pawn_targets_black = (ei.pe->chainBase[WHITE] |
+			  ei.pe->passedPawns[WHITE] |
+			  ei.pe->isolatedPawns[WHITE] |
+			  ei.pe->doubledPawns[WHITE] |
+			  ei.pe->backwardPawns[WHITE]);
+
     
     score += (eval_squares<WHITE>(b, ei) - eval_squares<BLACK>(b, ei));
     score += (eval_knights<WHITE>(b, ei) - eval_knights<BLACK>(b, ei));
@@ -92,10 +129,21 @@ namespace {
     score += (eval_queens<WHITE>(b, ei) - eval_queens<BLACK>(b, ei));
     score += (eval_kings<WHITE>(b, ei) - eval_kings<BLACK>(b, ei));
     score += (eval_center<WHITE>(b, ei) - eval_center<BLACK>(b, ei));
-    score += (eval_space<WHITE>(b, ei) - eval_space<BLACK>(b, ei));
+    //score += (eval_space<WHITE>(b, ei) - eval_space<BLACK>(b, ei));
     score += (eval_threats<WHITE>(b, ei) - eval_threats<BLACK>(b, ei));
     score += (eval_pawn_levers<WHITE>(b, ei) - eval_pawn_levers<BLACK>(b, ei));
 
+    /*
+    double mscore = ei.me->value;
+    double pscore = score - mscore;
+    if (abs(mscore) < abs(pscore) && abs(pscore) > 100) {
+      std::string fen = b.to_fen();
+      std::ofstream ofile;
+      ofile.open("dbg-eval.txt", std::ios_base::app);
+      ofile << fen << " " << mscore << " " << pscore << "\n";      
+    }
+    */
+    
     // debug specialized endgame eval
     if (ei.phase == END_GAME && ei.me->endgame_type != KxK) {
       //int e_score = Endgame::evaluate(b, ei);
@@ -194,6 +242,14 @@ namespace {
 	centerScores->numAttackers++;
 	centerScores->attackedSquareBB |= center_attacks;
       }
+
+      // weak square attacks
+      /*
+      U64 weak_square_attacks = mvs & weak_squares_white;
+      if (weak_square_attacks) {
+	score += 1;
+      }
+      */
       
       // king attacks
       U64 king_threats = PseudoAttacksBB(KNIGHT, from) & KingSafetyBB[them][ei.kingsq[them]];
@@ -222,6 +278,7 @@ namespace {
     int center_nb = count(center_pawns);
     KingSafety * kingScores = &ei.ks[c];
     CenterControl * centerScores = &ei.center[c];
+    U64 enemy_bishops = b.get_pieces(them, BISHOP);
     int *sqs = b.sq_of<BISHOP>(c);
     
     for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs) {
@@ -238,9 +295,13 @@ namespace {
 	U64 bm = mobility & tmp;
 	mobility ^= bm;
       }
-      int mcount = count(mobility);
-      score += mcount;
-      if (mcount <= 4) score -= TrappedPenalty[BISHOP];
+
+      int mcount = 0;
+      if (mobility) {
+	mcount = count(mobility);
+	score += mcount;
+      }
+      if (mcount <= 6) score -= 2 * TrappedPenalty[BISHOP];
 
       U64 attacks = mvs & ei.pieces[them];
       while (attacks) {
@@ -255,6 +316,28 @@ namespace {
       // note: did try including color penalties for few pawn targets
       if (center_nb <= 2) score += BishopCenterBonus[ei.phase];
 
+      // color complexes
+      // the bishop is more valuable in middle games where the opponents
+      // pawns are on the opposite color..(color complex attack)
+      
+      if (ei.phase == MIDDLE_GAME) {
+	// note: tricky logic about the loop - always check dark square bishop (the light square bishop could be true for both iterations..)
+	U64 enemy_pawns_same_color = (dark_bishop ? ei.pe->darkSquarePawns[them] : ei.pe->lightSquarePawns[them]); // recheck - bug?
+	U64 color_complex_king = enemy_pawns_same_color & KingSafetyBB[them][ei.kingsq[them]];
+
+	if (color_complex_king == 0ULL) {
+	  score += BishopCenterBonus[ei.phase];
+	  U64 no_opposing_bishop = enemy_bishops & (dark_bishop ?
+						    ColoredSquaresBB[BLACK] :
+						    ColoredSquaresBB[WHITE]);
+	  
+	  if (no_opposing_bishop == 0ULL) {
+	    score += BishopCenterBonus[ei.phase]/2;
+	  }
+	}	
+      }      
+      
+      
       // center attacks
       U64 center_attacks = mvs & BigCenterBB;
       if (center_attacks) {
@@ -310,9 +393,12 @@ namespace {
 	U64 bm = mobility & tmp;
 	mobility ^= bm;
       }
-      int mcount = count(mobility);
-      if (mobility) score += mcount/2;
-      if (mcount <= 4) score -= TrappedPenalty[ROOK];
+      int mcount = 0;
+      if (mobility) {
+	mcount = count(mobility);
+	score += mcount/2;
+      }
+      if (mcount <= 6) score -= 2*TrappedPenalty[ROOK];
       
       // attacks
       U64 attacks = mvs & ei.pieces[them];
@@ -337,7 +423,7 @@ namespace {
       
       // rank-7
       U64 on7 = SquareBB[from] & rank7;
-      if (!empty(on7)) score += 2;
+      if (on7 != 0ULL) score += 2;
 
       U64 center_attacks = mvs & BigCenterBB;
       if (center_attacks) {
@@ -535,6 +621,8 @@ namespace {
 
     // only connected pawns.
     pawn_bm ^= ei.pe->isolatedPawns[c];
+    pawn_bm ^= ei.pe->doubledPawns[c];
+
     
     if (pawn_bm == 0ULL) return 0;
 
@@ -544,9 +632,11 @@ namespace {
       int s = pop_lsb(pawn_bm);
       space |= SpaceBehindBB[c][s];
     }
-    space &= (ColBB[COL2] | ColBB[COL3] | ColBB[COL4] | ColBB[COL5]);
+    space &= (ColBB[COL3] | ColBB[COL4] | ColBB[COL5] | ColBB[COL6]);
+	
     score += count(space) / 2; // * SpaceBonus[ei.phase];
 
+    
     if (ei.do_trace) {
       (c == WHITE ? ei.s.space_sc[WHITE] = score : ei.s.space_sc[BLACK] = score);
     };
@@ -588,6 +678,7 @@ namespace {
 
     // weak pawn targets for pieces/pawns    
     U64 pawn_targets = (chain_bases | doubled_pawns | backward_pawns | isolated_pawns | passed_pawns);
+    
     if (pawn_targets) {
       while (pawn_targets) {
 	int sq = pop_lsb(pawn_targets);
@@ -601,9 +692,11 @@ namespace {
     }    
     
     // advanced passed pawns
-    U64 our_passed_pawns = ei.pe->passedPawns[c];
+    U64 our_passed_pawns = ei.pe->passedPawns[c];    
     if (our_passed_pawns) {
+      
       score += 1;
+      
       while (our_passed_pawns) {
 	// pawns close to promotion are almost always a threat
 	int from = pop_lsb(our_passed_pawns);
@@ -613,9 +706,11 @@ namespace {
 	if (!blockers) score += 2;
 	int sqs_togo = count(squares_until_promotion);
 	if (on_board(infrontSq) && ei.phase == END_GAME) {
-	  score += (7 - sqs_togo) * 10;// *10;
+	  
+	  score += (7 - sqs_togo) * 10;
 
 	  U64 our_rooks = b.get_pieces(c, ROOK);
+	  
 	  if (our_rooks) {
 	    int frook = pop_lsb(our_rooks);
 	    int rook_file = COL(frook);
@@ -647,7 +742,7 @@ namespace {
       U64 pawn_bm = pawns & bigCenter;
       if (pawn_bm) score += count(pawn_bm);
     }
-
+    
     if (centerScores->numAttackers > 0) {
       int attack_score = 0;
       for (int p = KNIGHT; p <= QUEEN; ++p) {

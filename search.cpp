@@ -189,12 +189,12 @@ namespace {
     int quiets_searched = 0;
     U16 bestmove = MOVE_NONE;
     //U16 threat = MOVE_NONE;
-    bool threat_extension = false;
+    //bool threat_extension = false;
     bool singular_extension = false;
     MoveList root; // storing/sorting rootmoves
     // update stack info
     (stack + 1)->excludedMove = MOVE_NONE;
-    U16 excluded_move = stack->excludedMove;
+    U16 excluded_move = MOVE_NONE; //stack->excludedMove;
     stack->ply = (stack - 1)->ply++;
     stack->currmove = 
       stack->bestmove = (stack + 2)->killer[0] = 
@@ -218,9 +218,8 @@ namespace {
     U64 data = 0ULL;
     U16 ttm = MOVE_NONE;
     int ttvalue = NINF;
-    //int ttstatic_value = NINF;
     int mate_dist = iter_depth - depth + 1; //stack->ply;
-
+    int ttstatic_value = NINF;
     //if (UCI_SIGNALS.stop) return DRAW;
 
     // 1. -- mate distance pruning    
@@ -242,33 +241,58 @@ namespace {
     data = b.data_key();
     key = b.pos_key();
     if (hashTable.fetch(key, e)) {
-      ttm = e.move;
-      //ttstatic_value = e.static_value;	
-      ttvalue = e.value;
-      ++hash_hits;
-      
-      if (pv_node && e.Depth() >= depth) { 	  
-        if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta) {
-          stack->currmove = stack->bestmove = e.move;
-          return e.value;
-        }
-        else if (e.bound == BOUND_LOW && e.value >= beta) {
-          if (ttm != MOVE_NONE) statistics.update(b, ttm, lastmove, stack, depth, eval, quiets);
-          return e.value;
-        }
-        else if (e.bound == BOUND_HIGH && e.value <= alpha) return e.value;
+	
+	ttm = e.move;
+	ttstatic_value = e.static_value;
+	ttvalue = e.value;
+	//bool same_type = e.pvNode || e.pvNode == pv_node;
+	if (e.Depth() >= depth) {
+	  
+	  // note: many entries in the hash-table are from zero-window searches
+	  // should we only store data in the hash-table from non-zero window searches?
+	  /*
+	    b.print();	
+	    std::cout << (e.bound == BOUND_EXACT ? "b-exact" : (e.bound == BOUND_LOW ? "b-low" : "b-high") ) << std::endl;
+	    std::cout << "(" << alpha << "," << e.value  << "," << beta << ")" << " seval " << e.static_value << std::endl;
+	    std::cout << Eval::evaluate(b) << std::endl;	
+	    std::cout << std::endl;
+	  */
+	  
+	  if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta) {
+	    stack->currmove = stack->bestmove = e.move;
+	    ++hash_hits;
+	    return e.value;
+	  }
+	  else if (e.bound == BOUND_LOW && e.value >= beta) {
+	    if (ttm != MOVE_NONE)
+	      statistics.update(b, ttm, lastmove, stack, depth, e.value, quiets);
+	    ++hash_hits;
+	    return beta; 
+	  }
+	  else if (e.bound == BOUND_HIGH && e.value <= alpha) {
+	    ++hash_hits;
+	    return alpha;
+	  }
       }
     }
     
-    // 3. -- static evaluation of position 
-    // note - ttvalue is used if we are currently in a pv_node but have stored
-    // a result from a null window search for this position .. e.g. we have previously searched the position as a non-pv node
-    // and saved the result in ttvalue .. so using ttvalue is typically better than static::Evaluate, but could still
-    // be innaccurate.
-    int static_eval = NINF;
-    if (!b.in_check()) static_eval = ttvalue > NINF && pv_node ? ttvalue : Eval::evaluate(b);
+    // 3. -- static evaluation of position    
+    int static_eval = (ttvalue != NINF ? ttvalue : NINF);
+    		       
+    if (static_eval == NINF &&
+	!b.in_check() &&
+	get_movetype((stack-1)->currmove) != CAPTURE  &&
+	!is_quiet_promotion((stack-1)->currmove) &&
+	!is_cap_promotion((stack-1)->currmove)) {
+      static_eval = (ttstatic_value != NINF ? ttstatic_value : Eval::evaluate(b));
+    }    
     stack->static_eval = static_eval;
-
+    
+    bool do_fwd_prune = !b.in_check() &&
+      !pv_node &&
+      !stack->isNullSearch &&
+      static_eval != NINF;
+	
     // dbg check on evaluate vs. search vs. ttvalue
     //if (ttvalue > NINF && pv_node)
     //{
@@ -284,8 +308,9 @@ namespace {
     //}
 
     // 4. -- drop into qsearch if we are losing
+    /*
     float rm = RazorMargin(depth);
-    if (depth <= 4 && 0 &&
+    if (depth <= 6 && 0 &&
         !pv_node &&
         ttm == MOVE_NONE &&
         !stack->isNullSearch &&
@@ -305,12 +330,11 @@ namespace {
         }
       }
     }
-
+    */
+    
     // 5. -- futility pruning
     if (depth <= 6 &&
-        !pv_node &&
-        !b.in_check() &&
-        !stack->isNullSearch &&
+	do_fwd_prune && 
         static_eval - 50 * depth >= beta &&
         beta < INF - mate_dist &&
         b.non_pawn_material(b.whos_move())) {
@@ -318,11 +342,9 @@ namespace {
     }
 
     // 6. -- null move search    
-    if (!pv_node &&
+    if (do_fwd_prune &&
         depth >= 2 &&
-        !stack->isNullSearch &&
         static_eval >= beta &&
-        !b.in_check() &&
         b.non_pawn_material(b.whos_move())) {
       
       //int R = (depth >= 8 ? depth / 2 : 2);
@@ -338,12 +360,14 @@ namespace {
       if (null_eval >= beta) return beta;
 
       // the null move search failed low - which means we may be faced with threat ..
+      /*
       if ((stack + 1)->bestmove != MOVE_NONE &&
           null_eval > NINF + mate_dist) {
         stack->threat = (stack + 1)->bestmove;
         if (stack->threat == (stack - 1)->bestmove) threat_extension = true;
         stack->threat_gain = null_eval - static_eval;
       }
+      */
     }
 
     // 7. -- probcut from stockfish (disabled)
@@ -352,38 +376,40 @@ namespace {
         !b.in_check() &&
         !stack->isNullSearch &&
         beta < MATE_IN_MAXPLY &&
-        movetype((stack - 1)->currmove) == CAPTURE) {
+	static_eval - 100 >= beta &&
+        get_movetype((stack - 1)->currmove) == CAPTURE) {
       BoardData pd;
       MoveSelect ms(statistics, QsearchCaptures, false); // no checks just captures
       U16 move;
       int rdepth = depth / 2;
-      int rbeta = beta + MAX(rdepth, 1) * 200;
+      int rbeta = beta + MAX(rdepth, 1) * 50;
       while (ms.nextmove(b, stack, ttm, move, false)) {
         if (!b.is_legal(move)) continue;
         b.do_move(pd, move);
         stack->currmove = move;
         eval = -search<NONPV>(b, -rbeta, -rbeta + 1, rdepth, stack + 1);
         b.undo_move(move);
-        if (eval >= rbeta) return beta;
+        if (eval >= rbeta) return rbeta;
       }
     }
 
     // 7. -- internal iterative deepening
-    if (ttm == MOVE_NONE &&
+    if (ttm == MOVE_NONE && 
         depth >= (pv_node ? 8 : 6) &&
         (pv_node || static_eval + 250 >= beta) &&
         !b.in_check()) 
       {        
         int R = (depth >= 8 ? depth / 2 + (depth - 8) / 4 : 2);
-        int iid = depth - R; // depth - 2 - (pv_node ? 0 : depth / 4);
-        
+        int iid = depth - R;
+	
         stack->isNullSearch = true;
         
         if (pv_node) search<PV>(b, alpha, beta, iid, stack);	
         else search<NONPV>(b, alpha, beta, iid, stack);
         
         stack->isNullSearch = false;
-        if (hashTable.fetch(key, e)) ttm = e.move;
+
+	if (hashTable.fetch(key, e)) ttm = e.move;
       }
 
     // check if singular extension node
@@ -406,7 +432,7 @@ namespace {
     while (ms.nextmove(b, stack, ttm, move, false)) {
       if (UCI_SIGNALS.stop) { return DRAW; }
 
-      if (move == excluded_move) continue;
+      //if (move == excluded_move) continue;
 	
       if (!b.is_legal(move)) {
         ++pruned;
@@ -422,22 +448,26 @@ namespace {
       int see_sign = b.see_sign(move);
       
       // see pruning at shallow depths
-      if (!pv_node && !ROOT && !pvMove &&
+      
+      if (depth <= 3 &&
+	  !pv_node &&
+	  !ROOT &&
+	  !pvMove &&
           !givesCheck &&
           isQuiet &&
           move != ttm &&
-          !inCheck &&
-          depth <= 3 &&
-          see_sign < 0)
-        {
-          ++pruned;
-          continue;
-        }
-
+	  move != stack->killer[0] &&
+	  move != stack->killer[1] &&
+          !inCheck &&	  
+          see_sign < 0) {
+	++pruned;
+	continue;
+      }
+      
       // extension/reductions
       int extension = 0; int reduction = 1; // always reduce current depth by 1
-      if (givesCheck) extension += 1;
-      if (threat_extension) extension += 1;
+      //if (inCheck) extension += 1;
+      //if (threat_extension) extension += 1;
 
       // singular extension search (same implementation as stockfish)
       // TODO - tt-entries are currently spared by SE (hack)
@@ -464,7 +494,7 @@ namespace {
           move != stack->killer[1])
         {
           reduction += 1;
-          if (depth > 8 && !pv_node) reduction += (depth - 8);
+          if (depth > 6 && !pv_node) reduction += (depth - 6);
         }
 
       // adjust search depth based on reduction/extensions
@@ -510,7 +540,7 @@ namespace {
 	  if (v <= (NINF - 1)) R += 1;
 	  int LMR = newdepth - R;
 	  eval = (LMR <= 1 ? -qsearch<NONPV>(b, -alpha - 1, -alpha, 0, stack + 1, givesCheck) : -search<NONPV>(b, -alpha - 1, -alpha, LMR, stack + 1));
-	  if (eval > alpha) fulldepthSearch = true;
+	  //if (eval > alpha) fulldepthSearch = true;
 	}
       else fulldepthSearch = !pvMove;
       
@@ -556,7 +586,7 @@ namespace {
                         depth,
                         BOUND_LOW,
                         move,
-                        adjust_score(beta, mate_dist),
+                        adjust_score(eval, mate_dist), //beta, mate_dist),
                         static_eval,
                         pv_node);
         return beta;
@@ -608,7 +638,7 @@ namespace {
 
     U16 ttm = MOVE_NONE;
     U16 bestmove = MOVE_NONE;
-
+    
     stack->ply = (stack - 1)->ply++;
     //if (b.is_repition_draw()) return DRAW;
 
@@ -635,10 +665,11 @@ namespace {
     if (hashTable.fetch(key, e)) {
       ++hash_hits;
       ttm = e.move;
-      if (pv_node && e.Depth() >= qsDepth) {
+      bool same_type = (e.pvNode || e.pvNode == pv_node);
+      if (e.Depth() >= qsDepth && same_type) {
         if (e.bound == BOUND_EXACT && e.value > alpha && e.value < beta) return e.value;
-        else if (e.bound == BOUND_LOW && e.value >= beta) return  e.value;
-        else if (e.bound == BOUND_HIGH && e.value <= alpha) return  e.value;
+        else if (e.bound == BOUND_LOW && e.value >= beta) return beta; 
+        else if (e.bound == BOUND_HIGH && e.value <= alpha) return alpha; 
       }
     }
 
@@ -665,7 +696,7 @@ namespace {
 
 
     // delta pruning                 		
-    if (stand_pat < alpha - 650 && !kattacked) {
+    if (stand_pat < alpha - 950 && !kattacked) {
       return alpha;
     }
     if (alpha < stand_pat && !kattacked) alpha = stand_pat;
@@ -702,7 +733,7 @@ namespace {
 	  !checksKing &&
 	  !inCheck &&
 	  !pv_node &&
-	  eval + 750 < alpha &&
+	  eval + 650 < alpha &&
 	  eval > NINF + mate_dist) {
         ++pruned;
         continue;
@@ -729,7 +760,7 @@ namespace {
       moves_searched++;
 
       if (eval >= beta) {
-        hashTable.store(key, data, qsDepth, BOUND_LOW, move, adjust_score(beta, mate_dist), stand_pat, pv_node);
+        hashTable.store(key, data, qsDepth, BOUND_LOW, move, adjust_score(eval, mate_dist), stand_pat, pv_node);
         return beta;
       }
       if (eval > alpha) {

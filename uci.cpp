@@ -237,8 +237,8 @@ void UCI::command(std::string cmd, int& GAME_OVER)
               else if (command == "ponder") limits.ponder = atoi(command.c_str());
             }
 
-          hashTable.clear();
-          material.clear();
+          //hashTable.clear();
+          //material.clear();
           //pawnTable.clear();
           RootMoves.clear();
           timer_thread->search_limits = &limits;

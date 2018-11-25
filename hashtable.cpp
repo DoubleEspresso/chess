@@ -69,7 +69,7 @@ void HashTable::store(U64 key, U64 data, U8 depth, Bound bound, U16 m, int score
     }
 
     // replacement strategy for each cluster -- needs work
-    if (e->depth > depth || 
+    if (e->depth > depth || (pv_node && !e->pvNode) ||
         (e->bound != BOUND_EXACT && bound == BOUND_EXACT))
       replace = e;
   }

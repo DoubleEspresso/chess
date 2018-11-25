@@ -90,6 +90,8 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx) {
   table[idx].chainPawns[c] = 0ULL;
   table[idx].undefended[c] = 0ULL;
   table[idx].chainBase[c] = 0ULL;
+  table[idx].darkSquarePawns[c] = 0ULL;
+  table[idx].lightSquarePawns[c] = 0ULL;
   
   int *sqs = b.sq_of<PAWN>(c);
   for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs) {
@@ -144,6 +146,16 @@ int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx) {
 	  base += Penalty::backwardPawn[gp];
 	}
       }
+
+      // light/dark square pawns
+      tmp = ColoredSquaresBB[WHITE] & fbb;
+      if (tmp) {
+	table[idx].lightSquarePawns[c] |= tmp;
+      }
+      tmp = ColoredSquaresBB[BLACK] & fbb;
+      if (tmp) {
+	table[idx].darkSquarePawns[c] |= tmp;
+      } 
 
       // doubled pawns
       tmp = ColBB[COL(from)] & our_pawns;

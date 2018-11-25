@@ -129,8 +129,8 @@ void MoveSelect::load_and_sort(MoveGenerator& mvs,
     // build capture list -- evasions include quiet moves (fyi)
     if (movetype == CAPTURE &&
 	(mt == CAPTURE || mt == EP ||
-	 (mt <= PROMOTION_CAP && mt > PROMOTION) ||
-	 (includeQsearchChecks() && checks))) {
+	 (mt <= PROMOTION_CAP && mt > PROMOTION))) { // ||
+      //(includeQsearchChecks() && checks))) {
       captures[c_sz].m = m;
       int score = 0;
       
