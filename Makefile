@@ -114,6 +114,7 @@ depend:
 
 .PHONY:clean
 clean:
+	find . -name "debug_log.txt" | xargs rm -vf
 	find . -name "*.o" | xargs rm -vf
 	find . -name "*.ii" | xargs rm -vf
 	find . -name "*.s" | xargs rm -vf

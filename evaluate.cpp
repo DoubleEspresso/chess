@@ -129,7 +129,7 @@ namespace {
     score += (eval_queens<WHITE>(b, ei) - eval_queens<BLACK>(b, ei));
     score += (eval_kings<WHITE>(b, ei) - eval_kings<BLACK>(b, ei));
     score += (eval_center<WHITE>(b, ei) - eval_center<BLACK>(b, ei));
-    //score += (eval_space<WHITE>(b, ei) - eval_space<BLACK>(b, ei));
+    score += (eval_space<WHITE>(b, ei) - eval_space<BLACK>(b, ei));
     score += (eval_threats<WHITE>(b, ei) - eval_threats<BLACK>(b, ei));
     score += (eval_pawn_levers<WHITE>(b, ei) - eval_pawn_levers<BLACK>(b, ei));
 
@@ -247,7 +247,7 @@ namespace {
       /*
       U64 weak_square_attacks = mvs & weak_squares_white;
       if (weak_square_attacks) {
-	score += 1;
+	score += 1; //CenterAttackBonus[KNIGHT];
       }
       */
       
