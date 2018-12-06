@@ -760,7 +760,8 @@ struct {
 } LessThan;
 
 int Board::see_move(const U16& move) {
-  int to = get_to(move); int widx = 0; int bidx = 0;
+  int to = get_to(move);
+  int from = get_from(move);
   U64 tmp = all_pieces();
   U64 attackers = 0ULL;
   
@@ -774,49 +775,169 @@ int Board::see_move(const U16& move) {
   
   SeePiece black_list[16];
   SeePiece white_list[16]; // final storage   
-
+  int white_sz = 0; int black_sz = 0;
+  Piece atkr = PIECE_NONE;
+  
   while(true) {
-    // note : we could have more than 10 pieces attacking the square but this is extremely unlikely
-    SeePiece black[10]; SeePiece white[10]; 
-    int white_sz = 0; int black_sz = 0;
+
     U64 a = attackers_of(to, tmp) & tmp;
     if (a) {
       tmp ^= a;
       attackers |= a;
     }
     else break;
+    
     U64 white_attackers = a & white_bb;
     if (white_attackers) {
+      //PrintBits(white_attackers);
       while(white_attackers) {
-        white[white_sz].p = piece_on(pop_lsb(white_attackers));
-        white[white_sz].v = material.material_value(white[white_sz].p, MIDDLE_GAME);
+	int s = pop_lsb(white_attackers);
+	if (s == from) {
+	  atkr = piece_on(s);
+	  continue; // first attacker is handled below
+	}
+        white_list[white_sz].p = piece_on(s);
+        white_list[white_sz].v = material.material_value(white_list[white_sz].p, MIDDLE_GAME);
         white_sz++;
       }
     }
+    
     U64 black_attackers = a & black_bb;
     if (black_attackers) {
       while(black_attackers) {
-        black[black_sz].p = piece_on(pop_lsb(black_attackers));
-        black[black_sz].v = material.material_value(black[black_sz].p, MIDDLE_GAME);
+	int s = pop_lsb(black_attackers);
+	if (s == from) {
+	  atkr = piece_on(s);
+	  continue;
+	}	
+        black_list[black_sz].p = piece_on(s);
+        black_list[black_sz].v = material.material_value(black_list[black_sz].p, MIDDLE_GAME);
+	//std::cout << black_list[black_sz].p << std::endl;
+	//std::cout << std::endl;
         black_sz++;
       }	  
     }
-    std::sort(white, white + white_sz, LessThan); 
-    std::sort(black, black + black_sz, LessThan);
-
-    // manual copy the sorted list into the final sorted array
-    for(int i=0; i<white_sz; ++i, ++widx) white_list[widx] = white[i]; 
-    for(int i=0; i<black_sz; ++i, ++bidx) black_list[bidx] = black[i]; 
+    
+    if (white_sz == 0 && black_sz == 0 && atkr == PIECE_NONE) return 0;
   }
-  int to_piece = piece_on(to); int color = whos_move() ^ 1; int w = 0; int b = 0;
-  int score = ((to_piece != PIECE_NONE) ? material.material_value(to_piece, MIDDLE_GAME) : 0);
   
-  for(int i=0; i < 2*MIN(widx, bidx)-1; ++i) {
-    int victim = (color == WHITE ? black_list[b++].p : white_list[w++].p);
-    color ^= 1;
-    int d = material.material_value(victim, MIDDLE_GAME);
-    score += ((i&1) == 0 ? -d : d);
+
+  std::sort(white_list, white_list + white_sz, LessThan); 
+  std::sort(black_list, black_list + black_sz, LessThan);
+
+
+  int i = 0;
+  int w = 0;
+  int b = 0;
+  int color = whos_move();
+  //std::cout << "init=color = " << color << std::endl;
+  if (color == BLACK) {
+    SeePiece tmp[16];
+    tmp[0].p = atkr;
+    tmp[0].v = 0;    
+    for (int j=0,i=1; j<black_sz; ++j,++i) {
+      tmp[i] = black_list[j];
+    }
+    ++black_sz;
+    for (int j=0; j<black_sz; ++j) black_list[j] = tmp[j];
   }
+  else {
+    SeePiece tmp[16];
+    tmp[0].p = atkr;
+    tmp[0].v = 0;    
+    for (int j=0,i=1; j<white_sz; ++j,++i) {
+      tmp[i] = white_list[j];
+    }
+    ++white_sz;
+    for (int j=0; j<white_sz; ++j) white_list[j] = tmp[j];
+  }
+
+  
+  int score = 0; 
+  int prev = score;
+  
+  while(true) {
+
+    int victim = PIECE_NONE;
+    if (i == 0) {
+      int v = piece_on(to);  
+      if (v == KING) return 0; // illegal      
+      score += (v == PIECE_NONE ? 0 : material.material_value(v, MIDDLE_GAME));
+      color ^= 1;
+      prev = score;
+      ++i;
+      continue;
+    }
+
+    if ( (w >= white_sz) ||
+	 (b >= black_sz)) {
+      //std::cout << "while-break" << " w=" << w << " b=" << b <<
+      //" wsz=" << white_sz << " bsz=" << black_sz << std::endl;
+      break;
+    }    
+
+    victim = (color == WHITE ? black_list[b++].p : white_list[w++].p);
+
+    
+    int av = -1;
+    Piece attacker = PIECE_NONE;
+    if (color == WHITE && w < white_sz) {
+      attacker = white_list[w].p;
+      av = material.material_value(attacker, MIDDLE_GAME);
+    }
+    else if (color == BLACK && b < black_sz) {
+      attacker = black_list[b].p;
+      av = material.material_value(attacker, MIDDLE_GAME);
+    }
+
+    if (attacker == PIECE_NONE) break;
+    /*
+    std::cout << "color = " << color
+	      << " attacker = " << attacker
+	      << " victim = " << victim
+	      << std::endl;
+    */
+    
+    color ^= 1;    
+    int vv = material.material_value(victim, MIDDLE_GAME);
+    
+
+    
+    if (vv < av || victim == KING) {
+      // does the other side have attackers (works for king too)
+      int c = color;
+      //std::cout << victim << std::endl;
+      //std::cout << w << " " << b << " " << widx << " " << bidx << std::endl;
+      if (attacker == KING) {
+	if ((c == BLACK && b < black_sz) || (c == WHITE && w < white_sz)) {
+	  /*
+	  print();
+	  U16 m = move;
+	  std::cout << UCI::move_to_string(m) << " is ILLEGAL" << std::endl;
+	  std::cout << "score=" << score << std::endl;
+	  std::cout << to_fen() << std::endl;
+	  std::cout << "" << std::endl;
+	  */
+	  return score; // illegal
+	}
+      }
+    
+    
+      // widx/bidx are off by one due to removing the first attacker (above)
+      // 
+      if ( (victim == KING && ((c == BLACK && w < white_sz) || (c == WHITE && b < black_sz))) ||
+	   (victim != KING && ((c == BLACK && (black_sz > white_sz)) || (c == WHITE && (white_sz > black_sz)))) ) {
+	score = prev;
+	return score;
+      }
+    }
+    
+    score += ((i&1) == 1 ? -vv : vv);
+    ++i;
+    prev = score;
+
+  }
+  
   return score;
 }
 
