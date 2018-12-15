@@ -22,10 +22,6 @@ else
 endif
 
 # arch
-ifeq ($(ARCH),i386)
-   CFLAGS += -sse
-   CFLAGS += -O2
-endif
 
 # bits
 ifeq ($(BITS),x86_64)
@@ -46,12 +42,12 @@ endif
 # os
 ifeq ($(OS),Darwin )
    EXE_OS = osx
-   USERMACROS += -DOS=\"unix\"
+   USERMACROS += -DOSX
 endif
 
 ifeq ($(OS),Linux )
    EXE_OS = nix
-   USERMACROS += -DOS=\"unix\"
+   USERMACROS += -DUnix
 endif
 
 # executable

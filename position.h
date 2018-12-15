@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <vector>
 #include <iostream>
+#include <array>
 
 #include "types.h"
 #include "utils.h"
@@ -152,7 +153,7 @@ template<Color c, Piece p>
 
 template<Color c, Piece p>
   void piece_data::do_cap(const Square& f, const Square& t) {
-  Color them = c ^ 1;
+  Color them = Color(c ^ 1);
   Piece cap = piece_on[t];
   remove_piece(them, cap, t);
   do_quiet<c, p>(f, t);
@@ -166,15 +167,15 @@ void piece_data::do_promotion(const Square& f, const Square& t) {
 
 template<Color c> 
 void piece_data::do_ep(const Square& f, const Square& t) {
-  Color them = c ^ 1;
-  Square cs = (them == white ? t + 8 : t - 8);
+  Color them = Color(c ^ 1);
+  Square cs = Square(them == white ? t + 8 : t - 8);
   remove_piece(them, Piece::pawn, cs);
   do_quiet<c, Piece::pawn>(f, t);
 }
 
 template<Color c, Piece p>
   void piece_data::do_promotion_cap(const Square& f, const Square& t) {
-  Color them = c ^ 1;
+  Color them = Color(c ^ 1);
   Piece cap = piece_on[t];
   remove_piece(them, cap, t);
   remove_piece(c, Piece::pawn, f);

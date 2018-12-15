@@ -4,6 +4,9 @@
 
 #include <vector>
 #include <map>
+#include <string>
+#include <sstream>
+#include <iostream>
 
 #ifdef _MSC_VER
 #include <cstdint>

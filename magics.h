@@ -34,7 +34,7 @@ namespace magics {
     
   } // end namespace detail
   
-  template<Piece p> U64 attacks(const int& sq, const U64& block);
+  template<Piece p> U64 attacks(const Square& s, const U64& block);
   U64 next_magic(const unsigned int& bits, util::rand& r);  
   bool load();
   
