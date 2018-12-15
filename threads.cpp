@@ -209,6 +209,11 @@ void ThreadTimer::check_time()
   struct timespec delay;
   delay.tv_sec = 0.050; // ms
   delay.tv_nsec = 50 * 1000000;
+#elif OSX
+  lClock timer;
+  struct timespec delay;
+  delay.tv_sec = 0.050; // ms
+  delay.tv_nsec = 50 * 1000000;
 #else
   int delay = 100;//50; // ms
   Clock timer;

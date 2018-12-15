@@ -16,7 +16,7 @@
 #include "definitions.h"
 #include "globals.h"
 
-#ifdef __linux
+#if defined(__linux) || defined(OSX)
 #include <sys/time.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -62,8 +62,6 @@ class Clock
  private:
   clock_t start_time;
   clock_t stop_time;
-  U64 start_ticks;
-  U64 stop_ticks;
 };
 
 

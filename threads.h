@@ -50,7 +50,9 @@ struct ConditionVariable {
 
 	void wait(NativeMutex& m) { thread_wait(c, m.mutex); }
 #ifdef __linux
-	void wait_for(NativeMutex& m, timespec& d) { thread_timed_wait(c, m.mutex, d); }
+        void wait_for(NativeMutex& m, timespec& d) { thread_timed_wait(c, m.mutex, d); }
+#elif OSX
+        void wait_for(NativeMutex& m, timespec& d) { thread_timed_wait(c, m.mutex, d); }
 #else
 	void wait_for(NativeMutex& m, int ms) { thread_timed_wait(c, m.mutex, ms); }
 #endif

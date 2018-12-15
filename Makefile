@@ -7,7 +7,7 @@ OSFLAVOR =
 USERMACROS = -DNDEBUG -DTHREADED
 CFLAGS = -Wall -pedantic -O3 -fomit-frame-pointer -fstrict-aliasing -ffast-math -std=c++0x -pthread
 DFLAGS =
-LFLAGS = -lpthread -lrt
+LFLAGS = -lpthread
 INSTALL = /usr/local/bin
 EXE_BITS =
 EXE_OS =
@@ -27,8 +27,8 @@ endif
 
 # arch
 ifeq ($(ARCH),i386)
-   CFLAGS += -sse
-   CFLAGS += -O2
+   #CFLAGS += -sse
+   #CFLAGS += -O2
 endif
 
 # bits
@@ -50,12 +50,12 @@ endif
 # os
 ifeq ($(OS),Darwin )
    EXE_OS = osx
-   USERMACROS += -DOS=\"unix\"
+   USERMACROS += -DOSX #=\"osx\"
 endif
 
 ifeq ($(OS),Linux )
    EXE_OS = nix
-   USERMACROS += -DOS=\"unix\"
+   USERMACROS += -DUnix #=\"unix\"
 endif
 
 # executable
