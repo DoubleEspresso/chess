@@ -43,29 +43,6 @@
 // 0011                                check from major (queen/rook)
 //-------------------------------------------------
 
-class move {
- public:
-  move() {}
-  move(const U16& mv, int val = 0) : m(mv), v(val) {}
-  move(const move& o);
-  move(const move&& o);
-  move& operator=(const move& o);
-  move& operator=(const move&& o);
-  ~move() {}
-
-  bool operator()(const move& o) const { return o.m == m; }
-  bool operator==(const move& o) { return o.m == m; }
-
-  inline int from() { return int(m & 0x3f); }
-  inline int to() { return int((m & 0xfc0) >> 6); }
-  inline int type() { return int((m & 0xf000) >> 12); }  
-  inline std::string to_string() { return SanSquares[from()] + SanSquares[to()]; }
-  
-  U16 m;
-  int v; 
-};
-//inline bool mvgreater(const move& x, const move& y) { return x.v > y.v; }
-
 enum Dir { N, S, NN, SS, NW, NE, SW, SE, none };
 enum Movetype {
   promotion,
@@ -84,8 +61,58 @@ enum Movetype {
   advanced_pawn_pushes,
   dangerous_checks,
   all_legal,
-  all_pseudo_legal
+  all_pseudo_legal,
+  no_type
 };
+
+class move {
+  int _value; 
+  U8 _from;
+  U8 _to;
+  Movetype _type;
+  Piece _piece;  
+  
+ public:
+  move() {
+    _value = 0;
+    _from = 0;
+    _to = 0;
+    _type = no_type;
+    _piece = no_piece; 
+  }
+  move(const U16& mv, int val = 0) {
+    _value = val;
+    _from = U8(mv & 0x3f);
+    _to = U8((mv & 0xfc0) >> 6);
+    _type = Movetype((mv & 0xf000) >> 12);    
+  }
+  move(U8 f, U8 t, Movetype type) {
+    _value = 0;
+    _from = f;
+    _to = t;
+    _type = type;
+  }
+  move(const move& o);
+  move(const move&& o);
+  move& operator=(const move& o);
+  move& operator=(const move&& o);
+  ~move() {}
+
+  bool operator()(const move& o) const; // { return o.m == m; }
+  bool operator==(const move& o) const;
+  bool operator<(const move& o) const { return _value < o.value(); }
+  inline void set(const Piece& p,
+		  const U8& f, const U8& t, const Movetype& type) {
+    _piece = p; _value = 0;_from = f; _to = t; _type = type;
+  }
+  inline int value() const { return _value; }
+  inline U8 from() const { return _from; }
+  inline U8 to() const { return _to; }
+  inline Movetype type() const { return _type; } 
+  inline std::string to_string() { return SanSquares[_from] + SanSquares[_to]; }
+  
+};
+
 
 template<Movetype mt, Piece p, Color c>
 class movegen {
@@ -104,7 +131,6 @@ class movegen {
   movegen(const movegen&& o) = delete;
   movegen& operator=(const movegen& o) = delete;
   movegen& operator=(const movegen&& o) = delete;
-
   void print();
 };
 

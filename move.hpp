@@ -23,25 +23,26 @@ namespace {
 
 template<Movetype mt, Piece p, Color c>
 inline void movegen<mt, p, c>::encode(U64& b, const int& f) {  
-  while (b) list[last++].m = (f | (pop_lsb(b) << 6) | (mt << 12));
+  while (b) list[last++].set(p, U8(f), U8(pop_lsb(b)), Movetype(mt));
 }
 
 template<Movetype mt, Piece p, Color c>
 inline void movegen<mt, p, c>::encode_pawn_pushes(U64& b, const int& dir) {
   while (b) {
     int to = pop_lsb(b);
-    list[last++].m = ((to + dir) | (to << 6) | (mt << 12)); 
+    list[last++].set(p, U8(to + dir), U8(to), Movetype(mt));
   }
 }
 
 template<Movetype mt, Piece p, Color c>
 inline void movegen<mt, p, c>::encode_promotions(U64& b, const int& dir) {
   while (b) {
+    int frm = pop_lsb(b) + dir;
     int to = pop_lsb(b);
-    list[last++].m = ((to + dir) | (pop_lsb(b) << 6) | (mt << 12));     // queen
-    list[last++].m = ((to + dir) | (pop_lsb(b) << 6) | ((mt+2) << 12)); // rook
-    list[last++].m = ((to + dir) | (pop_lsb(b) << 6) | ((mt+4) << 12)); // bishop
-    list[last++].m = ((to + dir) | (pop_lsb(b) << 6) | ((mt+6) << 12)); // knight   
+    list[last++].set(p, U8(frm), U8(to), Movetype(mt)); // queen
+    list[last++].set(p, U8(frm), U8(to), Movetype(mt+2)); // rook
+    list[last++].set(p, U8(frm), U8(to), Movetype(mt+4)); // bishop
+    list[last++].set(p, U8(frm), U8(to), Movetype(mt+6)); // knight
   }
 }
 
