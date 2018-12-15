@@ -60,8 +60,8 @@ enum Movetype {
   capture_nochecks,
   advanced_pawn_pushes,
   dangerous_checks,
-  all_legal,
-  all_pseudo_legal,
+  legal,
+  pseudo_legal,
   no_type
 };
 
@@ -103,7 +103,7 @@ class move {
   bool operator<(const move& o) const { return _value < o.value(); }
   inline void set(const Piece& p,
 		  const U8& f, const U8& t, const Movetype& type) {
-    _piece = p; _value = 0;_from = f; _to = t; _type = type;
+    _piece = p; _value = 0; _from = f; _to = t; _type = type;
   }
   inline int value() const { return _value; }
   inline U8 from() const { return _from; }
@@ -114,23 +114,47 @@ class move {
 };
 
 
-template<Movetype mt, Piece p, Color c>
 class movegen {
   int it, last;
   move list[218]; // max moves in any chess position
+  Color us, them;
+  U64 rank2, rank7;
+  U64 empty, pawns, pawns2, pawns7, knights, bishops, rooks, queens, kings;
+  U64 enemies, all_pieces;
+  Square eps;
   
-  inline void generate(const position& pos);
+  // utilities
+  inline void initialize(const position& p);
+  inline void pawn_pushes(U64& single, U64& dbl);
+  inline void pawn_caps(U64& left, U64& right, U64& ep);
+  
+  
+  template<Movetype mt, Piece p>
   inline void encode(U64& b, const int& f);
+
+  template<Movetype mt, Piece p>
   inline void encode_pawn_pushes(U64& b, const int& dir);
+  
+  template<Movetype mt, Piece p>
   inline void encode_promotions(U64& b, const int& f);
   
  public:
   movegen() : it(0), last(0) {}
-  movegen(const position& pos) : it(0), last(0) { generate(pos); }
+  movegen(const position& pos) : it(0), last(0) { initialize(pos); }
   movegen(const movegen& o) = delete;
   movegen(const movegen&& o) = delete;
   movegen& operator=(const movegen& o) = delete;
   movegen& operator=(const movegen&& o) = delete;
+
+  template<Movetype mt, Piece p>
+  inline void generate();
+  
+  template<Piece p>
+  inline void generate();
+  
+  template<Movetype mt>
+  inline void generate();
+  
   void print();
 };
 

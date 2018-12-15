@@ -102,6 +102,7 @@ class position {
 
   // position info access wrappers
   inline Square eps() const { return ifo.eps; }
+  inline Color to_move() const { return ifo.stm; }
   
   // piece access wrappers
   inline U64 all_pieces() const { return pcs.bycolor[white] | pcs.bycolor[black]; }

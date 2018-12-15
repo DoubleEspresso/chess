@@ -21,21 +21,21 @@ namespace {
 }
 
 
-template<Movetype mt, Piece p, Color c>
-inline void movegen<mt, p, c>::encode(U64& b, const int& f) {  
+template<Movetype mt, Piece p>
+inline void movegen::encode(U64& b, const int& f) {  
   while (b) list[last++].set(p, U8(f), U8(pop_lsb(b)), Movetype(mt));
 }
 
-template<Movetype mt, Piece p, Color c>
-inline void movegen<mt, p, c>::encode_pawn_pushes(U64& b, const int& dir) {
+template<Movetype mt, Piece p>
+inline void movegen::encode_pawn_pushes(U64& b, const int& dir) {
   while (b) {
     int to = pop_lsb(b);
     list[last++].set(p, U8(to + dir), U8(to), Movetype(mt));
   }
 }
 
-template<Movetype mt, Piece p, Color c>
-inline void movegen<mt, p, c>::encode_promotions(U64& b, const int& dir) {
+template<Movetype mt, Piece p>
+inline void movegen::encode_promotions(U64& b, const int& dir) {
   while (b) {
     int frm = pop_lsb(b) + dir;
     int to = pop_lsb(b);
@@ -46,7 +46,7 @@ inline void movegen<mt, p, c>::encode_promotions(U64& b, const int& dir) {
   }
 }
 
-template<Movetype mt, Piece p, Color c> void movegen<mt, p, c>::print() {
+void movegen::print() {
   for(int j=it; j<last; ++j) {    
     std::cout << list[j].to_string() << " ";
   }
@@ -54,27 +54,108 @@ template<Movetype mt, Piece p, Color c> void movegen<mt, p, c>::print() {
 }
 
 
+//----------------------------------------------
+// movegen utilities
+//----------------------------------------------
+
+inline void movegen::initialize(const position& p) {
+  us = p.to_move();
+  them = Color(us ^ 1);
+  all_pieces = p.all_pieces();
+  empty = ~all_pieces;
+  
+  if (us == white) {
+    rank2 = bitboards::row[r2];
+    rank7 = bitboards::row[r7];
+    pawns = p.get_pieces<white, pawn>();
+    knights = p.get_pieces<white, knight>();
+    bishops = p.get_pieces<white, bishop>();
+    rooks = p.get_pieces<white, rook>();
+    queens = p.get_pieces<white, queen>();
+    kings = p.get_pieces<white, king>();
+    enemies = p.get_pieces<black>();
+  }
+  else {
+    rank2 = bitboards::row[r7];
+    rank7 = bitboards::row[r2];
+    pawns = p.get_pieces<black, pawn>();
+    knights = p.get_pieces<black, knight>();
+    bishops = p.get_pieces<black, bishop>();
+    rooks = p.get_pieces<black, rook>();
+    queens = p.get_pieces<black, queen>();
+    kings = p.get_pieces<black, king>();
+    enemies = p.get_pieces<white>();
+  }
+  eps = p.eps();
+  pawns2 = pawns & rank2;
+  pawns7 = pawns & rank7;
+}
+
+
+inline void movegen::pawn_pushes(U64& single,
+			U64& dbl) {
+  single = pawns & pawnmask[us]; // filter the promotion candidates
+  dbl = pawns & rank2;
+  
+  shift<N>(single);
+  single &= empty;
+  
+  for (int i=0; i<2; ++i) {
+    shift<N>(dbl);
+    dbl &= empty;
+  }  
+}
+
+
+inline void movegen::pawn_caps(U64& left, U64& right, U64& ep) {  
+  // normal captures - non promotions
+  left = pawns & pawnmaskleft[us];
+  right = pawns & pawnmaskright[us];
+  
+  if (left != 0ULL) {
+    shift<NE>(left);
+    left &= enemies;
+  }
+  
+  if (right != 0ULL) {
+    shift<NW>(right);
+    right &= enemies;
+  }
+
+  // ep captures
+  if (eps == Square::no_square) return;
+  U64 ep_left = pawns & pawnmaskleft[us] & row[Row::r5]; 
+  U64 ep_right = pawns & pawnmaskright[us] & row[Row::r5];
+  
+  if (ep_left != 0ULL) {
+    shift<NW>(ep_left);
+    ep_left &= bitboards::squares[eps];
+    left |= ep_left;
+  }
+  
+  if (ep_right != 0ULL) {
+    shift<NE>(ep_right);
+    ep_right &= bitboards::squares[eps];
+    right |= ep_right;    
+  }    
+}
+
+
+
 //------------------------------
 // white pawn moves
 //------------------------------
+/*
 template<>
 void movegen<quiet, pawn, white>::generate(const position& p) {
-  
-  U64 empty = ~(p.all_pieces());
-  U64 pawns = p.get_pieces<white, pawn>();
-  U64 single_pushes = pawns & pawnmask[white]; // filter the promotion candidates
-  U64 double_pushes = pawns & bitboards::row[r2];
 
-  shift<N>(single_pushes);
-  single_pushes &= empty;
+  U64 single_pushes = 0ULL;
+  U64 double_pushes = 0ULL;
+
+  gen_pawn_pushes(p, white, single_pushes, double_pushes);
 
   if (single_pushes != 0ULL) encode_pawn_pushes(single_pushes, -8);
   
-  for (int i=0; i<2; ++i) {
-    shift<N>(double_pushes);
-    double_pushes &= empty;
-  }
-
   if (double_pushes != 0ULL) encode_pawn_pushes(double_pushes, -16);
 }
 
@@ -487,3 +568,46 @@ void movegen<capture, king, black>::generate(const position& p) {
     if (mvs != 0ULL) { encode(mvs, s); }    
   }
 }
+
+
+
+//--------------------------------------------------------
+// legal/pseudo legal moves
+//--------------------------------------------------------
+
+template<>
+void movegen<pseudo_legal, pieces, white>::generate(const position& p) {
+  // todo: order based on phase
+  if (p.to_move() == white) {
+    
+    generate<capture, knight, white>(p);    
+    generate<capture, bishop, white>(p);
+    generate<capture, rook, white>(p);
+    generate<capture, queen, white>(p);
+    generate<capture, pawn, white>(p);
+    generate<capture, king, white>(p);
+
+    generate<quiet, knight, white>(p);
+    generate<quiet, bishop, white>(p);
+    generate<quiet, rook, white>(p);
+    generate<quiet, queen, white>(p);
+    generate<quiet, pawn, white>(p);
+    generate<quiet, king, white>(p);
+  } else {
+    generate<capture, knight, black>(p);
+    generate<capture, bishop, black>(p);
+    generate<capture, rook, black>(p);
+    generate<capture, queen, black>(p);
+    generate<capture, pawn, black>(p);
+    generate<capture, king, black>(p);
+    
+    generate<quiet, knight, black>(p);
+    generate<quiet, bishop, black>(p);
+    generate<quiet, rook, black>(p);
+    generate<quiet, queen, black>(p);
+    generate<quiet, pawn, black>(p);
+    generate<quiet, king, black>(p);
+    
+  }
+}
+*/

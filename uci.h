@@ -39,10 +39,11 @@ bool uci::parse_command(const std::string& input) {
       std::istringstream fen(START_FEN);
       position p(cmd == "startpos" ? fen : instream);      
       p.print();
-
-      movegen<quiet, pawn, white> pawn_mvs(p);      
-      pawn_mvs.print();
-
+      
+      /*
+      movegen<pseudo_legal, pieces, white> mvs(p);      
+      mvs.print();
+      
       movegen<capture, pawn, white> pawn_caps(p);
       pawn_caps.print();
 
@@ -69,7 +70,7 @@ bool uci::parse_command(const std::string& input) {
 
       movegen<quiet, king, white> wk_mvs(p);
       wk_mvs.print();
-      
+      */
     }
     
     else if (cmd == "exit" || cmd == "quit") {
