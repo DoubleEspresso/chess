@@ -221,31 +221,24 @@ void Movegen::generate<quiet, pawn>() {
   if (double_pushes != 0ULL) encode_pawn_pushes<quiet, pawn>(double_pushes, d2);
 }
 
-/*
+
 template<>
-void movegen<capture, pawn, white>::generate(const position& p) {
+void Movegen::generate<capture, pawn>() {
+  U64 left = 0ULL;
+  U64 right = 0ULL;
+  U64 ep = 0ULL;
+  int d1 = (us == white ? -9 : 9);
+  int d2 = (us == white ? -7 : 7);
   
-  U64 enemies = p.get_pieces<black>();
-  U64 pawns = p.get_pieces<white, pawn>();
+  pawn_caps(left, right, ep);
   
-  // normal captures - non promotions
-  U64 left = pawns & pawnmaskleft[white];
-  U64 right = pawns & pawnmaskright[white];
-  
-  if (left != 0ULL) {
-    shift<NE>(left);
-    left &= enemies;
-    if (left != 0ULL) encode_pawn_pushes(left, -9);
-  }
-  
-  if (right != 0ULL) {
-    shift<NW>(right);
-    right &= enemies;
-    if (right != 0ULL) encode_pawn_pushes(right, -7);
-  }
+  if (left != 0ULL) encode_pawn_pushes<capture, pawn>(left, d1);  
+  if (right != 0ULL) encode_pawn_pushes<capture, pawn>(right, d2);
+  // todo : ep captures
+
 }
 
-
+/*
 template<>
 void movegen<ep, pawn, white>::generate(const position& p) {
 
