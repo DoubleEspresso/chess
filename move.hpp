@@ -92,7 +92,7 @@ inline void Movegen::initialize(const position& p) {
 }
 
 
-inline void Movegen::pawn_pushes(U64& single, U64& dbl) {
+inline void Movegen::pawn_quiets(U64& single, U64& dbl) {
   single = pawns & pawnmask[us]; // filter the promotion candidates
   dbl = pawns & rank2;
 
@@ -169,70 +169,147 @@ inline void Movegen::capture_promotions(U64& right_caps, U64& left_caps) {
 inline void Movegen::knight_quiets(std::vector<U64>& mvs) {
   for (auto& s : knights) {
     if (s == Square::no_square) break;
-    U64 qs = bitboards::nmask[s] & empty;
-    if (qs != 0ULL) mvs.push_back(qs);
+    mvs.emplace_back((bitboards::nmask[s] & empty));
   }  
 }
 
 inline void Movegen::knight_caps(std::vector<U64>& mvs) {
   for (auto& s : knights) {
     if (s == Square::no_square) break;
-    U64 cs = bitboards::nmask[s] & enemies;
-    if (cs != 0ULL) mvs.push_back(cs);
+    mvs.emplace_back((bitboards::nmask[s] & enemies));
   }
 }
 
-inline void Movegen::bishop_mvs(std::vector<U64>& quiets, std::vector<U64>& caps) {
+inline void Movegen::bishop_quiets(std::vector<U64>& mvs) {
+  // optimization in case we called bishop_caps first
+  if (bishop_mvs.size() > 0) {
+    for (auto& m : bishop_mvs) {
+      mvs.emplace_back((m & empty));
+    }
+    return;
+  }
+
+  // first time here - compute mvs from scratch
   U64 mask = all_pieces;
   for (auto& s : bishops) {
     if (s == Square::no_square) break;
-    U64 mvs = magics::attacks<bishop>(mask, s);    
-    U64 qs = mvs & empty;
-    U64 cs = mvs & enemies;
-
-    if (qs != 0ULL) quiets.push_back(qs);
-    if (cs != 0ULL) caps.push_back(cs);		      			
+    
+    bishop_mvs.emplace_back(magics::attacks<bishop>(mask, s));
+    mvs.emplace_back((bishop_mvs.back() & empty));
   }
 }
 
-inline void Movegen::rook_mvs(std::vector<U64>& quiets, std::vector<U64>& caps) {
+inline void Movegen::bishop_caps(std::vector<U64>& mvs) {
+  // optimization in case we called bishop_quiets first
+  if (bishop_mvs.size() > 0) {
+    for (auto& m : bishop_mvs) {
+      mvs.emplace_back((m & enemies));
+    }
+    return;
+  }
+
+  // first time here, compute from scratch
+  U64 mask = all_pieces;
+  for (auto& s : bishops) {
+    if (s == Square::no_square) break;
+    
+    bishop_mvs.emplace_back(magics::attacks<bishop>(mask, s));
+    mvs.emplace_back((bishop_mvs.back() & enemies));
+  }
+}
+
+inline void Movegen::rook_quiets(std::vector<U64>& mvs) {
+  // optimization in case we called rook_quiets first
+  if (rook_mvs.size() > 0) {
+    for (auto& m : rook_mvs) {
+      mvs.emplace_back((m & empty));
+    }
+    return;
+  }
+
+  // first time here - compute from scratch
   U64 mask = all_pieces;
   for (auto& s : rooks) {
     if (s == Square::no_square) break;
-    U64 mvs = magics::attacks<rook>(mask, s);    
-    U64 qs = mvs & empty;
-    U64 cs = mvs & enemies;
-
-    if (qs != 0ULL) quiets.push_back(qs);
-    if (cs != 0ULL) caps.push_back(cs);
+    rook_mvs.emplace_back(magics::attacks<rook>(mask, s));
+    mvs.emplace_back((rook_mvs.back() & empty));
   }
 }
 
-inline void Movegen::queen_mvs(std::vector<U64>& quiets, std::vector<U64>& caps) {
+inline void Movegen::rook_caps(std::vector<U64>& mvs) {
+  // optimization in case we called rook_caps first
+  if (rook_mvs.size() > 0) {
+    for (auto& m : rook_mvs) {
+      mvs.emplace_back((m & enemies));
+    }
+    return;
+  }
+
+  // first time here - compute from scratch
+  U64 mask = all_pieces;
+  for (auto& s : rooks) {
+    if (s == Square::no_square) break;
+    rook_mvs.emplace_back(magics::attacks<rook>(mask, s));
+    mvs.emplace_back((rook_mvs.back() & enemies));
+  }
+}
+
+inline void Movegen::queen_quiets(std::vector<U64>& mvs) {
+  // optimization in case we called queen_caps first
+  if (queen_mvs.size() > 0) {
+    for (auto& m : queen_mvs) {
+      mvs.emplace_back((m & empty));
+    }
+    return;
+  }
+
+  // first time here - compute from scratch
   U64 mask = all_pieces;
   for (auto& s : queens) {
     if (s == Square::no_square) break;
-    U64 mvs = (magics::attacks<bishop>(mask, s) |
-	       magics::attacks<rook>(mask, s));
-    U64 qs = mvs & empty;
-    U64 cs = mvs & enemies;
-
-    if (qs != 0ULL) quiets.push_back(qs);
-    if (cs != 0ULL) caps.push_back(cs);
+    queen_mvs.emplace_back((magics::attacks<bishop>(mask, s) |
+			    magics::attacks<rook>(mask, s)));
+    mvs.emplace_back((queen_mvs.back() & empty));
   }
 }
 
-inline void Movegen::king_mvs(std::vector<U64>& quiets, std::vector<U64>& caps) {
+inline void Movegen::queen_caps(std::vector<U64>& mvs) {
+  // optimization in case we called queen_caps first
+  if (queen_mvs.size() > 0) {
+    for (auto& m : queen_mvs) {
+      mvs.emplace_back((m & enemies));
+    }
+    return;
+  }
+
+  // first time here - compute from scratch
+  U64 mask = all_pieces;
+  for (auto& s : queens) {
+    if (s == Square::no_square) break;
+    queen_mvs.emplace_back((magics::attacks<bishop>(mask, s) |
+			    magics::attacks<rook>(mask, s)));
+
+    mvs.emplace_back((queen_mvs.back() & enemies));
+  }
+}
+
+inline void Movegen::king_quiets(std::vector<U64>& mvs) {
   for (auto& s : kings) {
     if (s == Square::no_square) break;
-
-    U64 qs = bitboards::kmask[s] & empty;
-    U64 cs = bitboards::kmask[s] & enemies;
-
-    // castles todo
-    if (qs != 0ULL) quiets.push_back(qs);
-    if (cs != 0ULL) caps.push_back(cs);		      			
+    mvs.emplace_back((bitboards::kmask[s] & empty));
   }
+}
+
+inline void Movegen::king_caps(std::vector<U64>& mvs) {
+  for (auto& s : kings) {
+    if (s == Square::no_square) break;
+    mvs.emplace_back((bitboards::kmask[s] & enemies));
+  }
+}
+
+inline void Movegen::castle_mvs(U64& mvs) {
+  mvs |= (us == white ? bitboards::squares[G1] : bitboards::squares[G8]);
+  mvs |= (us == white ? bitboards::squares[C1] : bitboards::squares[C8]);
 }
 
 //------------------------------
@@ -247,7 +324,7 @@ void Movegen::generate<quiet, pawn>() {
   int d1 = (us == white ? -8 : 8);
   int d2 = 2 * d1;
   
-  pawn_pushes(single_pushes, double_pushes);
+  pawn_quiets(single_pushes, double_pushes);
 
   if (single_pushes != 0ULL) encode_pawn_pushes<quiet, pawn>(single_pushes, d1);  
   if (double_pushes != 0ULL) encode_pawn_pushes<quiet, pawn>(double_pushes, d2);
@@ -291,6 +368,7 @@ void Movegen::generate<capture_promotion, pawn>() {
   if (caps_l != 0ULL) encode_promotions<capture_promotion, pawn>(caps_l, d2);
 }
 
+
 //------------------------------
 // knight moves
 //------------------------------
@@ -305,6 +383,127 @@ void Movegen::generate<quiet, knight>() {
     ++idx;
   }
 }
+
+template<>
+void Movegen::generate<capture, knight>() {
+  std::vector<U64> mvs;
+  
+  knight_caps(mvs);
+  int idx = 0;
+  for (auto& m : mvs) {
+    if ( m != 0ULL) encode<capture, knight>(m, knights[idx]);
+    ++idx;
+  }
+}
+
+//------------------------------
+// bishop moves
+//------------------------------
+template<>
+void Movegen::generate<quiet, bishop>() {
+  std::vector<U64> mvs;
+  
+  bishop_quiets(mvs);
+  int idx = 0;
+  for (auto& m : mvs) {
+    if ( m != 0ULL) encode<quiet, bishop>(m, bishops[idx]);
+    ++idx;
+  }
+}
+
+template<>
+void Movegen::generate<capture, bishop>() {
+  std::vector<U64> mvs;
+  
+  bishop_caps(mvs);
+  int idx = 0;
+  for (auto& m : mvs) {
+    if ( m != 0ULL) encode<capture, bishop>(m, bishops[idx]);
+    ++idx;
+  }
+}
+
+//------------------------------
+// rook moves
+//------------------------------
+template<>
+void Movegen::generate<quiet, rook>() {
+  std::vector<U64> mvs;
+  
+  rook_quiets(mvs);
+  int idx = 0;
+  for (auto& m : mvs) {
+    if ( m != 0ULL) encode<quiet, rook>(m, rooks[idx]);
+    ++idx;
+  }
+}
+
+template<>
+void Movegen::generate<capture, rook>() {
+  std::vector<U64> mvs;
+  
+  rook_caps(mvs);
+  int idx = 0;
+  for (auto& m : mvs) {
+    if ( m != 0ULL) encode<capture, rook>(m, rooks[idx]);
+    ++idx;
+  }
+}
+
+//------------------------------
+// queen moves
+//------------------------------
+template<>
+void Movegen::generate<quiet, queen>() {
+  std::vector<U64> mvs;
+  
+  queen_quiets(mvs);
+  int idx = 0;
+  for (auto& m : mvs) {
+    if ( m != 0ULL) encode<quiet, queen>(m, queens[idx]);
+    ++idx;
+  }
+}
+
+template<>
+void Movegen::generate<capture, queen>() {
+  std::vector<U64> mvs;
+  
+  queen_caps(mvs);
+  int idx = 0;
+  for (auto& m : mvs) {
+    if ( m != 0ULL) encode<capture, queen>(m, queens[idx]);
+    ++idx;
+  }
+}
+
+//------------------------------
+// king moves
+//------------------------------
+template<>
+void Movegen::generate<quiet, king>() {
+  std::vector<U64> mvs;
+  
+  king_quiets(mvs);
+  int idx = 0;
+  for (auto& m : mvs) {
+    if ( m != 0ULL) encode<quiet, king>(m, kings[idx]);
+    ++idx;
+  }
+}
+
+template<>
+void Movegen::generate<capture, king>() {
+  std::vector<U64> mvs;
+  
+  king_caps(mvs);
+  int idx = 0;
+  for (auto& m : mvs) {
+    if ( m != 0ULL) encode<capture, king>(m, kings[idx]);
+    ++idx;
+  }
+}
+
 
 /*
 template<>
