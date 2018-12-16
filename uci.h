@@ -12,7 +12,7 @@
 #include "position.h"
 #include "bits.h"
 #include "types.h"
-//#include "move.h"
+#include "move.h"
 
 std::string START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -41,51 +41,10 @@ bool uci::parse_command(const std::string& input) {
       std::istringstream fen(START_FEN);
       position p(cmd == "startpos" ? fen : instream);      
       p.print();
-      
-      
-      //Movegen mvs(p);
-      /*
-      mvs.generate<quiet, pawn>();
-      mvs.generate<quiet, knight>();
-      mvs.generate<quiet, bishop>();
-      mvs.generate<quiet, rook>();
-      mvs.generate<quiet, queen>();
-      mvs.generate<quiet, king>();
-      mvs.generate<capture, bishop>();
-      mvs.generate<capture, knight>();
-      */
-      //mvs.generate<pseudo_legal_all, pieces>();
-      //mvs.print();
-
-      
-      /*
-      movegen<capture, pawn, white> pawn_caps(p);
-      pawn_caps.print();
-
-      movegen<quiet, pawn, black> bpawn_mvs(p);      
-      bpawn_mvs.print();
-
-      movegen<capture, pawn, black> bpawn_caps(p);
-      bpawn_caps.print();
-
-      movegen<quiet, knight, black> bknight_mvs(p);
-      bknight_mvs.print();
-
-      movegen<quiet, knight, white> wknight_mvs(p);
-      wknight_mvs.print();
-
-      movegen<quiet, bishop, white> wbish_mvs(p);
-      wbish_mvs.print();
-
-      movegen<quiet, rook, white> wrook_mvs(p);
-      wrook_mvs.print();
-
-      movegen<quiet, queen, white> wq_mvs(p);
-      wq_mvs.print();
-
-      movegen<quiet, king, white> wk_mvs(p);
-      wk_mvs.print();
-      */
+            
+      Movegen mvs(p);
+      mvs.generate<pseudo_legal_all, pieces>();
+      mvs.print();
     }
     
     else if (cmd == "exit" || cmd == "quit") {

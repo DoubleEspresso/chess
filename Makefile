@@ -12,7 +12,7 @@ INSTALL = /usr/local/bin
 GIT_VERSION =
 
 # build info
-SRC := main.cpp bitboards.cpp position.cpp
+SRC := main.cpp magics.cpp bitboards.cpp position.cpp
 
 # compiler
 ifeq ($(COMP),)

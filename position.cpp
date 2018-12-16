@@ -56,24 +56,21 @@ void position::do_move(const U16& m) {
   // update move 50, half-mvs, check-info
 }
 
-bool position::is_attacked(const Square& s, const Color& us, const Color& them) {
-  
-  U64 stepper_attacks = 0ULL;
-  if (us == white) stepper_attacks = ((bitboards::pattks[us][s] & get_pieces<black, pawn>()) |
-				      (bitboards::nmask[s] & get_pieces<black, knight>()) |
-				      (bitboards::kmask[s] & get_pieces<black, king>()));
-  else stepper_attacks = ((bitboards::pattks[us][s] & get_pieces<white, pawn>()) |
-			  (bitboards::nmask[s] & get_pieces<white, knight>()) |
-			  (bitboards::kmask[s] & get_pieces<white, king>()));
-  if (stepper_attacks != 0ULL) return true;
+bool position::in_check() {
+  return ifo.incheck;
+}
 
+bool position::is_attacked(const Square& s, const Color& us, const Color& them) {  
+  auto p = pcs.bitmap[them];  
+  U64 stepper_attacks = ((bitboards::pattks[us][s] & p[pawn]) |
+			 (bitboards::nmask[s] & p[knight]) |
+			 (bitboards::kmask[s] & p[king]));
+  
+  if (stepper_attacks != 0ULL) return true;
+  
   U64 m = all_pieces();
-  if (us == white)
-    return ((magics::attacks<bishop>(m, s) & (get_pieces<black, queen>() | get_pieces<black, bishop>())) ||
-	    (magics::attacks<rook>(m, s) & (get_pieces<black, queen>() | get_pieces<black, rook>())));
-  else
-    return ((magics::attacks<bishop>(m, s) & (get_pieces<white, queen>() | get_pieces<white, bishop>())) ||
-	    (magics::attacks<rook>(m, s) & (get_pieces<white, queen>() | get_pieces<white, rook>())));
+  return ((magics::attacks<bishop>(m, s) & (p[queen] | p[bishop]) ||
+	   (magics::attacks<rook>(m, s) & (p[queen] | p[rook]))));
 }
 
 void position::set_piece(const char& p, const Square& s) {

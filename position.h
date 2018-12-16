@@ -109,6 +109,7 @@ class position {
 
   // utilities
   bool is_attacked(const Square& s, const Color& us, const Color& them);
+  bool in_check();
   
   // position info access wrappers
   inline Square eps() const { return ifo.eps; }
