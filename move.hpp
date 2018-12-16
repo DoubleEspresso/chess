@@ -22,12 +22,12 @@ namespace {
 
 
 template<Movetype mt, Piece p>
-inline void movegen::encode(U64& b, const int& f) {  
+inline void Movegen::encode(U64& b, const int& f) {  
   while (b) list[last++].set(p, U8(f), U8(pop_lsb(b)), Movetype(mt));
 }
 
 template<Movetype mt, Piece p>
-inline void movegen::encode_pawn_pushes(U64& b, const int& dir) {
+inline void Movegen::encode_pawn_pushes(U64& b, const int& dir) {
   while (b) {
     int to = pop_lsb(b);
     list[last++].set(p, U8(to + dir), U8(to), Movetype(mt));
@@ -35,7 +35,7 @@ inline void movegen::encode_pawn_pushes(U64& b, const int& dir) {
 }
 
 template<Movetype mt, Piece p>
-inline void movegen::encode_promotions(U64& b, const int& dir) {
+inline void Movegen::encode_promotions(U64& b, const int& dir) {
   while (b) {
     int frm = pop_lsb(b) + dir;
     int to = pop_lsb(b);
@@ -46,7 +46,7 @@ inline void movegen::encode_promotions(U64& b, const int& dir) {
   }
 }
 
-void movegen::print() {
+void Movegen::print() {
   for(int j=it; j<last; ++j) {    
     std::cout << list[j].to_string() << " ";
   }
@@ -58,7 +58,7 @@ void movegen::print() {
 // movegen utilities
 //----------------------------------------------
 
-inline void movegen::initialize(const position& p) {
+inline void Movegen::initialize(const position& p) {
   us = p.to_move();
   them = Color(us ^ 1);
   all_pieces = p.all_pieces();
@@ -68,22 +68,22 @@ inline void movegen::initialize(const position& p) {
     rank2 = bitboards::row[r2];
     rank7 = bitboards::row[r7];
     pawns = p.get_pieces<white, pawn>();
-    knights = p.get_pieces<white, knight>();
-    bishops = p.get_pieces<white, bishop>();
-    rooks = p.get_pieces<white, rook>();
-    queens = p.get_pieces<white, queen>();
-    kings = p.get_pieces<white, king>();
+    knights = p.squares_of<white, knight>();
+    bishops = p.squares_of<white, bishop>();
+    rooks = p.squares_of<white, rook>();
+    queens = p.squares_of<white, queen>();
+    kings = p.squares_of<white, king>();
     enemies = p.get_pieces<black>();
   }
   else {
     rank2 = bitboards::row[r7];
     rank7 = bitboards::row[r2];
     pawns = p.get_pieces<black, pawn>();
-    knights = p.get_pieces<black, knight>();
-    bishops = p.get_pieces<black, bishop>();
-    rooks = p.get_pieces<black, rook>();
-    queens = p.get_pieces<black, queen>();
-    kings = p.get_pieces<black, king>();
+    knights = p.squares_of<black, knight>();
+    bishops = p.squares_of<black, bishop>();
+    rooks = p.squares_of<black, rook>();
+    queens = p.squares_of<black, queen>();
+    kings = p.squares_of<black, king>();
     enemies = p.get_pieces<white>();
   }
   eps = p.eps();
@@ -92,8 +92,7 @@ inline void movegen::initialize(const position& p) {
 }
 
 
-inline void movegen::pawn_pushes(U64& single,
-			U64& dbl) {
+inline void Movegen::pawn_pushes(U64& single, U64& dbl) {
   single = pawns & pawnmask[us]; // filter the promotion candidates
   dbl = pawns & rank2;
   
@@ -107,7 +106,7 @@ inline void movegen::pawn_pushes(U64& single,
 }
 
 
-inline void movegen::pawn_caps(U64& left, U64& right, U64& ep) {  
+inline void Movegen::pawn_caps(U64& left, U64& right, U64& ep) {  
   // normal captures - non promotions
   left = pawns & pawnmaskleft[us];
   right = pawns & pawnmaskright[us];
@@ -141,25 +140,88 @@ inline void movegen::pawn_caps(U64& left, U64& right, U64& ep) {
 }
 
 
+inline void Movegen::knight_mvs(std::vector<U64>& quiets, std::vector<U64>& caps) {
+  for (auto& s : knights) {
+    if (s == Square::no_square) break;
+    U64 qbb = bitboards::nmask[s] & enemies;
+    if (qbb != 0ULL) quiets.push_back(qbb);
+    U64 cbb = bitboards::nmask[s] & enemies;
+    if (cbb != 0ULL) caps.push_back(cbb);
+  }  
+}
+
+inline void Movegen::bishop_mvs(std::vector<U64>& quiets, std::vector<U64>& caps) {
+  U64 mask = all_pieces;
+  for (auto& s : bishops) {
+    if (s == Square::no_square) break;
+    U64 mvs = magics::attacks<bishop>(mask, s);    
+    U64 qs = mvs & empty;
+    U64 cs = mvs & enemies;
+
+    if (qs != 0ULL) quiets.push_back(qs);
+    if (cs != 0ULL) caps.push_back(cs);		      			
+  }
+}
+
+inline void Movegen::rook_mvs(std::vector<U64>& quiets, std::vector<U64>& caps) {
+  U64 mask = all_pieces;
+  for (auto& s : rooks) {
+    if (s == Square::no_square) break;
+    U64 mvs = magics::attacks<rook>(mask, s);    
+    U64 qs = mvs & empty;
+    U64 cs = mvs & enemies;
+
+    if (qs != 0ULL) quiets.push_back(qs);
+    if (cs != 0ULL) caps.push_back(cs);
+  }
+}
+
+inline void Movegen::queen_mvs(std::vector<U64>& quiets, std::vector<U64>& caps) {
+  U64 mask = all_pieces;
+  for (auto& s : queens) {
+    if (s == Square::no_square) break;
+    U64 mvs = (magics::attacks<bishop>(mask, s) |
+	       magics::attacks<rook>(mask, s));
+    U64 qs = mvs & empty;
+    U64 cs = mvs & enemies;
+
+    if (qs != 0ULL) quiets.push_back(qs);
+    if (cs != 0ULL) caps.push_back(cs);
+  }
+}
+
+inline void Movegen::king_mvs(std::vector<U64>& quiets, std::vector<U64>& caps) {
+  for (auto& s : kings) {
+    if (s == Square::no_square) break;
+
+    U64 qs = bitboards::kmask[s] & empty;
+    U64 cs = bitboards::kmask[s] & enemies;
+
+    // castles todo
+    if (qs != 0ULL) quiets.push_back(qs);
+    if (cs != 0ULL) caps.push_back(cs);		      			
+  }
+}
 
 //------------------------------
 // white pawn moves
 //------------------------------
-/*
-template<>
-void movegen<quiet, pawn, white>::generate(const position& p) {
 
+template<>
+void Movegen::generate<quiet, pawn>() {
+  
   U64 single_pushes = 0ULL;
   U64 double_pushes = 0ULL;
-
-  gen_pawn_pushes(p, white, single_pushes, double_pushes);
-
-  if (single_pushes != 0ULL) encode_pawn_pushes(single_pushes, -8);
+  int d1 = (us == white ? -8 : 8);
+  int d2 = 2 * d1;
   
-  if (double_pushes != 0ULL) encode_pawn_pushes(double_pushes, -16);
+  pawn_pushes(single_pushes, double_pushes);
+
+  if (single_pushes != 0ULL) encode_pawn_pushes<quiet, pawn>(single_pushes, d1);  
+  if (double_pushes != 0ULL) encode_pawn_pushes<quiet, pawn>(double_pushes, d2);
 }
 
-
+/*
 template<>
 void movegen<capture, pawn, white>::generate(const position& p) {
   

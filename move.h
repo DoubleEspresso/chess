@@ -1,6 +1,8 @@
 #ifndef MOVE_H
 #define MOVE_H
 
+#include <vector>
+
 #include "types.h"
 #include "position.h"
 
@@ -65,7 +67,7 @@ enum Movetype {
   no_type
 };
 
-class move {
+class Move {
   int _value; 
   U8 _from;
   U8 _to;
@@ -73,34 +75,34 @@ class move {
   Piece _piece;  
   
  public:
-  move() {
+  Move() {
     _value = 0;
     _from = 0;
     _to = 0;
     _type = no_type;
     _piece = no_piece; 
   }
-  move(const U16& mv, int val = 0) {
+  Move(const U16& mv, int val = 0) {
     _value = val;
     _from = U8(mv & 0x3f);
     _to = U8((mv & 0xfc0) >> 6);
     _type = Movetype((mv & 0xf000) >> 12);    
   }
-  move(U8 f, U8 t, Movetype type) {
+  Move(U8 f, U8 t, Movetype type) {
     _value = 0;
     _from = f;
     _to = t;
     _type = type;
   }
-  move(const move& o);
-  move(const move&& o);
-  move& operator=(const move& o);
-  move& operator=(const move&& o);
-  ~move() {}
+  Move(const Move& o);
+  Move(const Move&& o);
+  Move& operator=(const Move& o);
+  Move& operator=(const Move&& o);
+  ~Move() {}
 
-  bool operator()(const move& o) const; // { return o.m == m; }
-  bool operator==(const move& o) const;
-  bool operator<(const move& o) const { return _value < o.value(); }
+  bool operator()(const Move& o) const; // { return o.m == m; }
+  bool operator==(const Move& o) const;
+  bool operator<(const Move& o) const { return _value < o.value(); }
   inline void set(const Piece& p,
 		  const U8& f, const U8& t, const Movetype& type) {
     _piece = p; _value = 0; _from = f; _to = t; _type = type;
@@ -114,12 +116,13 @@ class move {
 };
 
 
-class movegen {
+class Movegen {
   int it, last;
-  move list[218]; // max moves in any chess position
+  Move list[218]; // max moves in any chess position
   Color us, them;
   U64 rank2, rank7;
-  U64 empty, pawns, pawns2, pawns7, knights, bishops, rooks, queens, kings;
+  U64 empty, pawns, pawns2, pawns7;
+  std::array<Square, 11> knights, bishops, rooks, queens, kings;
   U64 enemies, all_pieces;
   Square eps;
   
@@ -127,7 +130,12 @@ class movegen {
   inline void initialize(const position& p);
   inline void pawn_pushes(U64& single, U64& dbl);
   inline void pawn_caps(U64& left, U64& right, U64& ep);
-  
+  inline void promotions(U64& quiets, U64& caps);
+  inline void knight_mvs(std::vector<U64>& quiets, std::vector<U64>& caps);
+  inline void bishop_mvs(std::vector<U64>& quiets, std::vector<U64>& caps);
+  inline void rook_mvs(std::vector<U64>& quiets, std::vector<U64>& caps);
+  inline void queen_mvs(std::vector<U64>& quiets, std::vector<U64>& caps);
+  inline void king_mvs(std::vector<U64>& quiets, std::vector<U64>& caps);
   
   template<Movetype mt, Piece p>
   inline void encode(U64& b, const int& f);
@@ -139,12 +147,12 @@ class movegen {
   inline void encode_promotions(U64& b, const int& f);
   
  public:
-  movegen() : it(0), last(0) {}
-  movegen(const position& pos) : it(0), last(0) { initialize(pos); }
-  movegen(const movegen& o) = delete;
-  movegen(const movegen&& o) = delete;
-  movegen& operator=(const movegen& o) = delete;
-  movegen& operator=(const movegen&& o) = delete;
+  Movegen() : it(0), last(0) {}
+  Movegen(const position& pos) : it(0), last(0) { initialize(pos); }
+  Movegen(const Movegen& o) = delete;
+  Movegen(const Movegen&& o) = delete;
+  Movegen& operator=(const Movegen& o) = delete;
+  Movegen& operator=(const Movegen&& o) = delete;
 
   template<Movetype mt, Piece p>
   inline void generate();
