@@ -95,12 +95,14 @@ inline void Movegen::initialize(const position& p) {
 inline void Movegen::pawn_pushes(U64& single, U64& dbl) {
   single = pawns & pawnmask[us]; // filter the promotion candidates
   dbl = pawns & rank2;
+
+  auto s = (us == white ? shift<N> : shift<S>);
   
-  shift<N>(single);
+  s(single);
   single &= empty;
   
   for (int i=0; i<2; ++i) {
-    shift<N>(dbl);
+    s(dbl);
     dbl &= empty;
   }  
 }
@@ -110,33 +112,65 @@ inline void Movegen::pawn_caps(U64& left, U64& right, U64& ep_left, U64& ep_righ
   // normal captures - non promotions
   left = pawns & pawnmaskleft[us];
   right = pawns & pawnmaskright[us];
+
+  auto sw = (us == white ? shift<NW> : shift<SW>);
+  auto se = (us == white ? shift<NE> : shift<SE>);
   
   if (left != 0ULL) {
-    shift<NE>(left);
+    se(left);
     left &= enemies;
   }
   
   if (right != 0ULL) {
-    shift<NW>(right);
+    sw(right);
     right &= enemies;
   }
 
   // ep captures
   if (eps == Square::no_square) return;
-  ep_left = pawns & pawnmaskleft[us] & row[Row::r5]; 
-  ep_right = pawns & pawnmaskright[us] & row[Row::r5];
+  auto r = (us == white ? Row::r5 : Row::r4);
+  ep_left = pawns & pawnmaskleft[us] & row[r]; 
+  ep_right = pawns & pawnmaskright[us] & row[r];
   
   if (ep_left != 0ULL) {
-    shift<NW>(ep_left);
+    sw(ep_left);
     ep_left &= bitboards::squares[eps];
   }
   
   if (ep_right != 0ULL) {
-    shift<NE>(ep_right);
+    se(ep_right);
     ep_right &= bitboards::squares[eps];
   }    
 }
 
+inline void Movegen::promotions(U64& quiets, U64& right_caps, U64& left_caps) {
+  
+  if (pawns7 == 0ULL) return;
+  quiets = pawns7;
+
+
+  auto s = (us == white ? shift<N> : shift<S>);
+  
+  s(quiets);
+  
+  //encode_promotions(pawns7, us == white ? -8 : 8);
+
+  
+  U64 targets = enemies & (us == white ? row[Row::r8] : row[Row::r1]);
+  right_caps = pawns;
+  left_caps = pawns;
+
+
+  auto se = (us == white ? shift<NE> : shift<SE>);
+  se(right_caps);
+  right_caps &= targets;
+  //if (right_caps != 0ULL) encode_promotions(right_caps, -9);
+
+  auto sw = (us == white ? shift<NW> : shift<SW>);
+  sw(left_caps);  
+  left_caps &= targets;
+  //if (left_caps != 0ULL) encode_promotions(left_caps, -7);
+}
 
 inline void Movegen::knight_mvs(std::vector<U64>& quiets, std::vector<U64>& caps) {
   for (auto& s : knights) {

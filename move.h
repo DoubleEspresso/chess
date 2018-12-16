@@ -136,6 +136,7 @@ class Movegen {
   inline void rook_mvs(std::vector<U64>& quiets, std::vector<U64>& caps);
   inline void queen_mvs(std::vector<U64>& quiets, std::vector<U64>& caps);
   inline void king_mvs(std::vector<U64>& quiets, std::vector<U64>& caps);
+  inline void promotions(U64& quiets, U64& right_caps, U64& left_caps);
   
   template<Movetype mt, Piece p>
   inline void encode(U64& b, const int& f);
