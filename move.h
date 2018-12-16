@@ -63,7 +63,9 @@ enum Movetype {
   advanced_pawn_pushes,
   dangerous_checks,
   legal,
-  pseudo_legal,
+  pseudo_legal_quiet,
+  pseudo_legal_capture,
+  pseudo_legal_all,
   no_type
 };
 

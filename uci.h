@@ -42,9 +42,17 @@ bool uci::parse_command(const std::string& input) {
       
       
       Movegen mvs(p);
+      /*
       mvs.generate<quiet, pawn>();
-      mvs.generate<capture, pawn>();
       mvs.generate<quiet, knight>();
+      mvs.generate<quiet, bishop>();
+      mvs.generate<quiet, rook>();
+      mvs.generate<quiet, queen>();
+      mvs.generate<quiet, king>();
+      mvs.generate<capture, bishop>();
+      mvs.generate<capture, knight>();
+      */
+      mvs.generate<pseudo_legal_all, pieces>();
       mvs.print();
 
       

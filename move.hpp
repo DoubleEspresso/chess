@@ -504,6 +504,49 @@ void Movegen::generate<capture, king>() {
   }
 }
 
+//------------------------------
+// pseudo-legal quiet
+//------------------------------
+template<>
+void Movegen::generate<pseudo_legal_quiet, pieces>() {
+  // todo: order move generation by game phase
+  // data-driven approach for this?
+  generate<promotion, pawn>();
+  generate<quiet, knight>();
+  generate<quiet, bishop>();
+  generate<quiet, rook>();
+  generate<quiet, queen>();
+  generate<quiet, pawn>();
+  generate<quiet, king>();  
+}
+
+//------------------------------
+// pseudo-legal capture
+//------------------------------
+template<>
+void Movegen::generate<pseudo_legal_capture, pieces>() {
+  // todo: order move generation by game phase
+  // data-driven approach for this?
+  generate<capture_promotion, pawn>();
+  generate<capture, knight>();
+  generate<capture, bishop>();
+  generate<capture, rook>();
+  generate<capture, queen>();
+  generate<capture, pawn>();
+  generate<capture, king>();  
+}
+
+//------------------------------
+// pseudo-legal all
+//------------------------------
+
+template<>
+void Movegen::generate<pseudo_legal_all, pieces>() {
+  // todo: order move generation by game phase
+  // data-driven approach for this?
+  generate<pseudo_legal_capture, pieces>();
+  generate<pseudo_legal_quiet, pieces>();
+}
 
 /*
 template<>
