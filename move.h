@@ -112,7 +112,6 @@ class Move {
   inline U8 to() const { return _to; }
   inline Movetype type() const { return _type; } 
   inline std::string to_string() { return SanSquares[_from] + SanSquares[_to]; }
-  
 };
 
 
@@ -130,8 +129,8 @@ class Movegen {
   inline void initialize(const position& p);
   inline void pawn_pushes(U64& single, U64& dbl);
   inline void pawn_caps(U64& left, U64& right, U64& ep_left, U64& ep_right);
-  inline void promotions(U64& quiets, U64& caps);
-  inline void knight_mvs(std::vector<U64>& quiets, std::vector<U64>& caps);
+  inline void knight_quiets(std::vector<U64>& mvs);
+  inline void knight_caps(std::vector<U64>& mvs);
   inline void bishop_mvs(std::vector<U64>& quiets, std::vector<U64>& caps);
   inline void rook_mvs(std::vector<U64>& quiets, std::vector<U64>& caps);
   inline void queen_mvs(std::vector<U64>& quiets, std::vector<U64>& caps);

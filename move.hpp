@@ -166,14 +166,20 @@ inline void Movegen::capture_promotions(U64& right_caps, U64& left_caps) {
   left_caps &= targets;
 }
 
-inline void Movegen::knight_mvs(std::vector<U64>& quiets, std::vector<U64>& caps) {
+inline void Movegen::knight_quiets(std::vector<U64>& mvs) {
   for (auto& s : knights) {
     if (s == Square::no_square) break;
-    U64 qs = bitboards::nmask[s] & enemies;
-    if (qs != 0ULL) quiets.push_back(qs);
-    U64 cs = bitboards::nmask[s] & enemies;
-    if (cs != 0ULL) caps.push_back(cs);
+    U64 qs = bitboards::nmask[s] & empty;
+    if (qs != 0ULL) mvs.push_back(qs);
   }  
+}
+
+inline void Movegen::knight_caps(std::vector<U64>& mvs) {
+  for (auto& s : knights) {
+    if (s == Square::no_square) break;
+    U64 cs = bitboards::nmask[s] & enemies;
+    if (cs != 0ULL) mvs.push_back(cs);
+  }
 }
 
 inline void Movegen::bishop_mvs(std::vector<U64>& quiets, std::vector<U64>& caps) {
@@ -230,7 +236,7 @@ inline void Movegen::king_mvs(std::vector<U64>& quiets, std::vector<U64>& caps) 
 }
 
 //------------------------------
-// white pawn moves
+// pawn moves
 //------------------------------
 
 template<>
@@ -283,6 +289,21 @@ void Movegen::generate<capture_promotion, pawn>() {
   capture_promotions(caps_r, caps_l);
   if (caps_r != 0ULL) encode_promotions<capture_promotion, pawn>(caps_r, d1);
   if (caps_l != 0ULL) encode_promotions<capture_promotion, pawn>(caps_l, d2);
+}
+
+//------------------------------
+// knight moves
+//------------------------------
+template<>
+void Movegen::generate<quiet, knight>() {
+  std::vector<U64> mvs;
+  
+  knight_quiets(mvs);
+  int idx = 0;
+  for (auto& m : mvs) {
+    if ( m != 0ULL) encode<quiet, knight>(m, knights[idx]);
+    ++idx;
+  }
 }
 
 /*
@@ -448,7 +469,7 @@ void movegen<quiet, knight, white>::generate(const position& p) {
   for (auto& s : p.squares_of<white, knight>()) {
     if (s == Square::no_square) break;    
     U64 mvs = bitboards::nmask[s] & empty;
-    if (mvs != 0ULL)  { encode(mvs, s); }    
+    if (mvs != 0ULL)  { encode(mvs, s); }
   }
 }
 
