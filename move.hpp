@@ -143,33 +143,27 @@ inline void Movegen::pawn_caps(U64& left, U64& right, U64& ep_left, U64& ep_righ
   }    
 }
 
-inline void Movegen::promotions(U64& quiets, U64& right_caps, U64& left_caps) {
-  
+inline void Movegen::quiet_promotions(U64& quiets) {  
   if (pawns7 == 0ULL) return;
   quiets = pawns7;
-
 
   auto s = (us == white ? shift<N> : shift<S>);
   
   s(quiets);
-  
-  //encode_promotions(pawns7, us == white ? -8 : 8);
+}
 
-  
+inline void Movegen::capture_promotions(U64& right_caps, U64& left_caps) {
   U64 targets = enemies & (us == white ? row[Row::r8] : row[Row::r1]);
   right_caps = pawns;
   left_caps = pawns;
 
-
   auto se = (us == white ? shift<NE> : shift<SE>);
   se(right_caps);
   right_caps &= targets;
-  //if (right_caps != 0ULL) encode_promotions(right_caps, -9);
 
   auto sw = (us == white ? shift<NW> : shift<SW>);
   sw(left_caps);  
   left_caps &= targets;
-  //if (left_caps != 0ULL) encode_promotions(left_caps, -7);
 }
 
 inline void Movegen::knight_mvs(std::vector<U64>& quiets, std::vector<U64>& caps) {
@@ -271,6 +265,24 @@ void Movegen::generate<capture, pawn>() {
   
   if (ep_left != 0ULL) encode_pawn_pushes<capture, pawn>(left, d1);  
   if (ep_right != 0ULL) encode_pawn_pushes<capture, pawn>(right, d2);
+}
+
+template<>
+void Movegen::generate<promotion, pawn>() {
+  U64 mvs = 0;
+  quiet_promotions(mvs);
+  encode_promotions<promotion, pawn>(mvs, us == white ? -8 : 8);  
+}
+
+template<>
+void Movegen::generate<capture_promotion, pawn>() {
+  U64 caps_l = 0;
+  U64 caps_r = 0;
+  int d1 = (us == white ? -9 : 9);
+  int d2 = (us == black ? -7 : 7);
+  capture_promotions(caps_r, caps_l);
+  if (caps_r != 0ULL) encode_promotions<capture_promotion, pawn>(caps_r, d1);
+  if (caps_l != 0ULL) encode_promotions<capture_promotion, pawn>(caps_l, d2);
 }
 
 /*
