@@ -106,7 +106,7 @@ inline void Movegen::pawn_pushes(U64& single, U64& dbl) {
 }
 
 
-inline void Movegen::pawn_caps(U64& left, U64& right, U64& ep) {  
+inline void Movegen::pawn_caps(U64& left, U64& right, U64& ep_left, U64& ep_right) {  
   // normal captures - non promotions
   left = pawns & pawnmaskleft[us];
   right = pawns & pawnmaskright[us];
@@ -123,19 +123,17 @@ inline void Movegen::pawn_caps(U64& left, U64& right, U64& ep) {
 
   // ep captures
   if (eps == Square::no_square) return;
-  U64 ep_left = pawns & pawnmaskleft[us] & row[Row::r5]; 
-  U64 ep_right = pawns & pawnmaskright[us] & row[Row::r5];
+  ep_left = pawns & pawnmaskleft[us] & row[Row::r5]; 
+  ep_right = pawns & pawnmaskright[us] & row[Row::r5];
   
   if (ep_left != 0ULL) {
     shift<NW>(ep_left);
     ep_left &= bitboards::squares[eps];
-    left |= ep_left;
   }
   
   if (ep_right != 0ULL) {
     shift<NE>(ep_right);
     ep_right &= bitboards::squares[eps];
-    right |= ep_right;    
   }    
 }
 
@@ -143,10 +141,10 @@ inline void Movegen::pawn_caps(U64& left, U64& right, U64& ep) {
 inline void Movegen::knight_mvs(std::vector<U64>& quiets, std::vector<U64>& caps) {
   for (auto& s : knights) {
     if (s == Square::no_square) break;
-    U64 qbb = bitboards::nmask[s] & enemies;
-    if (qbb != 0ULL) quiets.push_back(qbb);
-    U64 cbb = bitboards::nmask[s] & enemies;
-    if (cbb != 0ULL) caps.push_back(cbb);
+    U64 qs = bitboards::nmask[s] & enemies;
+    if (qs != 0ULL) quiets.push_back(qs);
+    U64 cs = bitboards::nmask[s] & enemies;
+    if (cs != 0ULL) caps.push_back(cs);
   }  
 }
 
@@ -226,16 +224,19 @@ template<>
 void Movegen::generate<capture, pawn>() {
   U64 left = 0ULL;
   U64 right = 0ULL;
-  U64 ep = 0ULL;
+  U64 ep_left = 0ULL;
+  U64 ep_right = 0ULL;
+  
   int d1 = (us == white ? -9 : 9);
   int d2 = (us == white ? -7 : 7);
   
-  pawn_caps(left, right, ep);
+  pawn_caps(left, right, ep_left, ep_right);
   
-  if (left != 0ULL) encode_pawn_pushes<capture, pawn>(left, d1);  
+  if (left != 0ULL) encode_pawn_pushes<capture, pawn>(left, d1);
   if (right != 0ULL) encode_pawn_pushes<capture, pawn>(right, d2);
-  // todo : ep captures
-
+  
+  if (ep_left != 0ULL) encode_pawn_pushes<capture, pawn>(left, d1);  
+  if (ep_right != 0ULL) encode_pawn_pushes<capture, pawn>(right, d2);
 }
 
 /*

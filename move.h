@@ -129,7 +129,7 @@ class Movegen {
   // utilities
   inline void initialize(const position& p);
   inline void pawn_pushes(U64& single, U64& dbl);
-  inline void pawn_caps(U64& left, U64& right, U64& ep);
+  inline void pawn_caps(U64& left, U64& right, U64& ep_left, U64& ep_right);
   inline void promotions(U64& quiets, U64& caps);
   inline void knight_mvs(std::vector<U64>& quiets, std::vector<U64>& caps);
   inline void bishop_mvs(std::vector<U64>& quiets, std::vector<U64>& caps);
