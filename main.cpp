@@ -5,13 +5,9 @@
 
 #include "options.h"
 #include "info.h"
-#include "types.h"
-#include "utils.h"
 #include "bitboards.h"
-#include "bits.h"
-#include "magics.h"
 #include "uci.h"
-#include "position.h"
+#include "magics.h"
 
 std::unique_ptr<options> opts;
 

@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef UCI_H
 #define UCI_H
 
@@ -10,7 +12,7 @@
 #include "position.h"
 #include "bits.h"
 #include "types.h"
-#include "move.h"
+//#include "move.h"
 
 std::string START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -41,7 +43,7 @@ bool uci::parse_command(const std::string& input) {
       p.print();
       
       
-      Movegen mvs(p);
+      //Movegen mvs(p);
       /*
       mvs.generate<quiet, pawn>();
       mvs.generate<quiet, knight>();
@@ -52,8 +54,8 @@ bool uci::parse_command(const std::string& input) {
       mvs.generate<capture, bishop>();
       mvs.generate<capture, knight>();
       */
-      mvs.generate<pseudo_legal_all, pieces>();
-      mvs.print();
+      //mvs.generate<pseudo_legal_all, pieces>();
+      //mvs.print();
 
       
       /*

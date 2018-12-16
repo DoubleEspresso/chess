@@ -1,4 +1,5 @@
 #include "move.h"
+
 #include "position.h"
 #include "magics.h"
 #include "bits.h"

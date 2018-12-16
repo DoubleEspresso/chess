@@ -1,11 +1,4 @@
-#include <algorithm>
-#include <string>
-#include <vector>
-#include <sstream>
-#include <cstring>
-
 #include "position.h"
-
 
 position::position(std::istringstream& fen) { setup(fen); }
 						    
@@ -45,6 +38,11 @@ void position::setup(std::istringstream& fen) {
   
   // move counter
   fen >> ifo.hmvs;
+
+  // check info
+  ifo.incheck = is_attacked(pcs.king_sq[to_move()], to_move(), Color(to_move()^1));
+
+  std::cout << "side to mv in check = " << ifo.incheck  << std::endl;
 }
 
 void position::do_move(const U16& m) {
@@ -56,6 +54,26 @@ void position::do_move(const U16& m) {
   // switch type of move
   // update eps, captured piece, pinned, in check, stm
   // update move 50, half-mvs, check-info
+}
+
+bool position::is_attacked(const Square& s, const Color& us, const Color& them) {
+  
+  U64 stepper_attacks = 0ULL;
+  if (us == white) stepper_attacks = ((bitboards::pattks[us][s] & get_pieces<black, pawn>()) |
+				      (bitboards::nmask[s] & get_pieces<black, knight>()) |
+				      (bitboards::kmask[s] & get_pieces<black, king>()));
+  else stepper_attacks = ((bitboards::pattks[us][s] & get_pieces<white, pawn>()) |
+			  (bitboards::nmask[s] & get_pieces<white, knight>()) |
+			  (bitboards::kmask[s] & get_pieces<white, king>()));
+  if (stepper_attacks != 0ULL) return true;
+
+  U64 m = all_pieces();
+  if (us == white)
+    return ((magics::attacks<bishop>(m, s) & (get_pieces<black, queen>() | get_pieces<black, bishop>())) ||
+	    (magics::attacks<rook>(m, s) & (get_pieces<black, queen>() | get_pieces<black, rook>())));
+  else
+    return ((magics::attacks<bishop>(m, s) & (get_pieces<white, queen>() | get_pieces<white, bishop>())) ||
+	    (magics::attacks<rook>(m, s) & (get_pieces<white, queen>() | get_pieces<white, rook>())));
 }
 
 void position::set_piece(const char& p, const Square& s) {

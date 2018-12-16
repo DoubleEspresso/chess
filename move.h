@@ -1,11 +1,13 @@
+#pragma once
+
 #ifndef MOVE_H
 #define MOVE_H
 
 #include <vector>
 
 #include "types.h"
-#include "position.h"
 
+class position;
 //---------------------------------------------
 // Move Encoding:
 // Store move information in a 16-bit word, 

@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef POSITION_H
 #define POSITION_H
 
@@ -6,10 +8,14 @@
 #include <vector>
 #include <iostream>
 #include <array>
+#include <string>
+#include <sstream>
+#include <cstring>
 
 #include "types.h"
 #include "utils.h"
 #include "bitboards.h"
+#include "magics.h"
 
   struct checkinfo {
     U64 checkers;
@@ -101,12 +107,18 @@ class position {
   void do_move(const U16& m);
   //void undo_move(const U16& m);
 
+  // utilities
+  bool is_attacked(const Square& s, const Color& us, const Color& them);
+  
   // position info access wrappers
   inline Square eps() const { return ifo.eps; }
   inline Color to_move() const { return ifo.stm; }
   
   // piece access wrappers
   inline U64 all_pieces() const { return pcs.bycolor[white] | pcs.bycolor[black]; }
+
+  template<Color c>
+  inline Square king_square() { return pcs.king_sq[c]; }
   
   template<Color c, Piece p>
   inline U64 get_pieces() const { return pcs.bitmap[c][p]; }

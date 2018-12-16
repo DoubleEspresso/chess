@@ -7,6 +7,7 @@ namespace bitboards {
   U64 color[2]; // white/black squares
   U64 bmask[64]; // bishop mask (outer board edges are trimmed)
   U64 pawnmask[2]; // 2nd - 6th rank mask for pawns (to exclude promotion candidates)
+  U64 pattks[2][64];
   U64 pawnmaskleft[2];
   U64 pawnmaskright[2];
   U64 nmask[64]; // step attacks for the knight
@@ -81,6 +82,20 @@ void bitboards::load() {
 	  util::row_dist(s, to) <= 1) bm |= squares[to];
     }
     kmask[s] = bm;
+
+    // pawn attack masks for each color
+    int pawn_steps[2][2] = {{9, 7}, {-7, -9}};
+    for (Color c = white; c <= black; ++c) {
+      pattks[c][s] = 0ULL;
+      for (auto& step : pawn_steps[c]) {
+	int to = s + step;
+	if (util::on_board(to) &&
+	    util::row_dist(s, to) < 2 &&
+	    util::col_dist(s, to) < 2) {
+	  pattks[c][s] |= squares[to];
+	}
+      }
+    }
     
     // bishop diagonal masks (outer bits trimmed)
     bm = 0ULL;
