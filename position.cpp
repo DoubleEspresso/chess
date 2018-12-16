@@ -40,8 +40,13 @@ void position::setup(std::istringstream& fen) {
   fen >> ifo.hmvs;
 
   // check info
-  ifo.incheck = is_attacked(pcs.king_sq[to_move()], to_move(), Color(to_move()^1));
-
+  Color stm = to_move();
+  Square king_sq = pcs.king_sq[stm];
+  
+  ifo.incheck = is_attacked(king_sq, stm, Color(stm^1));
+  
+  ci->checkers = (in_check() ? attackers_of(king_sq, Color(stm^1)) : 0ULL);
+  
   std::cout << "side to mv in check = " << ifo.incheck  << std::endl;
 }
 
@@ -73,6 +78,22 @@ bool position::is_attacked(const Square& s, const Color& us, const Color& them) 
 	   (magics::attacks<rook>(m, s) & (p[queen] | p[rook]))));
 }
 
+U64 position::attackers_of(const Square& s, const Color& c)
+{
+  U64 m = all_pieces();
+  auto p = pcs.bitmap[c];
+  U64 battck = magics::attacks<bishop>(m, s);
+  U64 rattck = magics::attacks<rook>(m, s);
+  U64 qattck = battck | rattck;
+  
+  return ((bitboards::pattks[c^1][s] & p[pawn]) |
+          (bitboards::nmask[s] & p[knight]) |
+          (bitboards::kmask[s] & p[king]) |
+	  (battck & p[bishop]) |
+	  (rattck & p[rook]) |
+	  (qattck & p[queen]));
+}
+
 void position::set_piece(const char& p, const Square& s) {
   auto idx = std::distance(SanPiece.begin(), std::find(SanPiece.begin(), SanPiece.end(), p));
   if (idx < 0) return; // error
@@ -90,7 +111,7 @@ void position::clear() {
   pcs.clear();
   history.clear();
   ifo = {};
-  ci.reset();
+  ci.reset(new checkinfo());
 }
 
 void position::print() {
