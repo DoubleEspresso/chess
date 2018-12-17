@@ -58,29 +58,26 @@ struct piece_data {
 
   void set(const Color& c, const Piece& p, const Square& s);
   
-  template<Color c, Piece p>
-  void do_quiet(const Square& f, const Square& t);
+  inline void do_quiet(const Color& c, const Piece& p, const Square& f, const Square& t);
 
   template<Color c>
-  void do_castle(const bool& kingside);
-
-  template<Color c>
-  void undo_castle(const bool& kingside);
-
-  template<Color c, Piece p>
-  void do_cap(const Square& f, const Square& t);
+  inline void do_castle(const bool& kingside);
   
   template<Color c>
-  void do_ep(const Square& f, const Square& t);
+  inline void undo_castle(const bool& kingside);
 
-  template<Color c, Piece p>
-  void do_promotion(const Square& f, const Square& t);
+  inline void do_cap(const Color& c, const Piece& p, const Square& f, const Square& t);
+  
+  inline void do_ep(const Color& c, const Square& f, const Square& t);
 
-  template<Color c, Piece p>
-  void do_promotion_cap(const Square& f, const Square& t);
+  inline void do_promotion(const Color& c, const Piece& p,
+			   const Square& f, const Square& t);
+	     
+  inline void do_promotion_cap(const Color& c,
+			const Piece& p, const Square& f, const Square& t);
 
-  void remove_piece(const Color& c, const Piece& p, const Square& s);
-  void add_piece(const Color& c, const Piece& p, const Square& s);
+  inline void remove_piece(const Color& c, const Piece& p, const Square& s);
+  inline void add_piece(const Color& c, const Piece& p, const Square& s);
 };
 
 class position {  
@@ -153,8 +150,8 @@ inline void piece_data::clear() {
   for (auto& v: square_of) { for (auto& w : v) { std::fill(w.begin(), w.end(), Square::no_square); } }
 }
 
-template<Color c, Piece p>
-  void piece_data::do_quiet(const Square& f, const Square& t) {
+inline void piece_data::do_quiet(const Color& c, const Piece& p,
+			  const Square& f, const Square& t) {
   // bitmaps
   U64 fto = bitboards::squares[f] | bitboards::squares[t];
 
@@ -172,37 +169,36 @@ template<Color c, Piece p>
   // zobrist update
 }
 
-template<Color c, Piece p>
-  void piece_data::do_cap(const Square& f, const Square& t) {
+inline void piece_data::do_cap(const Color& c, const Piece& p,
+			const Square& f, const Square& t) {
   Color them = Color(c ^ 1);
   Piece cap = piece_on[t];
   remove_piece(them, cap, t);
-  do_quiet<c, p>(f, t);
+  do_quiet(c, p, f, t);
 }
 
-template<Color c, Piece p>
-void piece_data::do_promotion(const Square& f, const Square& t) {
+inline void piece_data::do_promotion(const Color& c, const Piece& p,
+			      const Square& f, const Square& t) {
   remove_piece(c, Piece::pawn, f);
   add_piece(c, p, t);
 }
-
-template<Color c> 
-void piece_data::do_ep(const Square& f, const Square& t) {
+  
+inline void piece_data::do_ep(const Color& c, const Square& f, const Square& t) {
   Color them = Color(c ^ 1);
   Square cs = Square(them == white ? t + 8 : t - 8);
-  remove_piece(them, Piece::pawn, cs);
-  do_quiet<c, Piece::pawn>(f, t);
+    remove_piece(them, Piece::pawn, cs);
+    do_quiet(c, Piece::pawn, f, t);
 }
 
-template<Color c, Piece p>
-  void piece_data::do_promotion_cap(const Square& f, const Square& t) {
+inline void piece_data::do_promotion_cap(const Color& c, const Piece& p,
+				  const Square& f, const Square& t) {
   Color them = Color(c ^ 1);
   Piece cap = piece_on[t];
   remove_piece(them, cap, t);
   remove_piece(c, Piece::pawn, f);
   add_piece(c, p, t);
 }
-
+  
 inline void piece_data::remove_piece(const Color& c, const Piece& p, const Square& s) {
   U64 sq = bitboards::squares[s];
   bycolor[c] ^= sq;

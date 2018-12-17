@@ -75,48 +75,49 @@ enum Movetype {
 
 class Move {
   int _value; 
-  U8 _from;
-  U8 _to;
+  Square _from;
+  Square _to;
   Movetype _type;
   Piece _piece;  
   
  public:
   Move() {
     _value = 0;
-    _from = 0;
-    _to = 0;
+    _from = A1;
+    _to = A1;
     _type = no_type;
     _piece = no_piece; 
   }
   Move(const U16& mv, int val = 0) {
     _value = val;
-    _from = U8(mv & 0x3f);
-    _to = U8((mv & 0xfc0) >> 6);
+    _from = Square(mv & 0x3f);
+    _to = Square((mv & 0xfc0) >> 6);
     _type = Movetype((mv & 0xf000) >> 12);    
   }
-  Move(U8 f, U8 t, Movetype type) {
+  Move(Square f, Square t, Movetype type) {
     _value = 0;
     _from = f;
     _to = t;
     _type = type;
   }
-  Move(const Move& o);
-  Move(const Move&& o);
-  Move& operator=(const Move& o);
-  Move& operator=(const Move&& o);
+  Move(const Move& o) = default;
+  Move(Move&& o) = default;
+  Move& operator=(Move&& o) = default;
+  Move& operator=(const Move& o) = default;
   ~Move() {}
-
+  
   bool operator()(const Move& o) const; // { return o.m == m; }
   bool operator==(const Move& o) const;
   bool operator<(const Move& o) const { return _value < o.value(); }
   inline void set(const Piece& p,
-		  const U8& f, const U8& t, const Movetype& type) {
+		  const Square& f, const Square& t, const Movetype& type) {
     _piece = p; _value = 0; _from = f; _to = t; _type = type;
   }
   inline int value() const { return _value; }
-  inline U8 from() const { return _from; }
-  inline U8 to() const { return _to; }
-  inline Movetype type() const { return _type; } 
+  inline Square from() const { return _from; }
+  inline Square to() const { return _to; }
+  inline Movetype type() const { return _type; }
+  inline Piece piece() const { return _piece; }
   inline std::string to_string() {
     if (_type < castle_ks) { // promotions
       const std::string p = "qrbn";
@@ -171,9 +172,11 @@ class Movegen {
   Movegen(const position& pos) : it(0), last(0) { initialize(pos); }
   Movegen(const Movegen& o) = delete;
   Movegen(const Movegen&& o) = delete;
+  
   Movegen& operator=(const Movegen& o) = delete;
   Movegen& operator=(const Movegen&& o) = delete;
-
+  Move& operator[](const int& idx) { return list[idx]; }
+  
   template<Movetype mt, Piece p>
   inline void generate();
   
@@ -183,7 +186,7 @@ class Movegen {
   template<Movetype mt>
   inline void generate();
   
-  void print();
+  inline void print();
 };
 
 #include "move.hpp"

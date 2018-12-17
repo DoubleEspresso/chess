@@ -28,6 +28,9 @@ bool uci::parse_command(const std::string& input) {
       }
       mvs.generate<pseudo_legal_all, pieces>();
       mvs.print();
+      Move mv1 = mvs[0];
+      p.do_move(mv1);
+      p.print();
     }
     
     else if (cmd == "exit" || cmd == "quit") {

@@ -23,26 +23,26 @@ namespace {
 
 template<Movetype mt, Piece p>
 inline void Movegen::encode(U64& b, const int& f) {  
-  while (b) list[last++].set(p, U8(f), U8(pop_lsb(b)), Movetype(mt));
+  while (b) list[last++].set(p, Square(f), Square(pop_lsb(b)), Movetype(mt));
 }
 
 template<Movetype mt, Piece p>
 inline void Movegen::encode_pawn_pushes(U64& b, const int& dir) {
   while (b) {
     int to = pop_lsb(b);
-    list[last++].set(p, U8(to + dir), U8(to), Movetype(mt));
+    list[last++].set(p, Square(to + dir), Square(to), Movetype(mt));
   }
 }
 
 template<Movetype mt, Piece p>
 inline void Movegen::encode_promotions(U64& b, const int& dir) {
   while (b) {
-    int to = pop_lsb(b);
-    int frm = to + dir;
-    list[last++].set(p, U8(frm), U8(to), Movetype(mt)); // queen
-    list[last++].set(p, U8(frm), U8(to), Movetype(mt+1)); // rook
-    list[last++].set(p, U8(frm), U8(to), Movetype(mt+2)); // bishop
-    list[last++].set(p, U8(frm), U8(to), Movetype(mt+3)); // knight
+    Square to = Square(pop_lsb(b));
+    Square frm = Square(to + dir);
+    list[last++].set(p, frm, to, Movetype(mt)); // queen
+    list[last++].set(p, frm, to, Movetype(mt+1)); // rook
+    list[last++].set(p, frm, to, Movetype(mt+2)); // bishop
+    list[last++].set(p, frm, to, Movetype(mt+3)); // knight
   }
 }
 
@@ -345,7 +345,7 @@ inline void Movegen::castle_mvs(U64& mvs) {
 //------------------------------
 
 template<>
-void Movegen::generate<quiet, pawn>() {
+inline void Movegen::generate<quiet, pawn>() {
   
   U64 single_pushes = 0ULL;
   U64 double_pushes = 0ULL;
@@ -360,7 +360,7 @@ void Movegen::generate<quiet, pawn>() {
 
 
 template<>
-void Movegen::generate<capture, pawn>() {
+inline void Movegen::generate<capture, pawn>() {
   U64 left = 0ULL;
   U64 right = 0ULL;
   U64 ep_left = 0ULL;
@@ -379,14 +379,14 @@ void Movegen::generate<capture, pawn>() {
 }
 
 template<>
-void Movegen::generate<promotion, pawn>() {
+inline void Movegen::generate<promotion, pawn>() {
   U64 mvs = 0;
   quiet_promotions(mvs);
   encode_promotions<promotion, pawn>(mvs, us == white ? -8 : 8);  
 }
 
 template<>
-void Movegen::generate<capture_promotion, pawn>() {
+inline void Movegen::generate<capture_promotion, pawn>() {
   U64 caps_l = 0;
   U64 caps_r = 0;
   int d1 = (us == white ? -9 : 9);
@@ -401,7 +401,7 @@ void Movegen::generate<capture_promotion, pawn>() {
 // knight moves
 //------------------------------
 template<>
-void Movegen::generate<quiet, knight>() {
+inline void Movegen::generate<quiet, knight>() {
   std::vector<U64> mvs;
   
   knight_quiets(mvs);
@@ -413,7 +413,7 @@ void Movegen::generate<quiet, knight>() {
 }
 
 template<>
-void Movegen::generate<capture, knight>() {
+inline void Movegen::generate<capture, knight>() {
   std::vector<U64> mvs;
   
   knight_caps(mvs);
@@ -428,7 +428,7 @@ void Movegen::generate<capture, knight>() {
 // bishop moves
 //------------------------------
 template<>
-void Movegen::generate<quiet, bishop>() {
+inline void Movegen::generate<quiet, bishop>() {
   std::vector<U64> mvs;
   
   bishop_quiets(mvs);
@@ -440,7 +440,7 @@ void Movegen::generate<quiet, bishop>() {
 }
 
 template<>
-void Movegen::generate<capture, bishop>() {
+inline void Movegen::generate<capture, bishop>() {
   std::vector<U64> mvs;
   
   bishop_caps(mvs);
@@ -455,7 +455,7 @@ void Movegen::generate<capture, bishop>() {
 // rook moves
 //------------------------------
 template<>
-void Movegen::generate<quiet, rook>() {
+inline void Movegen::generate<quiet, rook>() {
   std::vector<U64> mvs;
   
   rook_quiets(mvs);
@@ -467,7 +467,7 @@ void Movegen::generate<quiet, rook>() {
 }
 
 template<>
-void Movegen::generate<capture, rook>() {
+inline void Movegen::generate<capture, rook>() {
   std::vector<U64> mvs;
   
   rook_caps(mvs);
@@ -482,7 +482,7 @@ void Movegen::generate<capture, rook>() {
 // queen moves
 //------------------------------
 template<>
-void Movegen::generate<quiet, queen>() {
+inline void Movegen::generate<quiet, queen>() {
   std::vector<U64> mvs;
   
   queen_quiets(mvs);
@@ -494,7 +494,7 @@ void Movegen::generate<quiet, queen>() {
 }
 
 template<>
-void Movegen::generate<capture, queen>() {
+inline void Movegen::generate<capture, queen>() {
   std::vector<U64> mvs;
   
   queen_caps(mvs);
@@ -509,7 +509,7 @@ void Movegen::generate<capture, queen>() {
 // king moves
 //------------------------------
 template<>
-void Movegen::generate<quiet, king>() {
+inline void Movegen::generate<quiet, king>() {
   std::vector<U64> mvs;
   
   king_quiets(mvs);
@@ -521,7 +521,7 @@ void Movegen::generate<quiet, king>() {
 }
 
 template<>
-void Movegen::generate<capture, king>() {
+inline void Movegen::generate<capture, king>() {
   std::vector<U64> mvs;
   
   king_caps(mvs);
@@ -536,7 +536,7 @@ void Movegen::generate<capture, king>() {
 // pseudo-legal quiet
 //------------------------------
 template<>
-void Movegen::generate<pseudo_legal_quiet, pieces>() {
+inline void Movegen::generate<pseudo_legal_quiet, pieces>() {
   // todo: order move generation by game phase
   // data-driven approach for this?
   generate<promotion, pawn>();
@@ -552,7 +552,7 @@ void Movegen::generate<pseudo_legal_quiet, pieces>() {
 // pseudo-legal capture
 //------------------------------
 template<>
-void Movegen::generate<pseudo_legal_capture, pieces>() {
+inline void Movegen::generate<pseudo_legal_capture, pieces>() {
   // todo: order move generation by game phase
   // data-driven approach for this?
   generate<capture_promotion, pawn>();
@@ -569,7 +569,7 @@ void Movegen::generate<pseudo_legal_capture, pieces>() {
 //------------------------------
 
 template<>
-void Movegen::generate<pseudo_legal_all, pieces>() {
+inline void Movegen::generate<pseudo_legal_all, pieces>() {
   // todo: order move generation by game phase
   // data-driven approach for this?
   

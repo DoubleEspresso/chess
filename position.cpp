@@ -1,5 +1,5 @@
 #include "position.h"
-#include "uci.h"
+#include "move.h"
 
 position::position(std::istringstream& fen) { setup(fen); }
 						    
@@ -51,6 +51,54 @@ void position::setup(std::istringstream& fen) {
 
 void position::do_move(const Move& m) {
   history.emplace_back(ifo);
+  const Square from = m.from();
+  const Square to = m.to();
+  const Movetype t = m.type();
+  const Piece p = m.piece();
+  const Color us = to_move();
+
+  // king square update
+  if (p == king) {
+    pcs.king_sq[us] = to;
+    // todo: clear castle rights
+  }
+  else if (p == rook) {
+    // todo: clear castle rights
+  }
+  
+  ifo.captured = no_piece;
+  
+  if (t == quiet) pcs.do_quiet(us, p, from, to);
+  
+  else if (t == capture) pcs.do_cap(us, p, from, to);
+
+  else if (t == ep) pcs.do_ep(us, from, to);
+
+  else if (t < capture_promotion) pcs.do_promotion(us, p, from, to);
+
+  else if (t < castle_ks) pcs.do_promotion_cap(us, p, from, to);
+
+  // todo: castle move
+
+  // eps
+  ifo.eps = no_square;
+  if (p == pawn && abs(from-to) == 16) {
+    ifo.eps = Square(from + (us == white ? 8 : -8));
+    // todo: zobrist
+  }
+
+  // move50
+  if (p == pawn || t == capture) ifo.move50 = 0;
+  else ifo.move50++;
+
+  // half-moves
+  ifo.hmvs++;
+
+  // side to move
+  ifo.stm = Color(ifo.stm ^ 1);
+
+  ifo.incheck = is_attacked(king_square(), ifo.stm, us);
+  ci->checkers = (ifo.incheck ? attackers_of(king_square(), Color(ifo.stm^1)) : 0ULL);
   
   // update ks if king move, castle rights
   // update castle rights if rook move
