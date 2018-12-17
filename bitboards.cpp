@@ -15,6 +15,7 @@ namespace bitboards {
   U64 rmask[64]; // rook mask (outer board edges are trimmed)
   U64 squares[64];
   U64 diagonals[64];
+  U64 between[64][64];
   U64 edges;
   U64 corners;
 }
@@ -95,6 +96,34 @@ void bitboards::load() {
 	  pattks[c][s] |= squares[to];
 	}
       }
+    }
+
+    // between bitboard
+    for (Square s2 = A1; s2 <= H8; ++s2) {
+      if (s != s2) {
+	U64 btwn = 0ULL;	
+	int delta = 0;
+	
+	if (util::col_dist(s, s2) == 0) delta = (s < s2 ? 8 : -8);
+	else if (util::row_dist(s, s2) == 0) delta = (s < s2 ? 1 : -1);
+	else if (util::on_diagonal(s, s2)) {
+	  if (s < s2 && util::col(s) < util::col(s2)) delta = 9;
+	  else if (s < s2 && util::col(s) > util::col(s2)) delta = 7;
+	  else if (s > s2 && util::col(s) < util::col(s2)) delta = -7;
+	  else delta = -9;
+	}
+	
+	if (delta != 0) {
+	  int iter = 0;
+	  int sq = 0;
+	    do {
+	      sq = s + iter * delta;
+	      btwn |= squares[sq];
+	      iter++;
+	    } while (sq != s2);
+	}
+	between[s][s2] = btwn;
+      }    
     }
     
     // bishop diagonal masks (outer bits trimmed)

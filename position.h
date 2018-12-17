@@ -110,6 +110,7 @@ class position {
   // utilities
   bool is_attacked(const Square& s, const Color& us, const Color& them);
   U64 attackers_of(const Square& s, const Color& c);
+  inline U64 checkers() const { return ci->checkers; }
   bool in_check();
   
   // position info access wrappers
@@ -119,8 +120,12 @@ class position {
   // piece access wrappers
   inline U64 all_pieces() const { return pcs.bycolor[white] | pcs.bycolor[black]; }
 
+  inline Piece piece_on(const Square& s) const { return pcs.piece_on[s]; }
+  
   template<Color c>
-  inline Square king_square() { return pcs.king_sq[c]; }
+  inline Square king_square() const { return pcs.king_sq[c]; }
+
+  inline Square king_square() const { return pcs.king_sq[ifo.stm]; }
   
   template<Color c, Piece p>
   inline U64 get_pieces() const { return pcs.bitmap[c][p]; }

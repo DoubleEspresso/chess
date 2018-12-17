@@ -39,6 +39,10 @@ namespace bits {
     b &= (b - 1);
     return s;
   }
+
+  inline bool more_than_one(const U64& b) {
+    return b & (b - 1);
+  }
 }
 
 #endif

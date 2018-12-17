@@ -64,7 +64,20 @@ inline void Movegen::initialize(const position& p) {
   them = Color(us ^ 1);
   all_pieces = p.all_pieces();
   empty = ~all_pieces;
+
+  // check handling  
+  check_target = p.checkers(); // checking piece(s)
+  evasion_target = 0ULL;
   
+  if (check_target != 0ULL && !bits::more_than_one(check_target)) { // only 1 checker
+    U64 tmp = check_target;
+    Square frm = Square(pop_lsb(tmp));
+    Piece checker = p.piece_on(frm);
+    if (checker == bishop || checker == rook || checker == queen) {      
+      evasion_target = bitboards::between[frm][p.king_square()] & empty;
+    }
+  }
+    
   if (us == white) {
     rank2 = bitboards::row[r2];
     rank7 = bitboards::row[r7];
@@ -101,11 +114,13 @@ inline void Movegen::pawn_quiets(U64& single, U64& dbl) {
   
   s(single);
   single &= empty;
+  if (evasion_target != 0ULL) single &= evasion_target;
   
   for (int i=0; i<2; ++i) {
     s(dbl);
     dbl &= empty;
-  }  
+  }
+  if (evasion_target != 0ULL) dbl &= evasion_target;
 }
 
 
@@ -113,21 +128,22 @@ inline void Movegen::pawn_caps(U64& left, U64& right, U64& ep_left, U64& ep_righ
   // normal captures - non promotions
   left = pawns & pawnmaskleft[us];
   right = pawns & pawnmaskright[us];
-
+  U64 target = (check_target == 0ULL ? enemies : check_target);
+  
   auto sw = (us == white ? shift<NW> : shift<SW>);
   auto se = (us == white ? shift<NE> : shift<SE>);
   
   if (left != 0ULL) {
     se(left);
-    left &= enemies;
+    left &= target;
   }
   
   if (right != 0ULL) {
     sw(right);
-    right &= enemies;
+    right &= target;
   }
 
-  // ep captures
+  // ep captures - evasions are checked individually
   if (eps == Square::no_square) return;
   auto r = (us == white ? Row::r5 : Row::r4);
   ep_left = pawns & pawnmaskleft[us] & row[r]; 
@@ -151,10 +167,14 @@ inline void Movegen::quiet_promotions(U64& quiets) {
   auto s = (us == white ? shift<N> : shift<S>);
   
   s(quiets);
+
+  if (evasion_target != 0ULL) quiets &= evasion_target;
 }
 
 inline void Movegen::capture_promotions(U64& right_caps, U64& left_caps) {
   U64 targets = enemies & (us == white ? row[Row::r8] : row[Row::r1]);
+  if (check_target != 0ULL) targets &= check_target;
+  
   right_caps = pawns;
   left_caps = pawns;
 
@@ -170,22 +190,25 @@ inline void Movegen::capture_promotions(U64& right_caps, U64& left_caps) {
 inline void Movegen::knight_quiets(std::vector<U64>& mvs) {
   for (auto& s : knights) {
     if (s == Square::no_square) break;
-    mvs.emplace_back((bitboards::nmask[s] & empty));
+    if (evasion_target != 0ULL) mvs.emplace_back((bitboards::nmask[s] & evasion_target));
+    else mvs.emplace_back((bitboards::nmask[s] & empty));
   }  
 }
 
 inline void Movegen::knight_caps(std::vector<U64>& mvs) {
+  U64 target = (check_target == 0ULL ? enemies : check_target);
   for (auto& s : knights) {
     if (s == Square::no_square) break;
-    mvs.emplace_back((bitboards::nmask[s] & enemies));
+    mvs.emplace_back((bitboards::nmask[s] & target));
   }
 }
 
 inline void Movegen::bishop_quiets(std::vector<U64>& mvs) {
+  U64 target = (check_target == 0ULL ? empty : evasion_target);
   // optimization in case we called bishop_caps first
   if (bishop_mvs.size() > 0) {
     for (auto& m : bishop_mvs) {
-      mvs.emplace_back((m & empty));
+      mvs.emplace_back((m & target));
     }
     return;
   }
@@ -196,15 +219,16 @@ inline void Movegen::bishop_quiets(std::vector<U64>& mvs) {
     if (s == Square::no_square) break;
     
     bishop_mvs.emplace_back(magics::attacks<bishop>(mask, s));
-    mvs.emplace_back((bishop_mvs.back() & empty));
+    mvs.emplace_back((bishop_mvs.back() & target));
   }
 }
 
 inline void Movegen::bishop_caps(std::vector<U64>& mvs) {
+  U64 target = (check_target == 0ULL ? enemies : check_target);
   // optimization in case we called bishop_quiets first
   if (bishop_mvs.size() > 0) {
     for (auto& m : bishop_mvs) {
-      mvs.emplace_back((m & enemies));
+      mvs.emplace_back((m & target));
     }
     return;
   }
@@ -215,15 +239,16 @@ inline void Movegen::bishop_caps(std::vector<U64>& mvs) {
     if (s == Square::no_square) break;
     
     bishop_mvs.emplace_back(magics::attacks<bishop>(mask, s));
-    mvs.emplace_back((bishop_mvs.back() & enemies));
+    mvs.emplace_back((bishop_mvs.back() & target));
   }
 }
 
 inline void Movegen::rook_quiets(std::vector<U64>& mvs) {
+  U64 target = (check_target == 0ULL ? empty : evasion_target);
   // optimization in case we called rook_quiets first
   if (rook_mvs.size() > 0) {
     for (auto& m : rook_mvs) {
-      mvs.emplace_back((m & empty));
+      mvs.emplace_back((m & target));
     }
     return;
   }
@@ -233,15 +258,16 @@ inline void Movegen::rook_quiets(std::vector<U64>& mvs) {
   for (auto& s : rooks) {
     if (s == Square::no_square) break;
     rook_mvs.emplace_back(magics::attacks<rook>(mask, s));
-    mvs.emplace_back((rook_mvs.back() & empty));
+    mvs.emplace_back((rook_mvs.back() & target));
   }
 }
 
 inline void Movegen::rook_caps(std::vector<U64>& mvs) {
+  U64 target = (check_target == 0ULL ? enemies : check_target);
   // optimization in case we called rook_caps first
   if (rook_mvs.size() > 0) {
     for (auto& m : rook_mvs) {
-      mvs.emplace_back((m & enemies));
+      mvs.emplace_back((m & target));
     }
     return;
   }
@@ -251,15 +277,16 @@ inline void Movegen::rook_caps(std::vector<U64>& mvs) {
   for (auto& s : rooks) {
     if (s == Square::no_square) break;
     rook_mvs.emplace_back(magics::attacks<rook>(mask, s));
-    mvs.emplace_back((rook_mvs.back() & enemies));
+    mvs.emplace_back((rook_mvs.back() & target));
   }
 }
 
 inline void Movegen::queen_quiets(std::vector<U64>& mvs) {
+  U64 target = (check_target == 0ULL ? empty : evasion_target);
   // optimization in case we called queen_caps first
   if (queen_mvs.size() > 0) {
     for (auto& m : queen_mvs) {
-      mvs.emplace_back((m & empty));
+      mvs.emplace_back((m & target));
     }
     return;
   }
@@ -270,27 +297,28 @@ inline void Movegen::queen_quiets(std::vector<U64>& mvs) {
     if (s == Square::no_square) break;
     queen_mvs.emplace_back((magics::attacks<bishop>(mask, s) |
 			    magics::attacks<rook>(mask, s)));
-    mvs.emplace_back((queen_mvs.back() & empty));
+    mvs.emplace_back((queen_mvs.back() & target));
   }
 }
 
 inline void Movegen::queen_caps(std::vector<U64>& mvs) {
+  U64 target = (check_target == 0ULL ? enemies : check_target);
   // optimization in case we called queen_caps first
   if (queen_mvs.size() > 0) {
     for (auto& m : queen_mvs) {
-      mvs.emplace_back((m & enemies));
+      mvs.emplace_back((m & target));
     }
     return;
   }
-
+  
   // first time here - compute from scratch
   U64 mask = all_pieces;
   for (auto& s : queens) {
     if (s == Square::no_square) break;
     queen_mvs.emplace_back((magics::attacks<bishop>(mask, s) |
 			    magics::attacks<rook>(mask, s)));
-
-    mvs.emplace_back((queen_mvs.back() & enemies));
+    
+    mvs.emplace_back((queen_mvs.back() & target));
   }
 }
 
@@ -301,7 +329,7 @@ inline void Movegen::king_quiets(std::vector<U64>& mvs) {
   }
 }
 
-inline void Movegen::king_caps(std::vector<U64>& mvs) {
+inline void Movegen::king_caps(std::vector<U64>& mvs) {  
   for (auto& s : kings) {
     if (s == Square::no_square) break;
     mvs.emplace_back((bitboards::kmask[s] & enemies));
@@ -518,7 +546,7 @@ void Movegen::generate<pseudo_legal_quiet, pieces>() {
   generate<quiet, rook>();
   generate<quiet, queen>();
   generate<quiet, pawn>();
-  generate<quiet, king>();  
+  generate<quiet, king>();
 }
 
 //------------------------------
@@ -545,6 +573,45 @@ template<>
 void Movegen::generate<pseudo_legal_all, pieces>() {
   // todo: order move generation by game phase
   // data-driven approach for this?
-  generate<pseudo_legal_capture, pieces>();
-  generate<pseudo_legal_quiet, pieces>();
+  
+  if (check_target == 0ULL) {
+    generate<pseudo_legal_capture, pieces>();
+    generate<pseudo_legal_quiet, pieces>();
+  }
+  else if (check_target != 0ULL && evasion_target == 0ULL) {
+    // step checker, only captures, and king evasions
+    if (!more_than_one(check_target)) {
+      generate<capture_promotion, pawn>();
+      generate<capture, king>();
+      generate<capture, pawn>();
+      generate<capture, knight>();
+      generate<capture, bishop>();
+      generate<capture, rook>();
+      generate<capture, queen>();
+    }
+    generate<quiet, king>();
+  }
+  else if (check_target != 0ULL && evasion_target != 0ULL) {
+    if (!more_than_one(check_target)) {
+      // capture moves
+      generate<capture_promotion, pawn>();
+      generate<capture, king>();
+      generate<capture, pawn>();
+      generate<capture, knight>();
+      generate<capture, bishop>();
+      generate<capture, rook>();
+      generate<capture, queen>();
+      
+      // blocking moves
+      generate<promotion, pawn>();
+      generate<quiet, king>();
+      generate<quiet, pawn>();
+      generate<quiet, knight>();
+      generate<quiet, bishop>();
+      generate<quiet, rook>();
+      generate<quiet, queen>();
+
+    }
+    else generate<quiet, king>(); // more than one checker
+  }
 }

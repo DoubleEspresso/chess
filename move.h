@@ -127,7 +127,7 @@ class Movegen {
   U64 empty, pawns, pawns2, pawns7;
   std::vector<U64> bishop_mvs, rook_mvs, queen_mvs;
   std::array<Square, 11> knights, bishops, rooks, queens, kings;
-  U64 enemies, all_pieces;
+  U64 enemies, all_pieces, check_target, evasion_target;
   Square eps;
   
   // utilities
@@ -137,7 +137,7 @@ class Movegen {
   inline void quiet_promotions(U64& quiets);
   inline void capture_promotions(U64& right_caps, U64& left_caps);
   inline void knight_quiets(std::vector<U64>& mvs);
-  inline void knight_caps(std::vector<U64>& mvs);
+  inline void knight_caps(std::vector<U64>& mvs);  
   inline void bishop_quiets(std::vector<U64>& mvs);
   inline void bishop_caps(std::vector<U64>& mvs);
   inline void rook_quiets(std::vector<U64>& mvs);

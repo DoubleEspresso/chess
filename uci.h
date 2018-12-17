@@ -43,6 +43,9 @@ bool uci::parse_command(const std::string& input) {
       p.print();
             
       Movegen mvs(p);
+      if (p.in_check()) {
+	std::cout << "..in check - gen evasions" << std::endl;
+      }
       mvs.generate<pseudo_legal_all, pieces>();
       mvs.print();
     }

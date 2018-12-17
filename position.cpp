@@ -45,9 +45,7 @@ void position::setup(std::istringstream& fen) {
   
   ifo.incheck = is_attacked(king_sq, stm, Color(stm^1));
   
-  ci->checkers = (in_check() ? attackers_of(king_sq, Color(stm^1)) : 0ULL);
-  
-  std::cout << "side to mv in check = " << ifo.incheck  << std::endl;
+  ci->checkers = (in_check() ? attackers_of(king_sq, Color(stm^1)) : 0ULL);  
 }
 
 void position::do_move(const U16& m) {
@@ -78,8 +76,7 @@ bool position::is_attacked(const Square& s, const Color& us, const Color& them) 
 	   (magics::attacks<rook>(m, s) & (p[queen] | p[rook]))));
 }
 
-U64 position::attackers_of(const Square& s, const Color& c)
-{
+U64 position::attackers_of(const Square& s, const Color& c) {
   U64 m = all_pieces();
   auto p = pcs.bitmap[c];
   U64 battck = magics::attacks<bishop>(m, s);
