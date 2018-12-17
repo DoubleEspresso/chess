@@ -50,8 +50,8 @@ class position;
 enum Dir { N, S, NN, SS, NW, NE, SW, SE, none };
 enum Movetype {
   promotion,
-  capture_promotion,
-  castle_ks,
+  capture_promotion=4,
+  castle_ks=8,
   castle_qs,
   quiet,
   capture,
@@ -115,7 +115,14 @@ class Move {
   inline U8 from() const { return _from; }
   inline U8 to() const { return _to; }
   inline Movetype type() const { return _type; } 
-  inline std::string to_string() { return SanSquares[_from] + SanSquares[_to]; }
+  inline std::string to_string() {
+    if (_type < castle_ks) { // promotions
+      const std::string p = "qrbn";
+      return SanSquares[_to] + p[(_type < capture_promotion ? _type : _type - 4)];
+    }
+    return SanSquares[_from] + SanSquares[_to];
+      
+  }
 };
 
 

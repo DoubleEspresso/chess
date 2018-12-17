@@ -38,12 +38,12 @@ inline void Movegen::encode_pawn_pushes(U64& b, const int& dir) {
 template<Movetype mt, Piece p>
 inline void Movegen::encode_promotions(U64& b, const int& dir) {
   while (b) {
-    int frm = pop_lsb(b) + dir;
     int to = pop_lsb(b);
+    int frm = to + dir;
     list[last++].set(p, U8(frm), U8(to), Movetype(mt)); // queen
-    list[last++].set(p, U8(frm), U8(to), Movetype(mt+2)); // rook
-    list[last++].set(p, U8(frm), U8(to), Movetype(mt+4)); // bishop
-    list[last++].set(p, U8(frm), U8(to), Movetype(mt+6)); // knight
+    list[last++].set(p, U8(frm), U8(to), Movetype(mt+1)); // rook
+    list[last++].set(p, U8(frm), U8(to), Movetype(mt+2)); // bishop
+    list[last++].set(p, U8(frm), U8(to), Movetype(mt+3)); // knight
   }
 }
 
