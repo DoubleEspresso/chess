@@ -1,4 +1,5 @@
 #include "position.h"
+#include "uci.h"
 
 position::position(std::istringstream& fen) { setup(fen); }
 						    
@@ -48,7 +49,7 @@ void position::setup(std::istringstream& fen) {
   ci->checkers = (in_check() ? attackers_of(king_sq, Color(stm^1)) : 0ULL);  
 }
 
-void position::do_move(const U16& m) {
+void position::do_move(const Move& m) {
   history.emplace_back(ifo);
   
   // update ks if king move, castle rights

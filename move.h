@@ -4,10 +4,12 @@
 #define MOVE_H
 
 #include <vector>
+#include <array>
 
 #include "types.h"
 
 class position;
+
 //---------------------------------------------
 // Move Encoding:
 // Store move information in a 16-bit word, 

@@ -1,9 +1,8 @@
 #include "move.h"
-
-#include "position.h"
 #include "magics.h"
 #include "bits.h"
 #include "bitboards.h"
+#include "position.h"
 
 using namespace bitboards;
 using namespace bits;

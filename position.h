@@ -17,6 +17,8 @@
 #include "bitboards.h"
 #include "magics.h"
 
+class Move;
+
   struct checkinfo {
     U64 checkers;
     U64 disc_checks;
@@ -104,7 +106,7 @@ class position {
   void clear();
   void set_piece(const char& p, const Square& s);
   void print();
-  void do_move(const U16& m);
+  void do_move(const Move& m);
   //void undo_move(const U16& m);
 
   // utilities
