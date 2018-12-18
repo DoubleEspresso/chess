@@ -177,9 +177,14 @@ U64 position::pinned() {
   if (sliders == 0ULL) return pinned;
   do {
     int sq = pop_lsb(sliders);
+
+    if (!util::aligned(sq, ks)) continue;
+    
     U64 tmp = (bitboards::between[sq][ks] & all_pieces()) ^
       (bitboards::squares[ks] | bitboards::squares[sq]);
+    
     if (!more_than_one(tmp)) pinned |= tmp;
+    
   } while (sliders);
   
   return pinned & pcs.bycolor[us];

@@ -21,9 +21,12 @@ namespace util {
   inline bool same_row(const int& s1, const int& s2) { return row(s1) == row(s2); }
   inline bool same_col(const int& s1, const int& s2) { return col(s1) == col(s2); }
   inline bool on_diagonal(const int& s1, const int& s2) { return col_dist(s1, s2) == row_dist(s1, s2); }
+  inline bool aligned(const int& s1, const int& s2) {
+    return on_diagonal(s1, s2) || same_row(s1, s2) || same_col(s1, s2);
+  }
   inline bool aligned(const int& s1, const int& s2, const int& s3) {
-    return (col_dist(s1, s2) == 0 && col_dist(s1, s3) == 0) ||
-      (row_dist(s1, s2) == 0 && row_dist(s1, s3) == 0) ||
+    return (same_col(s1, s2) && same_col(s1, s3)) ||
+      (same_row(s1, s2) && same_row(s1, s3)) ||
       (on_diagonal(s1, s3) && on_diagonal(s1, s2) && on_diagonal(s2, s3));
   }
   
