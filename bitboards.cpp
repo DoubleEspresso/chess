@@ -13,6 +13,8 @@ namespace bitboards {
   U64 nmask[64]; // step attacks for the knight
   U64 kmask[64]; // step attacks for the king
   U64 rmask[64]; // rook mask (outer board edges are trimmed)
+  U64 battks[64];
+  U64 rattks[64];
   U64 squares[64];
   U64 diagonals[64];
   U64 between[64][64];
@@ -138,11 +140,12 @@ void bitboards::load() {
       }
     }
     trim = squares[s] | (bm & edges);
+    battks[s] = bm ^ squares[s];
     bm ^= trim;
     bmask[s] = bm;
-
     // rook masks (outer-bits trimmed)
     bm = (row[util::row(s)] | col[util::col(s)]);
+    rattks[s] = bm ^ squares[s];
     trim = squares[s] | squares[8*util::row(s)] | squares[8*util::row(s)+7] |
       squares[util::col(s)] | squares[util::col(s) + 56];
     bm ^= trim; 

@@ -26,11 +26,10 @@ bool uci::parse_command(const std::string& input) {
       if (p.in_check()) {
 	std::cout << "..in check - gen evasions" << std::endl;
       }
+      p.print();
       mvs.generate<pseudo_legal_all, pieces>();
       mvs.print();
-      Move mv1 = mvs[0];
-      p.do_move(mv1);
-      p.print();
+      mvs.print_legal(p);
     }
     
     else if (cmd == "exit" || cmd == "quit") {

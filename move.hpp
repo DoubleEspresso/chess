@@ -23,14 +23,14 @@ namespace {
 
 template<Movetype mt, Piece p>
 inline void Movegen::encode(U64& b, const int& f) {  
-  while (b) list[last++].set(p, Square(f), Square(pop_lsb(b)), Movetype(mt));
+  while (b) list[last++] = Move(p, Square(f), Square(pop_lsb(b)), Movetype(mt));
 }
 
 template<Movetype mt, Piece p>
 inline void Movegen::encode_pawn_pushes(U64& b, const int& dir) {
   while (b) {
     int to = pop_lsb(b);
-    list[last++].set(p, Square(to + dir), Square(to), Movetype(mt));
+    list[last++] = Move(p, Square(to + dir), Square(to), Movetype(mt));
   }
 }
 
@@ -39,16 +39,23 @@ inline void Movegen::encode_promotions(U64& b, const int& dir) {
   while (b) {
     Square to = Square(pop_lsb(b));
     Square frm = Square(to + dir);
-    list[last++].set(p, frm, to, Movetype(mt)); // queen
-    list[last++].set(p, frm, to, Movetype(mt+1)); // rook
-    list[last++].set(p, frm, to, Movetype(mt+2)); // bishop
-    list[last++].set(p, frm, to, Movetype(mt+3)); // knight
+    list[last++] = Move(p, frm, to, Movetype(mt)); // queen
+    list[last++] = Move(p, frm, to, Movetype(mt+1)); // rook
+    list[last++] = Move(p, frm, to, Movetype(mt+2)); // bishop
+    list[last++] = Move(p, frm, to, Movetype(mt+3)); // knight
   }
 }
 
-void Movegen::print() {
+inline void Movegen::print() {
   for(int j=it; j<last; ++j) {    
     std::cout << list[j].to_string() << " ";
+  }
+  std::cout << "\n";
+}
+
+inline void Movegen::print_legal(position& p) {
+  for(int j=it; j<last; ++j) {    
+    if (p.is_legal(list[j])) std::cout << list[j].to_string() << " ";
   }
   std::cout << "\n";
 }
@@ -64,6 +71,7 @@ inline void Movegen::initialize(const position& p) {
   all_pieces = p.all_pieces();
   empty = ~all_pieces;
 
+  // todo : refactor to one capture-target, and one quiet-target
   // check handling  
   check_target = p.checkers(); // checking piece(s)
   evasion_target = 0ULL;

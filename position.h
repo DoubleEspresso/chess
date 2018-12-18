@@ -102,15 +102,17 @@ class position {
   void setup(std::istringstream& fen);
   void clear();
   void set_piece(const char& p, const Square& s);
-  void print();
+  void print();  
   void do_move(const Move& m);
   //void undo_move(const U16& m);
 
   // utilities
-  bool is_attacked(const Square& s, const Color& us, const Color& them);
+  bool is_attacked(const Square& s, const Color& us, const Color& them, U64 m = 0ULL);
   U64 attackers_of(const Square& s, const Color& c);
-  inline U64 checkers() const { return ci->checkers; }
+  U64 checkers() const { return ci->checkers; }
   bool in_check();
+  bool is_legal(const Move& m);
+  U64 pinned();
   
   // position info access wrappers
   inline Square eps() const { return ifo.eps; }
@@ -121,10 +123,11 @@ class position {
 
   inline Piece piece_on(const Square& s) const { return pcs.piece_on[s]; }
   
-  template<Color c>
-  inline Square king_square() const { return pcs.king_sq[c]; }
+  inline Square king_square(const Color& c) const { return pcs.king_sq[c]; }
 
   inline Square king_square() const { return pcs.king_sq[ifo.stm]; }
+
+  inline Color color_on(const Square& s) { return pcs.color_on[s]; }
   
   template<Color c, Piece p>
   inline U64 get_pieces() const { return pcs.bitmap[c][p]; }

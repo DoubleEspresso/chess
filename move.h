@@ -10,46 +10,8 @@
 
 class position;
 
-//---------------------------------------------
-// Move Encoding:
-// Store move information in a 16-bit word, 
-// using the standard 'from'-'to' representation.
-// Broken down as follows,
-//
-// BITS                                DESCRIPTION
-// 0-5                                 from sq (0-63)
-// 6-11                                to sq   (0-63)
-// 12-16                               move data
-//
-// last 4 bits
-// 0000                                quite move 
-// 0001                                capture bit
-// 1000                                promotion bit
-// 0010                                check bit
-// 0100                                castle bit
-//
-// Quiet promotions
-// 1000                                queen
-// 1010                                rook
-// 1100                                bishop
-// 1110                                knight
-//
-// Capture promotions
-// 1001                                queen
-// 1011                                rook
-// 1101                                bishop
-// 1111                                knight
-//
-// Castle bits
-// 0100                                castle k.s.
-// 0110                                castle q.s.
-//
-// check info
-// 0010                                check from minor (pawn/bishop/knight)
-// 0011                                check from major (queen/rook)
-//-------------------------------------------------
-
 enum Dir { N, S, NN, SS, NW, NE, SW, SE, none };
+
 enum Movetype {
   promotion,
   capture_promotion=4,
@@ -94,7 +56,8 @@ class Move {
     _to = Square((mv & 0xfc0) >> 6);
     _type = Movetype((mv & 0xf000) >> 12);    
   }
-  Move(Square f, Square t, Movetype type) {
+  Move(Piece p, Square f, Square t, Movetype type) {
+    _piece = p;
     _value = 0;
     _from = f;
     _to = t;
@@ -109,10 +72,7 @@ class Move {
   bool operator()(const Move& o) const; // { return o.m == m; }
   bool operator==(const Move& o) const;
   bool operator<(const Move& o) const { return _value < o.value(); }
-  inline void set(const Piece& p,
-		  const Square& f, const Square& t, const Movetype& type) {
-    _piece = p; _value = 0; _from = f; _to = t; _type = type;
-  }
+  
   inline int value() const { return _value; }
   inline Square from() const { return _from; }
   inline Square to() const { return _to; }
@@ -137,7 +97,7 @@ class Movegen {
   U64 empty, pawns, pawns2, pawns7;
   std::vector<U64> bishop_mvs, rook_mvs, queen_mvs;
   std::array<Square, 11> knights, bishops, rooks, queens, kings;
-  U64 enemies, all_pieces, check_target, evasion_target;
+  U64 enemies, all_pieces, check_target, evasion_target; // qtarget, ctarget;
   Square eps;
   
   // utilities
@@ -187,6 +147,7 @@ class Movegen {
   inline void generate();
   
   inline void print();
+  inline void print_legal(position& p);
 };
 
 #include "move.hpp"

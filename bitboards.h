@@ -20,7 +20,8 @@ namespace bitboards {
   extern U64 bmask[64]; // bishop mask (outer board edges are trimmed)
   extern U64 rmask[64]; // rook mask (outer board edges are trimmed)
   extern U64 squares[64];
-  extern U64 diagonals[64];
+  extern U64 battks[64];
+  extern U64 rattks[64];
   extern U64 between[64][64]; // bits set between 2 squares that are aligned
   extern U64 edges;
   extern U64 corners;
