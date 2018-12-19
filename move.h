@@ -116,7 +116,6 @@ class Movegen {
   inline void queen_caps(std::vector<U64>& mvs);
   inline void king_quiets(std::vector<U64>& mvs);
   inline void king_caps(std::vector<U64>& mvs);
-  inline void castle_mvs(U64& mvs);
   
   template<Movetype mt, Piece p>
   inline void encode(U64& b, const int& f);

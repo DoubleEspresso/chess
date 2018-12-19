@@ -343,11 +343,6 @@ inline void Movegen::king_caps(std::vector<U64>& mvs) {
   }
 }
 
-inline void Movegen::castle_mvs(U64& mvs) {
-  mvs |= (us == white ? bitboards::squares[G1] : bitboards::squares[G8]);
-  mvs |= (us == white ? bitboards::squares[C1] : bitboards::squares[C8]);
-}
-
 //------------------------------
 // pawn moves
 //------------------------------
@@ -526,6 +521,13 @@ inline void Movegen::generate<quiet, king>() {
     if ( m != 0ULL) encode<quiet, king>(m, kings[idx]);
     ++idx;
   }
+}
+
+template<>
+inline void Movegen::generate<castles, king>() {
+  const Square f = (us == white ? E1 : E8);
+  list[last++] = Move(king, f, (us == white ? G1 : G8), castle_ks);
+  list[last++] = Move(king, f, (us == white ? C1 : C8), castle_qs);
 }
 
 template<>
