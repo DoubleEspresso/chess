@@ -103,6 +103,6 @@ const std::vector<Piece> Pieces { Piece::pawn, Piece::knight, Piece::bishop, Pie
 const std::vector<Color> Colors { Color::white, Color::black, Color::colors, Color::no_color };
 const std::vector<char> SanPiece{'P','N','B','R','Q','K','p','n','b','r','q','k'};
 const std::vector<char> SanCols{'a','b','c','d','e','f','g','h'};
-enum CastleRight { wks = 1, wqs = 2, bks = 4, bqs = 8, cr_none = 0, clearwks = 7, clearwqs = 11, clearbks = 13, clearbqs = 14, clearw = 3, clearb = 12 };
+enum CastleRight { wks = 1, wqs = 2, bks = 4, bqs = 8, cr_none = 0, clearbks = 7, clearbqs = 11, clearwks = 13, clearwqs = 14, clearb = 3, clearw = 12 };
 const std::map<char, U16> CastleRights {{'K', wks}, {'Q', wqs}, {'k', bks}, {'q', bqs}, {'-', 0}, {'\0', 0}, {' ', 0}};
 #endif

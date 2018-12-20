@@ -2,6 +2,8 @@
 #include "move.h"
 #include "bench.h"
 
+position p;
+
 void uci::loop() {
   std::string input = "";
   while (std::getline(std::cin, input)) {
@@ -14,7 +16,6 @@ bool uci::parse_command(const std::string& input) {
   std::istringstream instream(input);
   std::string cmd;
   bool running = true;
-  position p;
   
   while (instream >> std::skipws >> cmd) {
     std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::tolower);
@@ -22,7 +23,6 @@ bool uci::parse_command(const std::string& input) {
     if (cmd == "position" && instream >> cmd) {
       std::istringstream fen(START_FEN);
       p.setup(cmd == "startpos" ? fen : instream);
-      
       p.print();
 
       /*
@@ -44,7 +44,23 @@ bool uci::parse_command(const std::string& input) {
       */
       
     }
-
+    else if (cmd == "domove" && instream >> cmd) {
+      Movegen mvs(p);
+      Move m;
+      bool isok = false;
+      mvs.generate<pseudo_legal_all, pieces>();
+      for (int i=0; i<mvs.size(); ++i) {
+	if (!p.is_legal(mvs.move(i))) continue;
+	std::string tmp = SanSquares[mvs[i].from()] + SanSquares[mvs[i].to()];
+	if (tmp == cmd) {
+	  m = mvs[i];
+	  isok = true;
+	  break;
+	}	
+      }
+      if (isok) p.do_move(m);
+      else std::cout << cmd << " is not a legal move" << std::endl;
+    }
     else if (cmd == "perft" && instream >> cmd) {
       Perft perft;
       perft.go(atoi(cmd.c_str()));

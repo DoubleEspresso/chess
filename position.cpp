@@ -21,7 +21,6 @@ void position::setup(std::istringstream& fen) {
 
   // the castle rights
   fen >> token;
-  std::cout << token << std::endl;
   
   ifo.cmask = U16(0);
   for (auto& c : token) ifo.cmask |= CastleRights.at(c);
@@ -44,16 +43,15 @@ void position::setup(std::istringstream& fen) {
 
   // check info
   Color stm = to_move();
-  Square king_sq = pcs.king_sq[stm];
+  ifo.ks[stm] = pcs.king_sq[stm];  
+  ifo.incheck = is_attacked(ifo.ks[stm], stm, Color(stm^1));
   
-  ifo.incheck = is_attacked(king_sq, stm, Color(stm^1));
-  
-  ifo.checkers = (in_check() ? attackers_of(king_sq, Color(stm^1)) : 0ULL);
+  ifo.checkers = (in_check() ? attackers_of(ifo.ks[stm], Color(stm^1)) : 0ULL);
   ifo.pinned = pinned();
 }
 
 void position::do_move(const Move& m) {
-  history.emplace_back(ifo);
+  history.push_back(ifo);
   const Square from = m.from();
   const Square to = m.to();
   const Movetype t = m.type();
@@ -63,7 +61,8 @@ void position::do_move(const Move& m) {
   // king square update and castle rights update
   if (p == king) {
     pcs.king_sq[us] = to;
-    ifo.cmask &= (us == white ? clearw : clearb);    
+    ifo.ks[us] = to;
+    ifo.cmask &= (us == white ? clearw : clearb);
   }
   else if (p == rook) {
     if (us == white) {
@@ -90,20 +89,26 @@ void position::do_move(const Move& m) {
     pcs.do_ep(us, from, to);
   }
 
-  else if (t < capture_promotion) pcs.do_promotion(us, p, from, to);
+  else if (t < capture_promotion) pcs.do_promotion(us, m.promote(), from, to);
 
   else if (t < castle_ks) {
     ifo.captured = piece_on(to);
-    pcs.do_promotion_cap(us, p, from, to);
+    pcs.do_promotion_cap(us, m.promote(), from, to);
   }
 
-  else if (t == castle_ks) pcs.do_castle_ks(us, from, to);
+  else if (t == castle_ks) {
+    pcs.do_castle_ks(us, from, to);
+    ifo.cmask &= (us == white ? clearw : clearb);
+  }
 
-  else if (t == castle_qs) pcs.do_castle_qs(us, from, to);
+  else if (t == castle_qs) {
+    pcs.do_castle_qs(us, from, to);
+    ifo.cmask &= (us == white ? clearw : clearb);
+  }
 
   // eps
   ifo.eps = no_square;
-  if (p == pawn && abs(from-to) == 16) {
+  if (p == pawn && abs(from-to) == 16) {    
     ifo.eps = Square(from + (us == white ? 8 : -8));
     // todo: zobrist
   }
@@ -140,7 +145,7 @@ void position::undo_move(const Move& m) {
 
   else if (t == ep) {
     pcs.do_quiet(us, p, from, to);
-    pcs.add_piece(to_move(), cp, Square(to + (us == white ? -8 : 8)));
+    pcs.add_piece(to_move(), cp, Square(from + (us == white ? -8 : 8)));
   }
 
   else if (t < capture_promotion) {
@@ -204,7 +209,7 @@ bool position::is_legal(const Move& m) {
     Square csq = Square(t + (them == white ? 8 : -8));
     U64 msk = (all_pieces() ^ bitboards::squares[f] ^ bitboards::squares[csq]) |
       bitboards::squares[t];
-
+    
     return (!(magics::attacks<bishop>(msk, ks) & (pc[queen] | pc[bishop])) &&
 	    !(magics::attacks<rook>(msk, ks) & (pc[queen] | pc[rook])));
   }
@@ -326,6 +331,7 @@ void position::set_piece(const char& p, const Square& s) {
   Color color = (idx < 6 ? white : black);
   Piece piece = Piece(idx < 6 ? idx : idx - 6);  
   pcs.set(color, piece, s);
+  if (piece == king) ifo.ks[color] = s;
     
   // update zobrist keys
   // update material entries
@@ -336,7 +342,7 @@ void position::clear() {
   pcs.clear();
   history.clear();
   ifo = {};
-  ci.reset(new checkinfo());
+  //ci.reset(new checkinfo());
 }
 
 void position::print() {

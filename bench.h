@@ -82,13 +82,12 @@ inline void Perft::go(const int& depth) {
 
 void Perft::divide(position& p, int d) {
   U64 total = 0;
-  std::cout << "1" << std::endl;
   Movegen mvs(p);
-  std::cout << "2" << std::endl;
+  
   mvs.generate<pseudo_legal_all, pieces>();
-  std::cout << "3" << std::endl;
+  std::cout << "mvs.size() = " << mvs.size() << std::endl;
+  
   for (int i = 0; i < mvs.size(); ++i) {
-    std::cout << i << std::endl;
     if (!p.is_legal(mvs.move(i))) continue;
     p.do_move(mvs.move(i));
     int n = d > 1 ? search(p, d - 1) : 1;

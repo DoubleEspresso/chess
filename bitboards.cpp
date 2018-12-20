@@ -140,12 +140,12 @@ void bitboards::load() {
       }
     }
     trim = squares[s] | (bm & edges);
-    battks[s] = bm ^ squares[s];
+    battks[s] = bm;
     bm ^= trim;
     bmask[s] = bm;
     // rook masks (outer-bits trimmed)
     bm = (row[util::row(s)] | col[util::col(s)]);
-    rattks[s] = bm ^ squares[s];
+    rattks[s] = bm;
     trim = squares[s] | squares[8*util::row(s)] | squares[8*util::row(s)+7] |
       squares[util::col(s)] | squares[util::col(s) + 56];
     bm ^= trim; 

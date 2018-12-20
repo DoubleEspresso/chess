@@ -30,6 +30,7 @@ class Move;
   struct info {
     Color stm;
     Square eps;
+    Square ks[2];
     bool incheck;
     Piece captured;    
     U8 move50;
@@ -87,7 +88,7 @@ struct piece_data {
 
 class position {  
   std::thread owner;  
-  std::unique_ptr<checkinfo> ci;
+  //std::unique_ptr<checkinfo> ci;
   std::vector<info> history;
   info ifo;
   piece_data pcs;
@@ -101,7 +102,7 @@ class position {
   position(const position&& p);
   position& operator=(const position&);
   position& operator=(const position&&);
-  ~position() {}
+  ~position() {std::cout << "p-d'tor" << std::endl; }
 
   // setup/clear a position
   void setup(std::istringstream& fen);
@@ -135,9 +136,9 @@ class position {
 
   inline Piece piece_on(const Square& s) const { return pcs.piece_on[s]; }
   
-  inline Square king_square(const Color& c) const { return pcs.king_sq[c]; }
+  inline Square king_square(const Color& c) const { return ifo.ks[c]; }
 
-  inline Square king_square() const { return pcs.king_sq[ifo.stm]; }
+  inline Square king_square() const { return ifo.ks[ifo.stm]; }
 
   inline Color color_on(const Square& s) { return pcs.color_on[s]; }
   
@@ -148,7 +149,14 @@ class position {
   inline U64 get_pieces() const { return pcs.bycolor[c]; }
 
   template<Color c, Piece p>
-  inline std::array<Square, 11> squares_of() const { return pcs.square_of[c][p]; }
+  inline std::array<Square, 10> squares_of() const {
+    std::array<Square, 10> tmp; std::fill(tmp.begin(), tmp.end(), Square::no_square);
+    
+    for (int i=1, j=0; i<11; ++i) {      
+      if (pcs.square_of[c][p][i] != Square::no_square) tmp[j++] = pcs.square_of[c][p][i];
+    }
+    return tmp; //pcs.square_of[c][p];
+  }
   
 };
 
@@ -178,8 +186,10 @@ inline void piece_data::do_quiet(const Color& c, const Piece& p,
   bitmap[c][p] ^= fto;
   
   square_of[c][p][idx] = t;
-  color_on[f] = no_color; color_on[t] = c;
-  piece_on[t] = p; piece_on[f] = no_piece;
+  color_on[f] = no_color;
+  color_on[t] = c;
+  piece_on[t] = p;
+  piece_on[f] = no_piece;
   
   // zobrist update
 }
@@ -261,9 +271,9 @@ inline void piece_data::set(const Color& c, const Piece& p, const Square& s) {
   bitmap[c][p] |= bitboards::squares[s];
   bycolor[c] |= bitboards::squares[s];
   color_on[s] = c;
-  square_of[c][p][number_of[c][p]] = s;
   number_of[c][p] += 1;
   piece_idx[c][p][s] = number_of[c][p];
+  square_of[c][p][number_of[c][p]] = s;
   piece_on[s] = p;
   if (p == Piece::king) king_sq[c] = s;
 }

@@ -40,7 +40,8 @@ class Move {
   Square _from;
   Square _to;
   Movetype _type;
-  Piece _piece;  
+  Piece _piece;
+  Piece _promote;
   
  public:
   Move() {
@@ -48,7 +49,8 @@ class Move {
     _from = A1;
     _to = A1;
     _type = no_type;
-    _piece = no_piece; 
+    _piece = no_piece;
+    _promote = no_piece;
   }
   Move(const U16& mv, int val = 0) {
     _value = val;
@@ -62,6 +64,17 @@ class Move {
     _from = f;
     _to = t;
     _type = type;
+    if (_type >= 0 && _type < capture_promotion) {
+      _promote = (_type == 0 ? queen :
+		  _type == 1 ? rook :
+		  _type == 2 ? bishop : knight);      
+    }
+    else if (_type >= capture_promotion && _type < castle_ks) {
+      _promote = (_type == 4 ? queen :
+		  _type == 5 ? rook :
+		  _type == 6 ? bishop : knight);
+    }
+    else _promote = no_piece;
   }
   Move(const Move& o) = default;
   Move(Move&& o) = default;
@@ -78,6 +91,7 @@ class Move {
   inline Square to() const { return _to; }
   inline Movetype type() const { return _type; }
   inline Piece piece() const { return _piece; }
+  inline Piece promote() const { return _promote; }
   inline std::string to_string() {
     if (_type < castle_ks) { // promotions
       const std::string p = "qrbn";
@@ -96,7 +110,7 @@ class Movegen {
   U64 rank2, rank7;
   U64 empty, pawns, pawns2, pawns7;
   std::vector<U64> bishop_mvs, rook_mvs, queen_mvs;
-  std::array<Square, 11> knights, bishops, rooks, queens, kings;
+  std::array<Square, 10> knights, bishops, rooks, queens, kings;
   U64 enemies, all_pieces, check_target, evasion_target; // qtarget, ctarget;
   Square eps;
   bool can_castle_ks, can_castle_qs;
