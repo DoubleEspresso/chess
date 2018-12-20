@@ -99,6 +99,7 @@ class Movegen {
   std::array<Square, 11> knights, bishops, rooks, queens, kings;
   U64 enemies, all_pieces, check_target, evasion_target; // qtarget, ctarget;
   Square eps;
+  bool can_castle_ks, can_castle_qs;
   
   // utilities
   inline void initialize(const position& p);
@@ -135,6 +136,9 @@ class Movegen {
   Movegen& operator=(const Movegen& o) = delete;
   Movegen& operator=(const Movegen&& o) = delete;
   Move& operator[](const int& idx) { return list[idx]; }
+
+  inline int size() { return last; }
+  inline Move& move(int i) { return list[i]; }
   
   template<Movetype mt, Piece p>
   inline void generate();

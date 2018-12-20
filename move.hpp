@@ -71,10 +71,16 @@ inline void Movegen::initialize(const position& p) {
   all_pieces = p.all_pieces();
   empty = ~all_pieces;
 
+  std::cout << "a" << std::endl;
+  can_castle_ks = p.can_castle_ks();
+  can_castle_qs = p.can_castle_qs();
+  std::cout << "a" << std::endl;
+
   // todo : refactor to one capture-target, and one quiet-target
   // check handling  
   check_target = p.checkers(); // checking piece(s)
   evasion_target = 0ULL;
+  std::cout << "a" << std::endl;
   
   if (check_target != 0ULL && !bits::more_than_one(check_target)) { // only 1 checker
     U64 tmp = check_target;
@@ -84,7 +90,7 @@ inline void Movegen::initialize(const position& p) {
       evasion_target = bitboards::between[frm][p.king_square()] & empty;
     }
   }
-    
+  std::cout << "a" << std::endl;
   if (us == white) {
     rank2 = bitboards::row[r2];
     rank7 = bitboards::row[r7];
@@ -107,6 +113,7 @@ inline void Movegen::initialize(const position& p) {
     kings = p.squares_of<black, king>();
     enemies = p.get_pieces<white>();
   }
+  std::cout << "a" << std::endl;
   eps = p.eps();
   pawns2 = pawns & rank2;
   pawns7 = pawns & rank7;
@@ -137,8 +144,8 @@ inline void Movegen::pawn_caps(U64& left, U64& right, U64& ep_left, U64& ep_righ
   right = pawns & pawnmaskright[us];
   U64 target = (check_target == 0ULL ? enemies : check_target);
   
-  auto sw = (us == white ? shift<NW> : shift<SW>);
-  auto se = (us == white ? shift<NE> : shift<SE>);
+  auto sw = (us == white ? shift<NW> : shift<SE>);
+  auto se = (us == white ? shift<NE> : shift<SW>);
   
   if (left != 0ULL) {
     se(left);
@@ -526,8 +533,8 @@ inline void Movegen::generate<quiet, king>() {
 template<>
 inline void Movegen::generate<castles, king>() {
   const Square f = (us == white ? E1 : E8);
-  list[last++] = Move(king, f, (us == white ? G1 : G8), castle_ks);
-  list[last++] = Move(king, f, (us == white ? C1 : C8), castle_qs);
+  if (can_castle_ks) list[last++] = Move(king, f, (us == white ? G1 : G8), castle_ks);
+  if (can_castle_qs) list[last++] = Move(king, f, (us == white ? C1 : C8), castle_qs);
 }
 
 template<>
@@ -549,13 +556,23 @@ template<>
 inline void Movegen::generate<pseudo_legal_quiet, pieces>() {
   // todo: order move generation by game phase
   // data-driven approach for this?
+  std::cout << "plc" << std::endl;
   generate<promotion, pawn>();
+    std::cout << "plc" << std::endl;
   generate<quiet, knight>();
+    std::cout << "plc" << std::endl;
   generate<quiet, bishop>();
+    std::cout << "plc" << std::endl;
   generate<quiet, rook>();
+    std::cout << "plc" << std::endl;
   generate<quiet, queen>();
+    std::cout << "plc" << std::endl;
   generate<quiet, pawn>();
+    std::cout << "plc" << std::endl;
   generate<quiet, king>();
+    std::cout << "plc" << std::endl;
+  generate<castles, king>();
+    std::cout << "plc" << std::endl;
 }
 
 //------------------------------
@@ -583,7 +600,7 @@ inline void Movegen::generate<pseudo_legal_all, pieces>() {
   // todo: order move generation by game phase
   // data-driven approach for this?
   
-  if (check_target == 0ULL) {
+  if (check_target == 0ULL) {    
     generate<pseudo_legal_capture, pieces>();
     generate<pseudo_legal_quiet, pieces>();
   }

@@ -20,12 +20,10 @@
 class Move;
 
   struct checkinfo {
-    U64 checkers;
     U64 disc_checks;
     U64 contact;
     U64 forks;
     U64 more_than_one;
-    U64 pinned;
     U64 blockers; // pieces blocking disc checks
   };
 
@@ -33,10 +31,12 @@ class Move;
     Color stm;
     Square eps;
     bool incheck;
-    Piece captured;
+    Piece captured;    
     U8 move50;
     U16 hmvs;
     U16 cmask; // castle mask
+    U64 checkers;
+    U64 pinned;
     U64 key; // position
     U64 mKey; // material
     U64 pKey; // pawn
@@ -76,7 +76,12 @@ struct piece_data {
   inline void do_promotion_cap(const Color& c,
 			const Piece& p, const Square& f, const Square& t);
 
+  inline void do_castle_ks(const Color& c, const Square& f, const Square& t);
+  
+  inline void do_castle_qs(const Color& c, const Square& f, const Square& t);
+  
   inline void remove_piece(const Color& c, const Piece& p, const Square& s);
+  
   inline void add_piece(const Color& c, const Piece& p, const Square& s);
 };
 
@@ -104,15 +109,22 @@ class position {
   void set_piece(const char& p, const Square& s);
   void print();  
   void do_move(const Move& m);
-  //void undo_move(const U16& m);
+  void undo_move(const Move& m);
 
   // utilities
   bool is_attacked(const Square& s, const Color& us, const Color& them, U64 m = 0ULL);
   U64 attackers_of(const Square& s, const Color& c);
-  U64 checkers() const { return ci->checkers; }
+  U64 checkers() const { return ifo.checkers; }
   bool in_check();
   bool is_legal(const Move& m);
   U64 pinned();
+  inline bool can_castle_ks() const {
+    return (ifo.cmask & (ifo.stm == white ? wks : bks)) == (ifo.stm == white ? wks : bks);
+  }
+  
+  inline bool can_castle_qs() const {
+    return (ifo.cmask & (ifo.stm == white ? wqs : bqs)) == (ifo.stm == white ? wqs : bqs);
+  }
   
   // position info access wrappers
   inline Square eps() const { return ifo.eps; }
@@ -201,7 +213,23 @@ inline void piece_data::do_promotion_cap(const Color& c, const Piece& p,
   remove_piece(c, Piece::pawn, f);
   add_piece(c, p, t);
 }
+
+inline void piece_data::do_castle_ks(const Color& c, const Square& f, const Square& t) {
+  Square rf = (c == white ? H1 : H8);
+  Square rt = (c == white ? F1 : F8);
   
+  do_quiet(c, king, f, t);
+  do_quiet(c, rook, rf, rt);
+}
+
+inline void piece_data::do_castle_qs(const Color& c, const Square& f, const Square& t) {
+  Square rf = (c == white ? A1 : A8);
+  Square rt = (c == white ? D1 : D8);
+  
+  do_quiet(c, king, f, t);
+  do_quiet(c, rook, rf, rt);    
+}
+
 inline void piece_data::remove_piece(const Color& c, const Piece& p, const Square& s) {
   U64 sq = bitboards::squares[s];
   bycolor[c] ^= sq;

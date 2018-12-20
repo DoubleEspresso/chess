@@ -21,9 +21,11 @@ void position::setup(std::istringstream& fen) {
 
   // the castle rights
   fen >> token;
+  std::cout << token << std::endl;
+  
   ifo.cmask = U16(0);
   for (auto& c : token) ifo.cmask |= CastleRights.at(c);
-  
+
   // ep square
   fen >> token;
   ifo.eps = Square::no_square;
@@ -46,8 +48,8 @@ void position::setup(std::istringstream& fen) {
   
   ifo.incheck = is_attacked(king_sq, stm, Color(stm^1));
   
-  ci->checkers = (in_check() ? attackers_of(king_sq, Color(stm^1)) : 0ULL);
-  ci->pinned = pinned();
+  ifo.checkers = (in_check() ? attackers_of(king_sq, Color(stm^1)) : 0ULL);
+  ifo.pinned = pinned();
 }
 
 void position::do_move(const Move& m) {
@@ -58,28 +60,46 @@ void position::do_move(const Move& m) {
   const Piece p = m.piece();
   const Color us = to_move();
 
-  // king square update
+  // king square update and castle rights update
   if (p == king) {
     pcs.king_sq[us] = to;
-    // todo: clear castle rights
+    ifo.cmask &= (us == white ? clearw : clearb);    
   }
   else if (p == rook) {
-    // todo: clear castle rights
+    if (us == white) {
+      if (from == A1) ifo.cmask &= clearwqs;
+      else if (from == H1) ifo.cmask &= clearwks;      
+    }
+    else {
+      if (from == A8) ifo.cmask &= clearbqs;
+      else if (from == H8) ifo.cmask &= clearbks;      
+    }
   }
   
   ifo.captured = no_piece;
   
   if (t == quiet) pcs.do_quiet(us, p, from, to);
   
-  else if (t == capture) pcs.do_cap(us, p, from, to);
+  else if (t == capture) {
+    ifo.captured = piece_on(to); 
+    pcs.do_cap(us, p, from, to);
+  }
 
-  else if (t == ep) pcs.do_ep(us, from, to);
+  else if (t == ep) {
+    ifo.captured = pawn;
+    pcs.do_ep(us, from, to);
+  }
 
   else if (t < capture_promotion) pcs.do_promotion(us, p, from, to);
 
-  else if (t < castle_ks) pcs.do_promotion_cap(us, p, from, to);
+  else if (t < castle_ks) {
+    ifo.captured = piece_on(to);
+    pcs.do_promotion_cap(us, p, from, to);
+  }
 
-  // todo: castle move
+  else if (t == castle_ks) pcs.do_castle_ks(us, from, to);
+
+  else if (t == castle_qs) pcs.do_castle_qs(us, from, to);
 
   // eps
   ifo.eps = no_square;
@@ -99,8 +119,56 @@ void position::do_move(const Move& m) {
   ifo.stm = Color(ifo.stm ^ 1);
 
   ifo.incheck = is_attacked(king_square(), ifo.stm, us);
-  ci->checkers = (ifo.incheck ? attackers_of(king_square(), Color(ifo.stm^1)) : 0ULL);
-  ci->pinned = pinned();
+  ifo.checkers = (ifo.incheck ? attackers_of(king_square(), Color(ifo.stm^1)) : 0ULL);
+  ifo.pinned = pinned();
+}
+
+void position::undo_move(const Move& m) {
+  const Square from = m.to();
+  const Square to = m.from();
+  const Movetype t = m.type();
+  const Piece p = m.piece();
+  const Color us = Color(to_move()^1);
+  Piece cp = ifo.captured;
+  
+  if (t == quiet) pcs.do_quiet(us, p, from, to);
+
+  else if (t == capture) {
+    pcs.do_quiet(us, p, from, to);
+    pcs.add_piece(to_move(), cp, from);
+  }
+
+  else if (t == ep) {
+    pcs.do_quiet(us, p, from, to);
+    pcs.add_piece(to_move(), cp, Square(to + (us == white ? -8 : 8)));
+  }
+
+  else if (t < capture_promotion) {
+    pcs.remove_piece(us, piece_on(from), from); // promoted piece
+    pcs.add_piece(us, pawn, to);
+  }
+  
+  else if (t < castle_ks) {
+    pcs.remove_piece(us, piece_on(from), from);
+    pcs.add_piece(to_move(), cp, from);
+    pcs.add_piece(us, pawn, to);
+  }
+
+  else if (t == castle_ks) {
+    Square rt = (us == white ? H1 : H8);
+    Square rf = (us == white ? F1 : F8);
+    pcs.do_quiet(us, king, from, to);
+    pcs.do_quiet(us, rook, rf, rt);
+  }
+
+  else if (t == castle_qs) {
+    Square rf = (us == white ? D1 : D8);
+    Square rt = (us == white ? A1 : A8);
+    pcs.do_quiet(us, king, from, to);
+    pcs.do_quiet(us, rook, rf, rt);
+  }
+  ifo = history.back();
+  history.pop_back();
 }
 
 bool position::is_legal(const Move& m) {
@@ -118,18 +186,18 @@ bool position::is_legal(const Move& m) {
   //bool quiet_type = (mt == quiet || q_promotion);
   auto pc = pcs.bitmap[them];
   
-  if (p == no_piece) return false;
-  if (f == t) return false;
+  //if (p == no_piece) return false;
+  //if (f == t) return false;
   if (t == eks) return false;
-  if (color_on(f) != us) return false;
-  if (color_on(t) == us) return false;
+  //if (color_on(f) != us) return false;
+  //if (color_on(t) == us) return false;
 
   
   if (mt == ep && color_on(t) != no_color) return false;
   //if ((capture_type) && color_on(t) != them) return false;
   //if ((c_promotion || q_promotion) && p != pawn) return false;
 
-  if ((bitboards::squares[f] & ci->pinned) && !util::aligned(ks, f, t)) return false;
+  if ((bitboards::squares[f] & ifo.pinned) && !util::aligned(ks, f, t)) return false;
 
   // ep can uncover a discovered check 
   if (mt == ep) {
@@ -141,12 +209,40 @@ bool position::is_legal(const Move& m) {
 	    !(magics::attacks<rook>(msk, ks) & (pc[queen] | pc[rook])));
   }
 
+  // can castle flag has already been checked in movegen
+  if (mt == castle_ks || mt == castle_qs) {
+
+    if (in_check()) return false;
+    
+    Square s1 = no_square;
+    Square s2 = no_square;
+    
+    if (mt == castle_ks) {
+      s1 = (us == white ? F1 : F8);
+      s2 = (us == white ? G1 : G8);
+      //if (piece_on(us == white ? H1 : H8) != rook) return false;
+    }
+    else if (mt == castle_qs) {
+      s1 = (us == white ? D1 : D8);
+      s2 = (us == white ? C1 : C8);
+      //if (piece_on(us == white ? A1 : A8) != rook) return false;
+    }
+    
+    if (piece_on(s1) != no_piece || piece_on(s2) != no_piece) return false;
+
+    
+    if (is_attacked(s1, us, them, all_pieces()) ||
+	is_attacked(s2, us, them, all_pieces())) return false;
+
+    return true;
+  }
+  
   // is the king move legal
   if (p == king) {
     U64 msk = (all_pieces() ^ bitboards::squares[ks]);
     return !is_attacked(t, us, them, msk);
   }
- 
+
   // catch quiet moves which block/capture checking piece
   if (in_check() && p != king) {
     U64 f_bb = bitboards::squares[f];
