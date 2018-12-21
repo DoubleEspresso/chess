@@ -205,6 +205,7 @@ inline void piece_data::do_cap(const Color& c, const Piece& p,
 inline void piece_data::do_promotion(const Color& c, const Piece& p,
 			      const Square& f, const Square& t) {
   remove_piece(c, Piece::pawn, f);
+  std::cout << "adding piece = " << p << std::endl;
   add_piece(c, p, t);
 }
   

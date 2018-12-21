@@ -51,7 +51,7 @@ void position::setup(std::istringstream& fen) {
 }
 
 void position::do_move(const Move& m) {
-  history.push_back(ifo);
+  history.emplace_back(ifo);
   const Square from = m.from();
   const Square to = m.to();
   const Movetype t = m.type();

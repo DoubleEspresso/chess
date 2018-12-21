@@ -179,6 +179,8 @@ inline void Movegen::quiet_promotions(U64& quiets) {
   
   s(quiets);
 
+  quiets &= empty;
+  
   if (evasion_target != 0ULL) quiets &= evasion_target;
 }
 
@@ -389,7 +391,7 @@ template<>
 inline void Movegen::generate<promotion, pawn>() {
   U64 mvs = 0;
   quiet_promotions(mvs);
-  encode_promotions<promotion, pawn>(mvs, us == white ? -8 : 8);  
+  if (mvs) encode_promotions<promotion, pawn>(mvs, us == white ? -8 : 8);
 }
 
 template<>
