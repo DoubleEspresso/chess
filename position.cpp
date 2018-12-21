@@ -149,11 +149,24 @@ void position::undo_move(const Move& m) {
   }
 
   else if (t < capture_promotion) {
+    /*
+    std::cout << "dbg undo - promotion" << std::endl;
+    std::cout << "from = " << SanSquares[from] << std::endl;
+    std::cout << "to = " << SanSquares[to] << std::endl;
+    std::cout << "piece_on(from) = " << piece_on(from) << std::endl;
+    */
     pcs.remove_piece(us, piece_on(from), from); // promoted piece
     pcs.add_piece(us, pawn, to);
   }
   
   else if (t < castle_ks) {
+    /*
+    std::cout << "dbg undo - promotion - cap" << std::endl;
+    std::cout << "from = " << SanSquares[from] << std::endl;
+    std::cout << "to = " << SanSquares[to] << std::endl;
+    std::cout << "piece_on(from) = " << piece_on(from) << std::endl;
+    std::cout << "captured piece = " << cp << std::endl;    
+    */
     pcs.remove_piece(us, piece_on(from), from);
     pcs.add_piece(to_move(), cp, from);
     pcs.add_piece(us, pawn, to);

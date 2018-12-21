@@ -151,7 +151,7 @@ class position {
   template<Color c, Piece p>
   inline std::array<Square, 10> squares_of() const {
     std::array<Square, 10> tmp; std::fill(tmp.begin(), tmp.end(), Square::no_square);
-    
+
     for (int i=1, j=0; i<11; ++i) {      
       if (pcs.square_of[c][p][i] != Square::no_square) tmp[j++] = pcs.square_of[c][p][i];
     }
@@ -205,7 +205,6 @@ inline void piece_data::do_cap(const Color& c, const Piece& p,
 inline void piece_data::do_promotion(const Color& c, const Piece& p,
 			      const Square& f, const Square& t) {
   remove_piece(c, Piece::pawn, f);
-  std::cout << "adding piece = " << p << std::endl;
   add_piece(c, p, t);
 }
   
@@ -245,11 +244,17 @@ inline void piece_data::remove_piece(const Color& c, const Piece& p, const Squar
   U64 sq = bitboards::squares[s];
   bycolor[c] ^= sq;
   bitmap[c][p] ^= sq;
-  
-  int idx = piece_idx[c][p][s];
-  piece_idx[c][p][s] = 0;
-  square_of[c][p][idx] = no_square;
+
+  // carefully remove this piece so when we add it back in undo, we
+  // do not overwrite an existing piece index
+  int tmp_idx = piece_idx[c][p][s];
+  int max_idx = number_of[c][p];
+  Square tmp_sq = square_of[c][p][max_idx];
+  square_of[c][p][tmp_idx] = square_of[c][p][max_idx];
+  square_of[c][p][max_idx] = no_square;
+  piece_idx[c][p][tmp_sq] = tmp_idx;
   number_of[c][p] -= 1;
+  piece_idx[c][p][s] = 0;
   color_on[s] = no_color;
   piece_on[s] = no_piece;
   // zobrist update 
@@ -260,6 +265,9 @@ inline void piece_data::add_piece(const Color& c, const Piece& p, const Square& 
   bycolor[c] |= sq;
   bitmap[c][p] |= sq;
 
+  // bug here - we are overwriting the "other" piece -- see previous code for how this was handled..
+  // e.g. if we have 2-rooks, one is captured, then we undo the capture, number_of = 2 (again)
+  
   number_of[c][p] += 1;
   square_of[c][p][number_of[c][p]] = s;
   piece_on[s] = p;

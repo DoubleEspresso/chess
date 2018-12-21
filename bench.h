@@ -14,6 +14,7 @@
 #include "position.h"
 #include "types.h"
 #include "move.h"
+#include "utils.h"
 
 class Perft {
 
@@ -34,7 +35,7 @@ class Perft {
 
 inline void Perft::go(const int& depth) {
   
-  //Clock timer;
+  util::clock timer;
   std::string positions[5] =
     {
       "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -64,16 +65,16 @@ inline void Perft::go(const int& depth) {
     std::cout << "Position : " << positions[i] << std::endl;
     std::cout << "" << std::endl;
     for (int d = 0; d < depth; d++) {
-      //timer.start();
+      timer.start();
       nb = search(board, d + 1);
-      //timer.stop();
+      timer.stop();
       std::cout << "depth "
 		<< (d + 1) << "\t"
 		<< std::right << std::setw(14)
 		<< results[i][d]
 		<< "\t" << "perft " << std::setw(14)
-		<< nb << "\t " << std::setw(15) << std::endl;
-	//<< timer.ms() << " ms " << std::endl;
+		<< nb << "\t " << std::setw(15)
+		<< timer.ms() << " ms " << std::endl;
     }
     std::cout << "" << std::endl;
     std::cout << "" << std::endl;
@@ -81,11 +82,13 @@ inline void Perft::go(const int& depth) {
 }
 
 void Perft::divide(position& p, int d) {
+  util::clock timer;
+  timer.start();
+    
   U64 total = 0;
   Movegen mvs(p);
   
   mvs.generate<pseudo_legal_all, pieces>();
-  std::cout << "mvs.size() = " << mvs.size() << std::endl;
   
   for (int i = 0; i < mvs.size(); ++i) {
     if (!p.is_legal(mvs.move(i))) continue;
@@ -97,8 +100,10 @@ void Perft::divide(position& p, int d) {
 	      << SanSquares[mvs[i].to()]
 	      << '\t' << n << std::endl;
   }
+  timer.stop();
   std::cout << "---------------------------------" << std::endl;
   std::cout << "total " << '\t' << total << std::endl;
+  std::cout << "time: " << timer.ms() << " ms " << std::endl; 
 }
 
 inline U64 Perft::search(position& p, const int& depth) {

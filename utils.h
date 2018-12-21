@@ -5,6 +5,8 @@
 #include <random>
 #include <climits>
 #include <memory>
+#include <chrono>
+#include <ctime>
 
 // std::make_unique is part of c++14
 template<typename T, typename... Args>
@@ -38,7 +40,21 @@ namespace util {
     
     unsigned int next() { return dis(gen); }
   };     
-  
+
+
+  class clock {
+    std::chrono::time_point<std::chrono::system_clock> _start;
+    std::chrono::time_point<std::chrono::system_clock> _end;
+  public:
+    clock() { }
+
+    void start() { _start = std::chrono::system_clock::now(); }
+    void stop() { _end = std::chrono::system_clock::now(); }
+    double ms() {
+      std::chrono::duration<double> sec = _end - _start;
+      return sec.count() * 1000.0;
+    }
+  };
 }
 
 #endif
