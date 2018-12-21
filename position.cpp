@@ -238,12 +238,13 @@ bool position::is_legal(const Move& m) {
     if (mt == castle_ks) {
       s1 = (us == white ? F1 : F8);
       s2 = (us == white ? G1 : G8);
-      //if (piece_on(us == white ? H1 : H8) != rook) return false;
+      if (piece_on(us == white ? H1 : H8) != rook) return false;
     }
     else if (mt == castle_qs) {
       s1 = (us == white ? D1 : D8);
       s2 = (us == white ? C1 : C8);
-      //if (piece_on(us == white ? A1 : A8) != rook) return false;
+      if (piece_on(us == white ? B1 : B8) != no_piece) return false;
+      if (piece_on(us == white ? A1 : A8) != rook) return false;
     }
     
     if (piece_on(s1) != no_piece || piece_on(s2) != no_piece) return false;
