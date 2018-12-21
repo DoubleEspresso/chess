@@ -197,7 +197,7 @@ inline void Movegen::capture_promotions(U64& right_caps, U64& left_caps) {
 
   auto sw = (us == white ? shift<NW> : shift<SE>);
   auto se = (us == white ? shift<NE> : shift<SW>);
-  
+
   if (left_caps) {
     se(left_caps);
     left_caps &= targets;
@@ -408,7 +408,7 @@ inline void Movegen::generate<capture_promotion, pawn>() {
   U64 caps_l = 0;
   U64 caps_r = 0;
   int d1 = (us == white ? -7 : 9);
-  int d2 = (us == black ? -9 : 7);
+  int d2 = (us == white ? -9 : 7);
   capture_promotions(caps_r, caps_l);
   if (caps_r != 0ULL) encode_promotions<capture_promotion, pawn>(caps_r, d1);
   if (caps_l != 0ULL) encode_promotions<capture_promotion, pawn>(caps_l, d2);
