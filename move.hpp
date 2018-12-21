@@ -139,6 +139,8 @@ inline void Movegen::pawn_caps(U64& left, U64& right, U64& ep_left, U64& ep_righ
   // normal captures - non promotions
   left = pawns & pawnmaskleft[us];
   right = pawns & pawnmaskright[us];
+ 
+  
   U64 target = (check_target == 0ULL ? enemies : check_target);
   
   auto sw = (us == white ? shift<NW> : shift<SE>);
@@ -185,19 +187,26 @@ inline void Movegen::quiet_promotions(U64& quiets) {
 }
 
 inline void Movegen::capture_promotions(U64& right_caps, U64& left_caps) {
+  if (pawns7 == 0ULL) return;
+  
   U64 targets = enemies & (us == white ? row[Row::r8] : row[Row::r1]);
   if (check_target != 0ULL) targets &= check_target;
+
+  right_caps = pawns7 & pawnmaskright[us^1];
+  left_caps = pawns7 & pawnmaskleft[us^1];
+
+  auto sw = (us == white ? shift<NW> : shift<SE>);
+  auto se = (us == white ? shift<NE> : shift<SW>);
   
-  right_caps = pawns;
-  left_caps = pawns;
+  if (left_caps) {
+    se(left_caps);
+    left_caps &= targets;
+  }
 
-  auto se = (us == white ? shift<NE> : shift<SE>);
-  se(right_caps);
-  right_caps &= targets;
-
-  auto sw = (us == white ? shift<NW> : shift<SW>);
-  sw(left_caps);  
-  left_caps &= targets;
+  if (right_caps) {
+    sw(right_caps);  
+    right_caps &= targets;
+  }
 }
 
 inline void Movegen::knight_quiets(std::vector<U64>& mvs) {
@@ -377,7 +386,7 @@ inline void Movegen::generate<capture, pawn>() {
   
   int d1 = (us == white ? -7 : 9);
   int d2 = (us == white ? -9 : 7);
-  
+
   pawn_caps(left, right, ep_left, ep_right);
   
   if (left != 0ULL) encode_pawn_pushes<capture, pawn>(left, d2);
@@ -398,8 +407,8 @@ template<>
 inline void Movegen::generate<capture_promotion, pawn>() {
   U64 caps_l = 0;
   U64 caps_r = 0;
-  int d1 = (us == white ? -9 : 9);
-  int d2 = (us == black ? -7 : 7);
+  int d1 = (us == white ? -7 : 9);
+  int d2 = (us == black ? -9 : 7);
   capture_promotions(caps_r, caps_l);
   if (caps_r != 0ULL) encode_promotions<capture_promotion, pawn>(caps_r, d1);
   if (caps_l != 0ULL) encode_promotions<capture_promotion, pawn>(caps_l, d2);
