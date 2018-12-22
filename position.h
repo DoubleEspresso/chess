@@ -149,13 +149,14 @@ class position {
   inline U64 get_pieces() const { return pcs.bycolor[c]; }
 
   template<Color c, Piece p>
-  inline std::array<Square, 10> squares_of() const {
-    std::array<Square, 10> tmp; std::fill(tmp.begin(), tmp.end(), Square::no_square);
+  //inline std::array<Square, 10>
+  inline Square * squares_of() const {
+    /*std::array<Square, 10> tmp; std::fill(tmp.begin(), tmp.end(), Square::no_square);
 
     for (int i=1, j=0; i<11; ++i) {      
       if (pcs.square_of[c][p][i] != Square::no_square) tmp[j++] = pcs.square_of[c][p][i];
-    }
-    return tmp; //pcs.square_of[c][p];
+      }*/
+    return const_cast<Square*>(pcs.square_of[c][p].data()+1); //tmp; 
   }
   
 };

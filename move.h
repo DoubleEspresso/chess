@@ -43,6 +43,7 @@ class Move {
   Piece _piece;
   Piece _promote;
   
+  
  public:
   Move() {
     _value = 0;
@@ -75,7 +76,7 @@ class Move {
 		  _type == 6 ? bishop : knight);
     }
     else _promote = no_piece;
-  }
+  }  
   Move(const Move& o) = default;
   Move(Move&& o) = default;
   Move& operator=(Move&& o) = default;
@@ -110,7 +111,12 @@ class Movegen {
   U64 rank2, rank7;
   U64 empty, pawns, pawns2, pawns7;
   std::vector<U64> bishop_mvs, rook_mvs, queen_mvs;
-  std::array<Square, 10> knights, bishops, rooks, queens, kings;
+  //std::array<Square, 10> knights, bishops, rooks, queens, kings;
+  Square * knights;
+  Square * bishops;
+  Square * rooks;
+  Square * queens;
+  Square * kings;
   U64 enemies, all_pieces, check_target, evasion_target; // qtarget, ctarget;
   Square eps;
   bool can_castle_ks, can_castle_qs;

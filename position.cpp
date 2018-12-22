@@ -197,24 +197,9 @@ bool position::is_legal(const Move& m) {
   const Square ks = king_square();
   const Color us = to_move();
   const Color them = Color(us ^ 1);
-  const Square eks = king_square(them);
-  //bool q_promotion = (mt < capture_promotion);
-  bool c_promotion = (mt >= capture_promotion && mt < castle_ks);
-  bool capture_type = (mt == capture || c_promotion);
-  //bool quiet_type = (mt == quiet || q_promotion);
   auto pc = pcs.bitmap[them];
-  
-  //if (p == no_piece) return false;
-  //if (f == t) return false;
-  if (t == eks) return false;
-  //if (color_on(f) != us) return false;
-  //if (color_on(t) == us) return false;
 
-  
-  if (mt == ep && color_on(t) != no_color) return false;
-  //if ((capture_type) && color_on(t) != them) return false;
-  //if ((c_promotion || q_promotion) && p != pawn) return false;
-
+  // pinned
   if ((bitboards::squares[f] & ifo.pinned) && !util::aligned(ks, f, t)) return false;
 
   // ep can uncover a discovered check 
@@ -260,21 +245,6 @@ bool position::is_legal(const Move& m) {
   if (p == king) {
     U64 msk = (all_pieces() ^ bitboards::squares[ks]);
     return !is_attacked(t, us, them, msk);
-  }
-
-  // catch quiet moves which block/capture checking piece
-  if (in_check() && p != king) {
-    U64 f_bb = bitboards::squares[f];
-    U64 t_bb = bitboards::squares[t];
-    U64 msk = all_pieces() ^ (f_bb | t_bb);
-
-    if (capture_type) { pcs.bitmap[them][piece_on(t)] ^= t_bb; msk |= t_bb;}
-    
-    bool incheck = is_attacked(ks, us, them, msk);
-
-    if (capture_type)  pcs.bitmap[them][piece_on(t)] ^= t_bb;
-
-    return !incheck;
   }
   
   return true;

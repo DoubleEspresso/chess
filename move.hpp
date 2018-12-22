@@ -210,8 +210,8 @@ inline void Movegen::capture_promotions(U64& right_caps, U64& left_caps) {
 }
 
 inline void Movegen::knight_quiets(std::vector<U64>& mvs) {
-  for (auto& s : knights) {
-    if (s == Square::no_square) break;
+  for (Square * sq = knights; *sq != no_square; ++sq) {
+    Square s = *sq;
     if (evasion_target != 0ULL) mvs.emplace_back((bitboards::nmask[s] & evasion_target));
     else mvs.emplace_back((bitboards::nmask[s] & empty));
   }  
@@ -219,8 +219,8 @@ inline void Movegen::knight_quiets(std::vector<U64>& mvs) {
 
 inline void Movegen::knight_caps(std::vector<U64>& mvs) {
   U64 target = (check_target == 0ULL ? enemies : check_target);
-  for (auto& s : knights) {
-    if (s == Square::no_square) break;
+  for (Square * sq = knights; *sq != no_square; ++sq) {
+    Square s = *sq;
     mvs.emplace_back((bitboards::nmask[s] & target));
   }
 }
@@ -237,9 +237,8 @@ inline void Movegen::bishop_quiets(std::vector<U64>& mvs) {
 
   // first time here - compute mvs from scratch
   U64 mask = all_pieces;
-  for (auto& s : bishops) {
-    if (s == Square::no_square) break;
-    
+  for (Square * sq = bishops; *sq != no_square; ++sq) {
+    Square s = *sq;    
     bishop_mvs.emplace_back(magics::attacks<bishop>(mask, s));
     mvs.emplace_back((bishop_mvs.back() & target));
   }
@@ -257,9 +256,8 @@ inline void Movegen::bishop_caps(std::vector<U64>& mvs) {
 
   // first time here, compute from scratch
   U64 mask = all_pieces;
-  for (auto& s : bishops) {
-    if (s == Square::no_square) break;
-    
+  for (Square * sq = bishops; *sq != no_square; ++sq) {
+    Square s = *sq;       
     bishop_mvs.emplace_back(magics::attacks<bishop>(mask, s));
     mvs.emplace_back((bishop_mvs.back() & target));
   }
@@ -277,8 +275,9 @@ inline void Movegen::rook_quiets(std::vector<U64>& mvs) {
 
   // first time here - compute from scratch
   U64 mask = all_pieces;
-  for (auto& s : rooks) {
-    if (s == Square::no_square) break;
+  //for (auto& s : rooks) {
+  for (Square * sq = rooks; *sq != no_square; ++sq) {
+    Square s = *sq;       
     rook_mvs.emplace_back(magics::attacks<rook>(mask, s));
     mvs.emplace_back((rook_mvs.back() & target));
   }
@@ -296,8 +295,8 @@ inline void Movegen::rook_caps(std::vector<U64>& mvs) {
 
   // first time here - compute from scratch
   U64 mask = all_pieces;
-  for (auto& s : rooks) {
-    if (s == Square::no_square) break;
+  for (Square * sq = rooks; *sq != no_square; ++sq) {
+    Square s = *sq;       
     rook_mvs.emplace_back(magics::attacks<rook>(mask, s));
     mvs.emplace_back((rook_mvs.back() & target));
   }
@@ -315,8 +314,8 @@ inline void Movegen::queen_quiets(std::vector<U64>& mvs) {
 
   // first time here - compute from scratch
   U64 mask = all_pieces;
-  for (auto& s : queens) {
-    if (s == Square::no_square) break;
+  for (Square * sq = queens; *sq != no_square; ++sq) {
+    Square s = *sq;       
     queen_mvs.emplace_back((magics::attacks<bishop>(mask, s) |
 			    magics::attacks<rook>(mask, s)));
     mvs.emplace_back((queen_mvs.back() & target));
@@ -335,8 +334,8 @@ inline void Movegen::queen_caps(std::vector<U64>& mvs) {
   
   // first time here - compute from scratch
   U64 mask = all_pieces;
-  for (auto& s : queens) {
-    if (s == Square::no_square) break;
+  for (Square * sq = queens; *sq != no_square; ++sq) {
+    Square s = *sq;       
     queen_mvs.emplace_back((magics::attacks<bishop>(mask, s) |
 			    magics::attacks<rook>(mask, s)));
     
@@ -345,15 +344,15 @@ inline void Movegen::queen_caps(std::vector<U64>& mvs) {
 }
 
 inline void Movegen::king_quiets(std::vector<U64>& mvs) {
-  for (auto& s : kings) {
-    if (s == Square::no_square) break;
+  for (Square * sq = kings; *sq != no_square; ++sq) {
+    Square s = *sq;       
     mvs.emplace_back((bitboards::kmask[s] & empty));
   }
 }
 
 inline void Movegen::king_caps(std::vector<U64>& mvs) {  
-  for (auto& s : kings) {
-    if (s == Square::no_square) break;
+  for (Square * sq = kings; *sq != no_square; ++sq) {
+    Square s = *sq;       
     mvs.emplace_back((bitboards::kmask[s] & enemies));
   }
 }
