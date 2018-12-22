@@ -111,8 +111,8 @@ bool magics::load() {
     };
   
   for (Piece p = Piece::bishop; p <= Piece::rook; ++p) {
-
-    size_t bits = (p == Piece::rook ? 8 : 7);
+    
+    size_t bits = 6;
     
     for (Square s = Square::A1; s <= Square::H8; ++s) {
    
