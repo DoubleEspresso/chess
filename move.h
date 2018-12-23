@@ -127,16 +127,6 @@ class Movegen {
   inline void pawn_caps(U64& left, U64& right, U64& ep_left, U64& ep_right);
   inline void quiet_promotions(U64& quiets);
   inline void capture_promotions(U64& right_caps, U64& left_caps);
-  inline void knight_quiets(std::vector<U64>& mvs);
-  inline void knight_caps(std::vector<U64>& mvs);  
-  inline void bishop_quiets(std::vector<U64>& mvs);
-  inline void bishop_caps(std::vector<U64>& mvs);
-  inline void rook_quiets(std::vector<U64>& mvs);
-  inline void rook_caps(std::vector<U64>& mvs);
-  inline void queen_quiets(std::vector<U64>& mvs);
-  inline void queen_caps(std::vector<U64>& mvs);
-  inline void king_quiets(std::vector<U64>& mvs);
-  inline void king_caps(std::vector<U64>& mvs);
   
   template<Movetype mt, Piece p>
   inline void encode(U64& b, const int& f);
