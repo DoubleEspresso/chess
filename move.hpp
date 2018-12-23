@@ -79,6 +79,7 @@ inline void Movegen::initialize(const position& p) {
   check_target = p.checkers(); // checking piece(s)
   evasion_target = 0ULL;
   
+  
   if (check_target != 0ULL && !bits::more_than_one(check_target)) { // only 1 checker
     U64 tmp = check_target;
     Square frm = Square(pop_lsb(tmp));
@@ -87,7 +88,7 @@ inline void Movegen::initialize(const position& p) {
       evasion_target = bitboards::between[frm][p.king_square()] & empty;
     }
   }
-
+  
   if (us == white) {
     rank2 = bitboards::row[r2];
     rank7 = bitboards::row[r7];
@@ -111,6 +112,9 @@ inline void Movegen::initialize(const position& p) {
     enemies = p.get_pieces<white>();
   }
 
+  qtarget = (evasion_target != 0ULL ? evasion_target : empty);
+  ctarget = (check_target == 0ULL ? enemies : check_target);
+
   eps = p.eps();
   pawns2 = pawns & rank2;
   pawns7 = pawns & rank7;
@@ -124,8 +128,7 @@ inline void Movegen::pawn_quiets(U64& single, U64& dbl) {
   auto s = (us == white ? shift<N> : shift<S>);
   
   s(single);
-  single &= empty;
-  if (evasion_target != 0ULL) single &= evasion_target;
+  single &= qtarget;
   
   for (int i=0; i<2; ++i) {
     s(dbl);
@@ -138,22 +141,19 @@ inline void Movegen::pawn_quiets(U64& single, U64& dbl) {
 inline void Movegen::pawn_caps(U64& left, U64& right, U64& ep_left, U64& ep_right) {  
   // normal captures - non promotions
   left = pawns & pawnmaskleft[us];
-  right = pawns & pawnmaskright[us];
- 
-  
-  U64 target = (check_target == 0ULL ? enemies : check_target);
+  right = pawns & pawnmaskright[us];   
   
   auto sw = (us == white ? shift<NW> : shift<SE>);
   auto se = (us == white ? shift<NE> : shift<SW>);
   
   if (left != 0ULL) {
     se(left);
-    left &= target;
+    left &= ctarget;
   }
   
   if (right != 0ULL) {
     sw(right);
-    right &= target;
+    right &= ctarget;
   }
 
   // ep captures - evasions are checked individually
@@ -181,17 +181,12 @@ inline void Movegen::quiet_promotions(U64& quiets) {
   
   s(quiets);
 
-  quiets &= empty;
-  
-  if (evasion_target != 0ULL) quiets &= evasion_target;
+  quiets &= qtarget;
 }
 
 inline void Movegen::capture_promotions(U64& right_caps, U64& left_caps) {
   if (pawns7 == 0ULL) return;
   
-  U64 targets = enemies & (us == white ? row[Row::r8] : row[Row::r1]);
-  if (check_target != 0ULL) targets &= check_target;
-
   right_caps = pawns7 & pawnmaskright[us^1];
   left_caps = pawns7 & pawnmaskleft[us^1];
 
@@ -200,12 +195,12 @@ inline void Movegen::capture_promotions(U64& right_caps, U64& left_caps) {
 
   if (left_caps) {
     se(left_caps);
-    left_caps &= targets;
+    left_caps &= ctarget;
   }
 
   if (right_caps) {
     sw(right_caps);  
-    right_caps &= targets;
+    right_caps &= ctarget;
   }
 }
 
@@ -270,24 +265,33 @@ inline void Movegen::generate<capture_promotion, pawn>() {
 // knight moves
 //------------------------------
 template<>
-inline void Movegen::generate<quiet, knight>() {
-  U64 target = (evasion_target != 0ULL ? evasion_target : empty);
-                                                                 
+inline void Movegen::generate<quiet, knight>() {                                                                 
   for (Square * sq = knights; *sq != no_square; ++sq) {
     Square s = *sq;
-    U64 mvs = bitboards::nmask[s] & target;    
+    U64 mvs = bitboards::nmask[s] & qtarget;    
     if (mvs != 0ULL) encode<quiet, knight>(mvs, s);
   }
 }
 
 template<>
-inline void Movegen::generate<capture, knight>() {
-  U64 target = (check_target == 0ULL ? enemies : check_target);
+inline void Movegen::generate<capture, knight>() {  
+  for (Square * sq = knights; *sq != no_square; ++sq) {
+    Square s = *sq;
+    U64 mvs = bitboards::nmask[s] & ctarget;     
+    if ( mvs != 0ULL) encode<capture, knight>(mvs, s);
+  }
+}
+
+template<>
+inline void Movegen::generate<pseudo_legal_all, knight>() {
   
   for (Square * sq = knights; *sq != no_square; ++sq) {
     Square s = *sq;
-    U64 mvs = bitboards::nmask[s] & target;     
-    if ( mvs != 0ULL) encode<capture, knight>(mvs, s);
+    U64 qmvs = bitboards::nmask[s] & qtarget;     
+    if (qmvs != 0ULL) encode<quiet, knight>(qmvs, s);
+    
+    U64 cmvs = bitboards::nmask[s] & ctarget;     
+    if (cmvs != 0ULL) encode<capture, knight>(cmvs, s);
   }
 }
 
@@ -295,24 +299,34 @@ inline void Movegen::generate<capture, knight>() {
 // bishop moves
 //------------------------------
 template<>
-inline void Movegen::generate<quiet, bishop>() {
-  U64 target = (evasion_target != 0ULL ? evasion_target : empty);
-  
+inline void Movegen::generate<quiet, bishop>() {  
   for (Square * sq = bishops; *sq != no_square; ++sq) {
     Square s = *sq;
-    U64 mvs = magics::attacks<bishop>(all_pieces, s) & target;
+    U64 mvs = magics::attacks<bishop>(all_pieces, s) & qtarget;
     if (mvs != 0ULL) encode<quiet, bishop>(mvs, s);
   }  
 }
 
 template<>
 inline void Movegen::generate<capture, bishop>() {
-  U64 target = (check_target == 0ULL ? enemies : check_target);
-
   for (Square * sq = bishops; *sq != no_square; ++sq) {
     Square s = *sq;
-    U64 mvs = magics::attacks<bishop>(all_pieces, s) & target;
+    U64 mvs = magics::attacks<bishop>(all_pieces, s) & ctarget;
     if (mvs != 0ULL) encode<capture, bishop>(mvs, s);
+  }
+}
+
+template<>
+inline void Movegen::generate<pseudo_legal_all, bishop>() {
+  for (Square * sq = bishops; *sq != no_square; ++sq) {
+    Square s = *sq;
+    U64 mvs = magics::attacks<bishop>(all_pieces, s);
+
+    U64 q = mvs & qtarget;
+    if (q != 0ULL) encode<quiet, bishop>(q, s);
+    
+    U64 c = mvs & ctarget;
+    if (c != 0ULL) encode<capture, bishop>(c, s);
   }
 }
 
@@ -321,23 +335,33 @@ inline void Movegen::generate<capture, bishop>() {
 //------------------------------
 template<>
 inline void Movegen::generate<quiet, rook>() {
-  U64 target = (evasion_target != 0ULL ? evasion_target : empty);
-
   for (Square * sq = rooks; *sq != no_square; ++sq) {
     Square s = *sq;
-    U64 mvs = magics::attacks<rook>(all_pieces, s) & target;
+    U64 mvs = magics::attacks<rook>(all_pieces, s) & qtarget;
     if (mvs != 0ULL) encode<quiet, rook>(mvs, s);
   }   
 }
 
 template<>
 inline void Movegen::generate<capture, rook>() {
-  U64 target = (check_target == 0ULL ? enemies : check_target);
-  
   for (Square * sq = rooks; *sq != no_square; ++sq) {
     Square s = *sq;
-    U64 mvs = magics::attacks<rook>(all_pieces, s) & target;
+    U64 mvs = magics::attacks<rook>(all_pieces, s) & ctarget;
     if (mvs != 0ULL) encode<capture, rook>(mvs, s);
+  }
+}
+
+template<>
+inline void Movegen::generate<pseudo_legal_all, rook>() {  
+  for (Square * sq = rooks; *sq != no_square; ++sq) {
+    Square s = *sq;
+    U64 mvs = magics::attacks<rook>(all_pieces, s);
+
+    U64 q = mvs & qtarget;
+    if (q != 0ULL) encode<quiet, rook>(q, s);
+
+    U64 c = mvs & ctarget;
+    if (c != 0ULL) encode<capture, rook>(c, s);
   }
 }
 
@@ -346,12 +370,10 @@ inline void Movegen::generate<capture, rook>() {
 //------------------------------
 template<>
 inline void Movegen::generate<quiet, queen>() {
-  U64 target = (evasion_target != 0ULL ? evasion_target : empty);
-
   for (Square * sq = queens; *sq != no_square; ++sq) {
     Square s = *sq;
     U64 mvs = (magics::attacks<bishop>(all_pieces, s) |
-	       magics::attacks<rook>(all_pieces, s)) & target;
+	       magics::attacks<rook>(all_pieces, s)) & qtarget;
     if (mvs != 0ULL) encode<quiet, queen>(mvs, s);
   }   
 }
@@ -359,13 +381,27 @@ inline void Movegen::generate<quiet, queen>() {
 template<>
 inline void Movegen::generate<capture, queen>() {
 
-  U64 target = (check_target == 0ULL ? enemies : check_target);
+  for (Square * sq = queens; *sq != no_square; ++sq) {
+    Square s = *sq;
+    U64 mvs = (magics::attacks<bishop>(all_pieces, s) |
+	       magics::attacks<rook>(all_pieces, s)) & ctarget;
+    if (mvs != 0ULL) encode<capture, queen>(mvs, s);
+  }
+}
+
+template<>
+inline void Movegen::generate<pseudo_legal_all, queen>() {
 
   for (Square * sq = queens; *sq != no_square; ++sq) {
     Square s = *sq;
     U64 mvs = (magics::attacks<bishop>(all_pieces, s) |
-	       magics::attacks<rook>(all_pieces, s)) & target;
-    if (mvs != 0ULL) encode<capture, queen>(mvs, s);
+	       magics::attacks<rook>(all_pieces, s));
+
+    U64 q = mvs & qtarget;
+    if (q != 0ULL) encode<quiet, queen>(q, s);
+
+    U64 c = mvs & ctarget;
+    if (c != 0ULL) encode<capture, queen>(c, s);
   }
 }
 
@@ -438,14 +474,21 @@ template<>
 inline void Movegen::generate<pseudo_legal_all, pieces>() {
   // todo: order move generation by game phase
   // data-driven approach for this?
-
-  if (check_target == 0ULL) {    
-    generate<pseudo_legal_capture, pieces>();
-    generate<pseudo_legal_quiet, pieces>();
+  if (check_target == 0ULL) { // all moves
+    generate<capture_promotion, pawn>();
+    generate<promotion, pawn>();
+    generate<pseudo_legal_all, knight>();
+    generate<pseudo_legal_all, bishop>();
+    generate<pseudo_legal_all, rook>();
+    generate<pseudo_legal_all, queen>();
+    generate<capture, pawn>();
+    generate<quiet, pawn>();
+    generate<quiet, king>();
+    generate<castles, king>();
+    generate<capture, king>();
   }
   else if (check_target != 0ULL && evasion_target == 0ULL) {
     // step checker, only captures, and king evasions
-    if (!more_than_one(check_target)) {
       generate<capture_promotion, pawn>();
       generate<capture, king>();
       generate<capture, pawn>();
@@ -453,8 +496,7 @@ inline void Movegen::generate<pseudo_legal_all, pieces>() {
       generate<capture, bishop>();
       generate<capture, rook>();
       generate<capture, queen>();
-    }
-    generate<quiet, king>();
+      generate<quiet, king>();
   }
   else if (check_target != 0ULL && evasion_target != 0ULL) {
     if (!more_than_one(check_target)) {
@@ -462,21 +504,19 @@ inline void Movegen::generate<pseudo_legal_all, pieces>() {
       generate<capture_promotion, pawn>();
       generate<capture, king>();
       generate<capture, pawn>();
-      generate<capture, knight>();
-      generate<capture, bishop>();
-      generate<capture, rook>();
-      generate<capture, queen>();
+      generate<pseudo_legal_all, knight>();
+      generate<pseudo_legal_all, bishop>();
+      generate<pseudo_legal_all, rook>();
+      generate<pseudo_legal_all, queen>();
       
       // blocking moves
       generate<promotion, pawn>();
       generate<quiet, king>();
       generate<quiet, pawn>();
-      generate<quiet, knight>();
-      generate<quiet, bishop>();
-      generate<quiet, rook>();
-      generate<quiet, queen>();
-
     }
-    else generate<quiet, king>(); // more than one checker
+    else {
+      generate<capture, king>(); 
+      generate<quiet, king>(); // more than one checker
+    }
   }
 }

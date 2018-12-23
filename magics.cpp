@@ -137,7 +137,7 @@ bool magics::load() {
         do {
           magic = next_magic(bits, r);
           filter = (magic * mask) & 0xFFFF000000000000;
-        } while (bits::count(filter) < 6);
+        } while (bits::count(filter) < 7);
 
 	used.assign(occ_size, 0); 
         

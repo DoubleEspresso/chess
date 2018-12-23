@@ -110,14 +110,13 @@ class Movegen {
   Color us, them;
   U64 rank2, rank7;
   U64 empty, pawns, pawns2, pawns7;
-  std::vector<U64> bishop_mvs, rook_mvs, queen_mvs;
-  //std::array<Square, 10> knights, bishops, rooks, queens, kings;
+  std::vector<U64> bishop_mvs, rook_mvs, queen_mvs;  
   Square * knights;
   Square * bishops;
   Square * rooks;
   Square * queens;
   Square * kings;
-  U64 enemies, all_pieces, check_target, evasion_target; // qtarget, ctarget;
+  U64 enemies, all_pieces, qtarget, ctarget, check_target, evasion_target;
   Square eps;
   bool can_castle_ks, can_castle_qs;
   
