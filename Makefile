@@ -5,7 +5,7 @@ OS = $(shell uname)
 OSFLAVOR =
 
 USERMACROS = -DNDEBUG
-CFLAGS = -Wall -pedantic -O3 -fomit-frame-pointer -fstrict-aliasing -ffast-math -std=c++11
+CFLAGS = -Wall -pedantic -O3 -fomit-frame-pointer -fstrict-aliasing -ffast-math -std=c++11 -mavx
 DFLAGS =
 LFLAGS =
 INSTALL = /usr/local/bin

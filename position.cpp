@@ -51,7 +51,7 @@ void position::setup(std::istringstream& fen) {
 }
 
 void position::do_move(const Move& m) {
-  history.emplace_back(ifo);
+  history[hidx++] = ifo;
   const Square from = m.from();
   const Square to = m.to();
   const Movetype t = m.type();
@@ -149,24 +149,11 @@ void position::undo_move(const Move& m) {
   }
 
   else if (t < capture_promotion) {
-    /*
-    std::cout << "dbg undo - promotion" << std::endl;
-    std::cout << "from = " << SanSquares[from] << std::endl;
-    std::cout << "to = " << SanSquares[to] << std::endl;
-    std::cout << "piece_on(from) = " << piece_on(from) << std::endl;
-    */
     pcs.remove_piece(us, piece_on(from), from); // promoted piece
     pcs.add_piece(us, pawn, to);
   }
   
   else if (t < castle_ks) {
-    /*
-    std::cout << "dbg undo - promotion - cap" << std::endl;
-    std::cout << "from = " << SanSquares[from] << std::endl;
-    std::cout << "to = " << SanSquares[to] << std::endl;
-    std::cout << "piece_on(from) = " << piece_on(from) << std::endl;
-    std::cout << "captured piece = " << cp << std::endl;    
-    */
     pcs.remove_piece(us, piece_on(from), from);
     pcs.add_piece(to_move(), cp, from);
     pcs.add_piece(us, pawn, to);
@@ -185,35 +172,34 @@ void position::undo_move(const Move& m) {
     pcs.do_quiet(us, king, from, to);
     pcs.do_quiet(us, rook, rf, rt);
   }
-  ifo = history.back();
-  history.pop_back();
+  ifo = history[--hidx];
 }
 
 bool position::is_legal(const Move& m) {
-  const Piece p = m.piece();
-  const Square f = m.from();
-  const Square t = m.to();
-  const Movetype mt = m.type();
-  const Square ks = king_square();
-  const Color us = to_move();
-  const Color them = Color(us ^ 1);
-  auto pc = pcs.bitmap[them];
-
-  // pinned
-  if ((bitboards::squares[f] & ifo.pinned) && !util::aligned(ks, f, t)) return false;
-
+  Piece p = m.piece();
+  Square f = m.from();
+  Square t = m.to();
+  Movetype mt = m.type();
+  Square ks = king_square();
+  Color us = to_move();
+  Color them = Color(us ^ 1);
+  //auto pc = pcs.bitmap[them];
+  
   // ep can uncover a discovered check 
   if (mt == ep) {
+    U64 sliders = pcs.bitmap[them][queen] | pcs.bitmap[them][rook] | pcs.bitmap[them][bishop];
+    if (!sliders) return true;
+    
     Square csq = Square(t + (them == white ? 8 : -8));
     U64 msk = (all_pieces() ^ bitboards::squares[f] ^ bitboards::squares[csq]) |
       bitboards::squares[t];
     
-    return (!(magics::attacks<bishop>(msk, ks) & (pc[queen] | pc[bishop])) &&
-	    !(magics::attacks<rook>(msk, ks) & (pc[queen] | pc[rook])));
+    return (!(magics::attacks<bishop>(msk, ks) & (pcs.bitmap[them][queen] | pcs.bitmap[them][bishop])) &&
+	    !(magics::attacks<rook>(msk, ks) & (pcs.bitmap[them][queen] | pcs.bitmap[them][rook])));
   }
 
   // can castle flag has already been checked in movegen
-  if (mt == castle_ks || mt == castle_qs) {
+  else if (mt == castle_ks || mt == castle_qs) {
 
     if (in_check()) return false;
     
@@ -242,10 +228,14 @@ bool position::is_legal(const Move& m) {
   }
   
   // is the king move legal
-  if (p == king) {
+  else if (p == king) {
     U64 msk = (all_pieces() ^ bitboards::squares[ks]);
     return !is_attacked(t, us, them, msk);
   }
+
+  // pinned
+  else if ((bitboards::squares[f] & ifo.pinned) && !util::aligned(ks, f, t)) return false;
+
   
   return true;
 }
@@ -324,9 +314,8 @@ void position::set_piece(const char& p, const Square& s) {
 
 void position::clear() {
   pcs.clear();
-  history.clear();
+  hidx = 0;
   ifo = {};
-  //ci.reset(new checkinfo());
 }
 
 void position::print() {

@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <algorithm>
 #include <string>
+#include <vector>
 
 #include "position.h"
 #include "types.h"
@@ -17,7 +18,15 @@
 #include "utils.h"
 
 class Perft {
-
+  std::vector<double> do_mv_times;
+  std::vector<double> undo_mv_times;
+  std::vector<double> gen_times;
+  std::vector<double> legal_times;
+  
+  util::clock dom_timer;
+  util::clock tot_timer;
+  util::clock gen_timer;
+  util::clock legal_timer;
 
  public:
   Perft() {};
@@ -29,13 +38,13 @@ class Perft {
   inline void go(const int& depth);
   inline U64 search(position& p, const int& depth);
   inline void divide(position& p, int d);
+  inline void gen(position& p, U64& times);
   
 };
 
 
 inline void Perft::go(const int& depth) {
   
-  util::clock timer;
   std::string positions[5] =
     {
       "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -65,72 +74,166 @@ inline void Perft::go(const int& depth) {
     std::cout << "Position : " << positions[i] << std::endl;
     std::cout << "" << std::endl;
     for (int d = 0; d < depth; d++) {
-      timer.start();
+      tot_timer.start();
       nb = search(board, d + 1);
-      timer.stop();
+      tot_timer.stop();
       std::cout << "depth "
 		<< (d + 1) << "\t"
 		<< std::right << std::setw(14)
 		<< results[i][d]
 		<< "\t" << "perft " << std::setw(14)
 		<< nb << "\t " << std::setw(15)
-		<< timer.ms() << " ms " << std::endl;
+		<< tot_timer.ms() << " ms " << std::endl;
     }
     std::cout << "" << std::endl;
     std::cout << "" << std::endl;
   }    
 }
 
+inline void Perft::gen(position& p, U64& times) {
+
+  tot_timer.start();
+  int count = 0;
+  for (U64 i=0; i < times; ++i) {
+    Movegen mvs(p);
+    mvs.generate<pseudo_legal_all, pieces>();
+    count = 0;
+    for (int j=0; j<mvs.size(); ++j) {
+      if (!p.is_legal(mvs[j])) continue;
+      
+      p.do_move(mvs[j]);
+      p.undo_move(mvs[j]);
+      
+      ++count;
+    }
+  }
+  tot_timer.stop();
+  std::cout << "---------------------------------" << std::endl;
+  std::cout << count << " legal mvs" << std::endl;
+  std::cout << "time: " << dom_timer.ms() << " ms " << std::endl; 
+}
+
 void Perft::divide(position& p, int d) {
-  util::clock timer;
-  timer.start();
-    
-  U64 total = 0;
-  Movegen mvs(p);
+  tot_timer.start();
   
+  U64 total = 0;
+
+  Movegen mvs(p);
+  gen_timer.start();
   mvs.generate<pseudo_legal_all, pieces>();
+  gen_timer.stop();
+  gen_times.push_back(gen_timer.ms()*1000);
   
   for (int i = 0; i < mvs.size(); ++i) {
-    if (!p.is_legal(mvs.move(i))) continue;
-    p.do_move(mvs.move(i));
+
+    legal_timer.start();
+    if (!p.is_legal(mvs[i])) {
+      legal_timer.stop();
+      legal_times.push_back(legal_timer.ms()*1000);
+      continue;
+    }
+    legal_timer.stop();
+    legal_times.push_back(legal_timer.ms()*1000);
+	  
+    dom_timer.start();
+    p.do_move(mvs[i]);
+    dom_timer.stop();
+    do_mv_times.push_back(1000*dom_timer.ms());
+
     int n = d > 1 ? search(p, d - 1) : 1;
     total += n;
-    p.undo_move(mvs.move(i));
+
+    dom_timer.start();
+    p.undo_move(mvs[i]);
+    dom_timer.stop();
+    undo_mv_times.push_back(1000*dom_timer.ms());    
+
     std::cout << SanSquares[mvs[i].from()]
 	      << SanSquares[mvs[i].to()]
 	      << '\t' << n << std::endl;
   }
-  timer.stop();
+  tot_timer.stop();
+  
+  double dm_avg = 0;
+  for (auto& t: do_mv_times) dm_avg += t;
+  dm_avg /= do_mv_times.size();
+
+  double udm_avg = 0;
+  for (auto& t: undo_mv_times) udm_avg += t;
+  udm_avg /= undo_mv_times.size();
+
+  double gen_avg = 0;
+  for (auto& t : gen_times) gen_avg += t;
+  gen_avg /= gen_times.size();
+
+  double legal_avg = 0;
+  for (auto& t : legal_times) legal_avg += t;
+  legal_avg /= legal_times.size();
+  
   std::cout << "---------------------------------" << std::endl;
   std::cout << "total " << '\t' << total << std::endl;
-  std::cout << "time: " << timer.ms() << " ms " << std::endl; 
+  std::cout << "time " << tot_timer.ms() << " ms " << std::endl;
+  std::cout << "do-mv time: " << dm_avg << " ns " << std::endl;
+  std::cout << "undo-mv time: " << udm_avg << " ns " << std::endl; 
+  std::cout << "gen-avg time: " << gen_avg << " ns " << std::endl;
+  std::cout << "legal-avg time: " << legal_avg << " ns " << std::endl;
 }
 
 inline U64 Perft::search(position& p, const int& depth) {
   if (depth == 1) {
+
     Movegen mvs(p);
+    //gen_timer.start();
     mvs.generate<pseudo_legal_all, pieces>();
+    //gen_timer.stop();
+    //gen_times.push_back(gen_timer.ms()*1000);
+    
     U64 sz = 0;
     for (int i = 0; i < mvs.size(); ++i) {
-      if (p.is_legal(mvs.move(i))) ++sz;
+      //legal_timer.start();
+      if (!p.is_legal(mvs[i])) {
+	//legal_timer.stop();
+	//legal_times.push_back(legal_timer.ms()*1000);
+	continue;	
+      }
+      //legal_timer.stop();
+      //legal_times.push_back(legal_timer.ms()*1000);
+      ++sz;
     }
     return sz;
   }
   
   U64 cnt = 0;
-
   Movegen mvs(p);
+  //gen_timer.start();
   mvs.generate<pseudo_legal_all, pieces>();
-  
+  //gen_timer.stop();
+  //gen_times.push_back(gen_timer.ms()*1000);
+    
   for (int i = 0; i < mvs.size(); ++i) {
 
-    if (!p.is_legal(mvs.move(i))) continue;
+    //legal_timer.start();
+    if (!p.is_legal(mvs[i])) {
+      //legal_timer.stop();
+      //legal_times.push_back(legal_timer.ms()*1000);
+      continue;	
+    }
+    //legal_timer.stop();
+    //legal_times.push_back(legal_timer.ms()*1000);
     
+
+    //dom_timer.start();
     p.do_move(mvs[i]);
+    //dom_timer.stop();
+    //do_mv_times.push_back(1000*dom_timer.ms());
     
     cnt += search(p, depth - 1);
-    
+
+    //dom_timer.start();
     p.undo_move(mvs[i]);
+    //dom_timer.stop();
+    //undo_mv_times.push_back(1000*dom_timer.ms());
+    
   }
 
   return cnt;

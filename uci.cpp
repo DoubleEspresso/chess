@@ -26,23 +26,22 @@ bool uci::parse_command(const std::string& input) {
       p.setup(cmd == "startpos" ? fen : instream);
       p.print();
 
-      /*
+      
       Movegen mvs(p);
       mvs.generate<pseudo_legal_all, pieces>();
       
       int count = 0;
       for (int i=0; i<mvs.size(); ++i) {
-	Move m = mvs.move(i);
-	if (p.is_legal(m)) {
-	  p.do_move(m);
-	  p.undo_move(m);
+	if (p.is_legal(mvs[i])) {
+	  //p.do_move(m);
+	  //p.undo_move(m);
 	  ++count;
 	}
       }
       p.print();
       mvs.print();
       std::cout << "made " << count << " mvs of " << mvs.size() << std::endl;
-      */
+      
       
     }
     else if (cmd == "d") {
@@ -56,17 +55,17 @@ bool uci::parse_command(const std::string& input) {
       bool isok = false;
       mvs.generate<pseudo_legal_all, pieces>();
       for (int i=0; i<mvs.size(); ++i) {
-	if (!p.is_legal(mvs.move(i))) continue;
+	if (!p.is_legal(mvs[i])) continue;
 	std::string tmp = SanSquares[mvs[i].from()] + SanSquares[mvs[i].to()];
 	std::string ps = "";	
 	Movetype t = mvs[i].type();
 	
-	if (t >= 0 && t < capture_promotion) {
+	if (t >= 0 && t < capture_promotion_q) {
 	  ps = (t == 0 ? "q" :
 		t == 1 ? "r" :
 		t == 2 ? "b" : "n");	  
 	}
-	else if (t >= capture_promotion && t < castle_ks) {
+	else if (t >= capture_promotion_q && t < castle_ks) {
 	  ps = (t == 4 ? "q" :
 		t == 5 ? "r" :
 		t == 6 ? "b" : "n");
@@ -74,7 +73,7 @@ bool uci::parse_command(const std::string& input) {
 	tmp += ps;
 	
 	if (tmp == cmd) {
-	  dbgmove = mvs[i];
+	  dbgmove.set(mvs[i].piece(), mvs[i].from(), mvs[i].to(), mvs[i].type());
 	  isok = true;
 	  break;
 	}	
@@ -85,6 +84,11 @@ bool uci::parse_command(const std::string& input) {
     else if (cmd == "perft" && instream >> cmd) {
       Perft perft;
       perft.go(atoi(cmd.c_str()));
+    }
+    else if (cmd == "gen" && instream >> cmd) {
+      Perft perft;
+      U64 xs = U64(atoi(cmd.c_str()));
+      perft.gen(p, xs);
     }
     else if (cmd == "divide" && instream >> cmd) {
       Perft perft;

@@ -7,15 +7,22 @@
 #include <array>
 
 #include "types.h"
+#include "utils.h"
 
 class position;
 
 enum Dir { N, S, NN, SS, NW, NE, SW, SE, none };
 
 enum Movetype {
-  promotion,
-  capture_promotion=4,
-  castle_ks=8,
+  promotion_q,
+  promotion_r,
+  promotion_b,
+  promotion_n,
+  capture_promotion_q,
+  capture_promotion_r,
+  capture_promotion_b,
+  capture_promotion_n,
+  castle_ks,
   castle_qs,
   quiet,
   capture,
@@ -32,6 +39,8 @@ enum Movetype {
   pseudo_legal_quiet,
   pseudo_legal_capture,
   pseudo_legal_all,
+  promotion,
+  capture_promotion,
   no_type
 };
 
@@ -65,6 +74,36 @@ class Move {
     _from = f;
     _to = t;
     _type = type;
+    if (_type >= 0 && _type < capture_promotion_q) {
+      _promote = (_type == 0 ? queen :
+		  _type == 1 ? rook :
+		  _type == 2 ? bishop : knight);      
+    }
+    else if (_type >= capture_promotion_q && _type < castle_ks) {
+      _promote = (_type == 4 ? queen :
+		  _type == 5 ? rook :
+		  _type == 6 ? bishop : knight);
+    }
+    else _promote = no_piece;
+  }  
+  Move(const Move& o) = delete; 
+  Move(Move&& o) = delete; 
+  Move& operator=(Move&& o) = delete;
+  Move& operator=(const Move& o) = delete; 
+  ~Move() {}
+  
+  bool operator()(const Move& o) const; // { return o.m == m; }
+  bool operator==(const Move& o) const;
+  bool operator<(const Move& o) const { return _value < o.value(); }
+
+  inline void set(const Piece& p, const Square& f, const Square& t, const Movetype& type) {
+    _piece = p;
+    _value = 0;
+    _from = f;
+    _to = t;
+    _type = type;
+    _promote = no_piece;
+    /*
     if (_type >= 0 && _type < capture_promotion) {
       _promote = (_type == 0 ? queen :
 		  _type == 1 ? rook :
@@ -75,18 +114,8 @@ class Move {
 		  _type == 5 ? rook :
 		  _type == 6 ? bishop : knight);
     }
-    else _promote = no_piece;
-  }  
-  Move(const Move& o) = default;
-  Move(Move&& o) = default;
-  Move& operator=(Move&& o) = default;
-  Move& operator=(const Move& o) = default;
-  ~Move() {}
-  
-  bool operator()(const Move& o) const; // { return o.m == m; }
-  bool operator==(const Move& o) const;
-  bool operator<(const Move& o) const { return _value < o.value(); }
-  
+    */
+  }
   inline int value() const { return _value; }
   inline Square from() const { return _from; }
   inline Square to() const { return _to; }
@@ -105,6 +134,10 @@ class Move {
 
 
 class Movegen {
+
+  util::clock init_clock;
+  util::clock tmp_clock;
+  
   int it, last;
   Move list[218]; // max moves in any chess position
   Color us, them;
@@ -120,21 +153,18 @@ class Movegen {
   Square eps;
   bool can_castle_ks, can_castle_qs;
   
-  // utilities
+  // utilities  
   inline void initialize(const position& p);
-  inline void pawn_quiets(U64& single, U64& dbl);
   inline void pawn_caps(U64& left, U64& right, U64& ep_left, U64& ep_right);
-  inline void quiet_promotions(U64& quiets);
-  inline void capture_promotions(U64& right_caps, U64& left_caps);
   
   template<Movetype mt, Piece p>
-  inline void encode(U64& b, const int& f);
+  inline void encode(U64& b, const Square& f);
 
-  template<Movetype mt, Piece p>
+  template<Movetype mt>
   inline void encode_pawn_pushes(U64& b, const int& dir);
-  
-  template<Movetype mt, Piece p>
-  inline void encode_promotions(U64& b, const int& f);
+
+  inline void encode_quiet_promotions(U64& b, const int& f);
+  inline void encode_capture_promotions(U64& b, const int& f);
   
  public:
   Movegen() : it(0), last(0) {}
@@ -145,19 +175,12 @@ class Movegen {
   Movegen& operator=(const Movegen& o) = delete;
   Movegen& operator=(const Movegen&& o) = delete;
   Move& operator[](const int& idx) { return list[idx]; }
-
-  inline int size() { return last; }
-  inline Move& move(int i) { return list[i]; }
   
   template<Movetype mt, Piece p>
   inline void generate();
-  
-  template<Piece p>
-  inline void generate();
-  
-  template<Movetype mt>
-  inline void generate();
-  
+
+  // utilities
+  inline int size() { return last; }    
   inline void print();
   inline void print_legal(position& p);
 };

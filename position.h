@@ -45,6 +45,7 @@ class Move;
   };
 
 struct piece_data {
+  
   std::array<U64, 2> bycolor;
   std::array<Square, 2> king_sq;
   std::array<Color, squares> color_on;
@@ -53,6 +54,7 @@ struct piece_data {
   std::array<std::array<U64, squares>, colors> bitmap;
   std::array<std::array<std::array<int, squares>, pieces>, 2> piece_idx;
   std::array<std::array<std::array<Square, 11>, pieces>, 2> square_of;
+  
   
   // utility methods for moving pieces
   void clear();
@@ -88,10 +90,10 @@ struct piece_data {
 
 class position {  
   std::thread owner;  
-  //std::unique_ptr<checkinfo> ci;
-  std::vector<info> history;
+  info history[1024];
   info ifo;
   piece_data pcs;
+  U64 hidx;
   
  public:
   position() {}
@@ -149,20 +151,14 @@ class position {
   inline U64 get_pieces() const { return pcs.bycolor[c]; }
 
   template<Color c, Piece p>
-  //inline std::array<Square, 10>
   inline Square * squares_of() const {
-    /*std::array<Square, 10> tmp; std::fill(tmp.begin(), tmp.end(), Square::no_square);
-
-    for (int i=1, j=0; i<11; ++i) {      
-      if (pcs.square_of[c][p][i] != Square::no_square) tmp[j++] = pcs.square_of[c][p][i];
-      }*/
-    return const_cast<Square*>(pcs.square_of[c][p].data()+1); //tmp; 
+    return const_cast<Square*>(pcs.square_of[c][p].data()+1);
   }
   
 };
 
 
-inline void piece_data::clear() {  
+inline void piece_data::clear() {
   std::fill(bycolor.begin(), bycolor.end(), 0);
   std::fill(king_sq.begin(), king_sq.end(), Square::no_square);
   std::fill(color_on.begin(), color_on.end(), Color::no_color);
@@ -175,7 +171,7 @@ inline void piece_data::clear() {
 }
 
 inline void piece_data::do_quiet(const Color& c, const Piece& p,
-			  const Square& f, const Square& t) {
+				 const Square& f, const Square& t) {
   // bitmaps
   U64 fto = bitboards::squares[f] | bitboards::squares[t];
 

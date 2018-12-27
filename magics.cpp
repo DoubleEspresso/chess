@@ -1,4 +1,5 @@
 #include "magics.h"
+#include "types.h"
 
 namespace magics {
   namespace detail {
@@ -189,12 +190,12 @@ bool magics::load() {
 }
 
 namespace magics {
-  template<> U64 attacks<Piece::rook>(const U64& occ, const int& s) {
+  template<> U64 attacks<Piece::rook>(const U64& occ, const Square& s) {
     using namespace detail;
     return rattks[ridx[s][rtable[s].entry(occ)] + rtable[s].offset];
   }
   
-  template<> U64 attacks<Piece::bishop>(const U64& occ, const int& s) {
+  template<> U64 attacks<Piece::bishop>(const U64& occ, const Square& s) {
     using namespace detail;
     return battks[bidx[s][btable[s].entry(occ)] + btable[s].offset];
   }
