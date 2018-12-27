@@ -28,7 +28,7 @@ bool uci::parse_command(const std::string& input) {
 
       
       Movegen mvs(p);
-      mvs.generate<pseudo_legal_all, pieces>();
+      mvs.generate<pseudo_legal, pieces>();
       
       int count = 0;
       for (int i=0; i<mvs.size(); ++i) {
@@ -53,12 +53,12 @@ bool uci::parse_command(const std::string& input) {
     else if (cmd == "domove" && instream >> cmd) {
       Movegen mvs(p);
       bool isok = false;
-      mvs.generate<pseudo_legal_all, pieces>();
+      mvs.generate<pseudo_legal, pieces>();
       for (int i=0; i<mvs.size(); ++i) {
 	if (!p.is_legal(mvs[i])) continue;
-	std::string tmp = SanSquares[mvs[i].from()] + SanSquares[mvs[i].to()];
+	std::string tmp = SanSquares[mvs[i].f] + SanSquares[mvs[i].t];
 	std::string ps = "";	
-	Movetype t = mvs[i].type();
+	Movetype t = mvs[i].type;
 	
 	if (t >= 0 && t < capture_promotion_q) {
 	  ps = (t == 0 ? "q" :
@@ -73,7 +73,7 @@ bool uci::parse_command(const std::string& input) {
 	tmp += ps;
 	
 	if (tmp == cmd) {
-	  dbgmove.set(mvs[i].piece(), mvs[i].from(), mvs[i].to(), mvs[i].type());
+	  dbgmove.set(mvs[i].f, mvs[i].t, mvs[i].type);
 	  isok = true;
 	  break;
 	}	

@@ -96,7 +96,7 @@ inline void Perft::gen(position& p, U64& times) {
   int count = 0;
   for (U64 i=0; i < times; ++i) {
     Movegen mvs(p);
-    mvs.generate<pseudo_legal_all, pieces>();
+    mvs.generate<pseudo_legal, pieces>();
     count = 0;
     for (int j=0; j<mvs.size(); ++j) {
       if (!p.is_legal(mvs[j])) continue;
@@ -120,7 +120,7 @@ void Perft::divide(position& p, int d) {
 
   Movegen mvs(p);
   gen_timer.start();
-  mvs.generate<pseudo_legal_all, pieces>();
+  mvs.generate<pseudo_legal, pieces>();
   gen_timer.stop();
   gen_times.push_back(gen_timer.ms()*1000);
   
@@ -148,8 +148,8 @@ void Perft::divide(position& p, int d) {
     dom_timer.stop();
     undo_mv_times.push_back(1000*dom_timer.ms());    
 
-    std::cout << SanSquares[mvs[i].from()]
-	      << SanSquares[mvs[i].to()]
+    std::cout << SanSquares[mvs[i].f]
+	      << SanSquares[mvs[i].t]
 	      << '\t' << n << std::endl;
   }
   tot_timer.stop();
@@ -184,7 +184,7 @@ inline U64 Perft::search(position& p, const int& depth) {
 
     Movegen mvs(p);
     //gen_timer.start();
-    mvs.generate<pseudo_legal_all, pieces>();
+    mvs.generate<pseudo_legal, pieces>();
     //gen_timer.stop();
     //gen_times.push_back(gen_timer.ms()*1000);
     
@@ -206,7 +206,7 @@ inline U64 Perft::search(position& p, const int& depth) {
   U64 cnt = 0;
   Movegen mvs(p);
   //gen_timer.start();
-  mvs.generate<pseudo_legal_all, pieces>();
+  mvs.generate<pseudo_legal, pieces>();
   //gen_timer.stop();
   //gen_times.push_back(gen_timer.ms()*1000);
     

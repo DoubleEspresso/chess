@@ -17,7 +17,7 @@
 #include "bitboards.h"
 #include "magics.h"
 
-class Move;
+struct Move;
 
   struct checkinfo {
     U64 disc_checks;

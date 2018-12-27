@@ -52,10 +52,10 @@ void position::setup(std::istringstream& fen) {
 
 void position::do_move(const Move& m) {
   history[hidx++] = ifo;
-  const Square from = m.from();
-  const Square to = m.to();
-  const Movetype t = m.type();
-  const Piece p = m.piece();
+  const Square from = Square(m.f); 
+  const Square to = Square(m.t);
+  const Movetype t = m.type;
+  const Piece p = piece_on(from);
   const Color us = to_move();
 
   // king square update and castle rights update
@@ -89,11 +89,17 @@ void position::do_move(const Move& m) {
     pcs.do_ep(us, from, to);
   }
 
-  else if (t < capture_promotion) pcs.do_promotion(us, m.promote(), from, to);
-
+  else if (t < capture_promotion) pcs.do_promotion(us, (t == promotion_q ? queen :
+							t == promotion_r ? rook :
+							t == promotion_b ? bishop :
+							knight), from, to);
+  
   else if (t < castle_ks) {
     ifo.captured = piece_on(to);
-    pcs.do_promotion_cap(us, m.promote(), from, to);
+    pcs.do_promotion_cap(us, (t == capture_promotion_q ? queen :
+			      t == capture_promotion_r ? rook :
+			      t == capture_promotion_b ? bishop :
+			      knight), from, to);
   }
 
   else if (t == castle_ks) {
@@ -129,10 +135,10 @@ void position::do_move(const Move& m) {
 }
 
 void position::undo_move(const Move& m) {
-  const Square from = m.to();
-  const Square to = m.from();
-  const Movetype t = m.type();
-  const Piece p = m.piece();
+  const Square from = Square(m.t); 
+  const Square to = Square(m.f);
+  const Movetype t = m.type;
+  const Piece p = piece_on(from);
   const Color us = Color(to_move()^1);
   Piece cp = ifo.captured;
   
@@ -176,10 +182,10 @@ void position::undo_move(const Move& m) {
 }
 
 bool position::is_legal(const Move& m) {
-  Piece p = m.piece();
-  Square f = m.from();
-  Square t = m.to();
-  Movetype mt = m.type();
+  Square f = Square(m.f);
+  Square t = Square(m.t);
+  Piece p = piece_on(f);
+  Movetype mt = m.type;
   Square ks = king_square();
   Color us = to_move();
   Color them = Color(us ^ 1);
