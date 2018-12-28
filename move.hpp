@@ -23,7 +23,6 @@ namespace {
 
 template<Movetype mt>
 inline void Movegen::encode(U64& b, const int& f) {  
-  //while (b) list[last++].m = (f | (pop_lsb(b) << 6) | mt << 12);
   while (b) list[last++].set(f, pop_lsb(b), mt);
 }
 
@@ -43,12 +42,6 @@ inline void Movegen::encode_promotions(U64& b, const int& dir) {
     list[last++].set(f, to, promotion_r);
     list[last++].set(f, to, promotion_b);
     list[last++].set(f, to, promotion_n);
-    /*
-    list[last++].m = (f | (pop_lsb(b) << 6) | promotion_q << 12);
-    list[last++].m = (f | (pop_lsb(b) << 6) | promotion_r << 12);
-    list[last++].m = (f | (pop_lsb(b) << 6) | promotion_b << 12);
-    list[last++].m = (f | (pop_lsb(b) << 6) | promotion_n << 12);    
-    */
   }
 }
 
@@ -60,19 +53,12 @@ inline void Movegen::encode_capture_promotions(U64& b, const int& dir) {
     list[last++].set(f, to, capture_promotion_r);
     list[last++].set(f, to, capture_promotion_b);
     list[last++].set(f, to, capture_promotion_n);
-    /*
-    list[last++].m = (f | (pop_lsb(b) << 6) | capture_promotion_q << 12);
-    list[last++].m = (f | (pop_lsb(b) << 6) | capture_promotion_r << 12);
-    list[last++].m = (f | (pop_lsb(b) << 6) | capture_promotion_b << 12);
-    list[last++].m = (f | (pop_lsb(b) << 6) | capture_promotion_n << 12);    
-    */
   }
 }
 
 
 inline void Movegen::print() {
   for(int j=it; j<last; ++j) {    
-    //std::cout << get_from(list[j]) << get_to(list[j]) << " ";
     std::cout << SanSquares[list[j].f] << SanSquares[list[j].t] << " ";
   }
   std::cout << "\n";
@@ -80,7 +66,7 @@ inline void Movegen::print() {
 
 inline void Movegen::print_legal(position& p) {
   for(int j=it; j<last; ++j) {    
-    if (p.is_legal(list[j]))  std::cout << SanSquares[list[j].f] << SanSquares[list[j].t] << " ";//std::cout << get_from(list[j]) << get_to(list[j]) << " ";
+    if (p.is_legal(list[j]))  std::cout << SanSquares[list[j].f] << SanSquares[list[j].t] << " ";
   }
   std::cout << "\n";
 }
@@ -442,11 +428,8 @@ inline void Movegen::generate<quiet, king>() {
 
 template<>
 inline void Movegen::generate<castles, king>() {
-  //const Square f = (us == white ? E1 : E8);
-  //if (can_castle_ks) list[last++].m = (f | ((us == white ? G1 : G8) << 6) | castle_ks << 12);
-  //if (can_castle_qs) list[last++].m = (f | ((us == white ? G1 : G8) << 6) | castle_qs << 12);
-  if (can_castle_ks) list[last++].set(kings[0], ((us == white ? G1 : G8)), castle_ks);
-  if (can_castle_qs) list[last++].set(kings[0], ((us == white ? C1 : C8)), castle_qs);
+  if (can_castle_ks) list[last++].set(kings[0], (us == white ? G1 : G8), castle_ks);
+  if (can_castle_qs) list[last++].set(kings[0], (us == white ? C1 : C8), castle_qs);
 }
 
 

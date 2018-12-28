@@ -74,10 +74,12 @@ void position::do_move(const Move& m) {
       else if (from == H8) ifo.cmask &= clearbks;      
     }
   }
-  
+
   ifo.captured = no_piece;
   
-  if (t == quiet) pcs.do_quiet(us, p, from, to);
+  if (t == quiet) {
+    pcs.do_quiet(us, p, from, to);
+  }
   
   else if (t == capture) {
     ifo.captured = piece_on(to); 
@@ -89,7 +91,7 @@ void position::do_move(const Move& m) {
     pcs.do_ep(us, from, to);
   }
 
-  else if (t < capture_promotion) pcs.do_promotion(us, (t == promotion_q ? queen :
+  else if (t < capture_promotion_q) pcs.do_promotion(us, (t == promotion_q ? queen :
 							t == promotion_r ? rook :
 							t == promotion_b ? bishop :
 							knight), from, to);
@@ -154,7 +156,7 @@ void position::undo_move(const Move& m) {
     pcs.add_piece(to_move(), cp, Square(from + (us == white ? -8 : 8)));
   }
 
-  else if (t < capture_promotion) {
+  else if (t < capture_promotion_q) {
     pcs.remove_piece(us, piece_on(from), from); // promoted piece
     pcs.add_piece(us, pawn, to);
   }

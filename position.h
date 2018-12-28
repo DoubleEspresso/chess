@@ -104,7 +104,7 @@ class position {
   position(const position&& p);
   position& operator=(const position&);
   position& operator=(const position&&);
-  ~position() {std::cout << "p-d'tor" << std::endl; }
+  ~position() { } 
 
   // setup/clear a position
   void setup(std::istringstream& fen);
@@ -172,6 +172,7 @@ inline void piece_data::clear() {
 
 inline void piece_data::do_quiet(const Color& c, const Piece& p,
 				 const Square& f, const Square& t) {
+
   // bitmaps
   U64 fto = bitboards::squares[f] | bitboards::squares[t];
 
@@ -185,6 +186,7 @@ inline void piece_data::do_quiet(const Color& c, const Piece& p,
   square_of[c][p][idx] = t;
   color_on[f] = no_color;
   color_on[t] = c;
+
   piece_on[t] = p;
   piece_on[f] = no_piece;
   

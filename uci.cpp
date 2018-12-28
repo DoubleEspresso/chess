@@ -78,7 +78,10 @@ bool uci::parse_command(const std::string& input) {
 	  break;
 	}	
       }
-      if (isok) p.do_move(dbgmove);
+      if (isok) {
+	std::cout << "doing mv " << std::endl;
+	p.do_move(dbgmove);
+      }
       else std::cout << cmd << " is not a legal move" << std::endl;
     }
     else if (cmd == "perft" && instream >> cmd) {
