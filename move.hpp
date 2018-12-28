@@ -276,18 +276,16 @@ inline void Movegen::generate<capture_promotion, pawn>() {
 // knight moves
 //------------------------------
 template<>
-inline void Movegen::generate<quiet, knight>() {                                                                 
-  for (Square * sq = knights; *sq != no_square; ++sq) {
-    Square s = *sq;
+inline void Movegen::generate<quiet, knight>() {
+  for (Square s = *knights; s != no_square; s = *++knights) {
     U64 mvs = bitboards::nmask[s] & qtarget;    
     if (mvs != 0ULL) encode<quiet>(mvs, s);
   }
 }
 
 template<>
-inline void Movegen::generate<capture, knight>() {  
-  for (Square * sq = knights; *sq != no_square; ++sq) {
-    Square s = *sq;
+inline void Movegen::generate<capture, knight>() {
+  for (Square s = *knights; s != no_square; s = *++knights) {
     U64 mvs = bitboards::nmask[s] & ctarget;     
     if ( mvs != 0ULL) encode<capture>(mvs, s);
   }
@@ -296,8 +294,7 @@ inline void Movegen::generate<capture, knight>() {
 template<>
 inline void Movegen::generate<pseudo_legal, knight>() {
   
-  for (Square * sq = knights; *sq != no_square; ++sq) {
-    Square s = *sq;
+  for (Square s = *knights; s != no_square; s = *++knights) {
     U64 qmvs = bitboards::nmask[s] & qtarget;     
     if (qmvs != 0ULL) encode<quiet>(qmvs, s);
     
@@ -310,9 +307,8 @@ inline void Movegen::generate<pseudo_legal, knight>() {
 // bishop moves
 //------------------------------
 template<>
-inline void Movegen::generate<quiet, bishop>() {  
-  for (Square * sq = bishops; *sq != no_square; ++sq) {
-    Square s = *sq;
+inline void Movegen::generate<quiet, bishop>() {
+  for (Square s = *bishops; s != no_square; s = *++bishops) {
     U64 mvs = magics::attacks<bishop>(all_pieces, s) & qtarget;
     if (mvs != 0ULL) encode<quiet>(mvs, s);
   }  
@@ -320,8 +316,7 @@ inline void Movegen::generate<quiet, bishop>() {
 
 template<>
 inline void Movegen::generate<capture, bishop>() {
-  for (Square * sq = bishops; *sq != no_square; ++sq) {
-    Square s = *sq;
+  for (Square s = *bishops; s != no_square; s = *++bishops) {
     U64 mvs = magics::attacks<bishop>(all_pieces, s) & ctarget;
     if (mvs != 0ULL) encode<capture>(mvs, s);
   }
@@ -329,8 +324,7 @@ inline void Movegen::generate<capture, bishop>() {
 
 template<>
 inline void Movegen::generate<pseudo_legal, bishop>() {
-  for (Square * sq = bishops; *sq != no_square; ++sq) {
-    Square s = *sq;
+  for (Square s = *bishops; s != no_square; s = *++bishops) {
     U64 mvs = magics::attacks<bishop>(all_pieces, s);
 
     U64 q = mvs & qtarget;
@@ -346,8 +340,7 @@ inline void Movegen::generate<pseudo_legal, bishop>() {
 //------------------------------
 template<>
 inline void Movegen::generate<quiet, rook>() {
-  for (Square * sq = rooks; *sq != no_square; ++sq) {
-    Square s = *sq;
+  for (Square s = *rooks; s != no_square; s = *++rooks) {
     U64 mvs = magics::attacks<rook>(all_pieces, s) & qtarget;
     if (mvs != 0ULL) encode<quiet>(mvs, s);
   }   
@@ -355,8 +348,7 @@ inline void Movegen::generate<quiet, rook>() {
 
 template<>
 inline void Movegen::generate<capture, rook>() {
-  for (Square * sq = rooks; *sq != no_square; ++sq) {
-    Square s = *sq;
+  for (Square s = *rooks; s != no_square; s = *++rooks) {
     U64 mvs = magics::attacks<rook>(all_pieces, s) & ctarget;
     if (mvs != 0ULL) encode<capture>(mvs, s);
   }
@@ -364,8 +356,7 @@ inline void Movegen::generate<capture, rook>() {
 
 template<>
 inline void Movegen::generate<pseudo_legal, rook>() {  
-  for (Square * sq = rooks; *sq != no_square; ++sq) {
-    Square s = *sq;
+  for (Square s = *rooks; s != no_square; s = *++rooks) {
     U64 mvs = magics::attacks<rook>(all_pieces, s);
 
     U64 q = mvs & qtarget;
@@ -381,8 +372,7 @@ inline void Movegen::generate<pseudo_legal, rook>() {
 //------------------------------
 template<>
 inline void Movegen::generate<quiet, queen>() {
-  for (Square * sq = queens; *sq != no_square; ++sq) {
-    Square s = *sq;
+  for (Square s = *queens; s != no_square; s = *++queens) {
     U64 mvs = (magics::attacks<bishop>(all_pieces, s) |
 	       magics::attacks<rook>(all_pieces, s)) & qtarget;
     if (mvs != 0ULL) encode<quiet>(mvs, s);
@@ -392,8 +382,7 @@ inline void Movegen::generate<quiet, queen>() {
 template<>
 inline void Movegen::generate<capture, queen>() {
 
-  for (Square * sq = queens; *sq != no_square; ++sq) {
-    Square s = *sq;
+  for (Square s = *queens; s != no_square; s = *++queens) {
     U64 mvs = (magics::attacks<bishop>(all_pieces, s) |
 	       magics::attacks<rook>(all_pieces, s)) & ctarget;
     if (mvs != 0ULL) encode<capture>(mvs, s);
@@ -403,8 +392,7 @@ inline void Movegen::generate<capture, queen>() {
 template<>
 inline void Movegen::generate<pseudo_legal, queen>() {
 
-  for (Square * sq = queens; *sq != no_square; ++sq) {
-    Square s = *sq;
+  for (Square s = *queens; s != no_square; s = *++queens) {
     U64 mvs = (magics::attacks<bishop>(all_pieces, s) |
 	       magics::attacks<rook>(all_pieces, s));
 
