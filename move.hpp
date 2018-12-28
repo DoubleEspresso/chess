@@ -494,7 +494,7 @@ inline void Movegen::generate<pseudo_legal, pieces>() {
     generate<capture, king>();
   }
   else if (check_target != 0ULL && evasion_target == 0ULL) {
-    // step checker, only captures, and king evasions
+    if (!more_than_one(check_target)) {
       generate<capture_promotion, pawn>();
       generate<capture, king>();
       generate<capture, pawn>();
@@ -503,6 +503,11 @@ inline void Movegen::generate<pseudo_legal, pieces>() {
       generate<capture, rook>();
       generate<capture, queen>();
       generate<quiet, king>();
+    }
+    else {
+      generate<capture, king>(); 
+      generate<quiet, king>(); // more than one checker
+    }
   }
   else if (check_target != 0ULL && evasion_target != 0ULL) {
     if (!more_than_one(check_target)) {
