@@ -70,12 +70,15 @@ class Movegen {
   inline void pawn_caps(U64& left, U64& right, U64& ep_left, U64& ep_right);
   
   template<Movetype mt>
-  inline void encode(U64& b, const Square& f);
+  inline void encode(U64& b, const int& f);
 
   template<Movetype mt>
   inline void encode_pawn_pushes(U64& b, const int& dir);
 
-  inline void encode_quiet_promotions(U64& b, const int& f);
+  inline void pawn_quiets(U64& single, U64& dbl);
+  inline void encode_promotions(U64& b, const int& dir);
+  inline void capture_promotions(U64& right_caps, U64& left_caps);
+  inline void quiet_promotions(U64& quiets);
   inline void encode_capture_promotions(U64& b, const int& f);
   
  public:

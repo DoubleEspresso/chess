@@ -189,24 +189,24 @@ bool position::is_legal(const Move& m) {
   Square ks = king_square();
   Color us = to_move();
   Color them = Color(us ^ 1);
-  //auto pc = pcs.bitmap[them];
+  auto pc = pcs.bitmap[them];
+
+  // pinned
+  if ((bitboards::squares[f] & ifo.pinned) && !util::aligned(ks, f, t)) return false;
   
-  // ep can uncover a discovered check 
+  // ep can uncover a discovered check
   if (mt == ep) {
-    U64 sliders = pcs.bitmap[them][queen] | pcs.bitmap[them][rook] | pcs.bitmap[them][bishop];
-    if (!sliders) return true;
-    
     Square csq = Square(t + (them == white ? 8 : -8));
     U64 msk = (all_pieces() ^ bitboards::squares[f] ^ bitboards::squares[csq]) |
       bitboards::squares[t];
     
-    return (!(magics::attacks<bishop>(msk, ks) & (pcs.bitmap[them][queen] | pcs.bitmap[them][bishop])) &&
-	    !(magics::attacks<rook>(msk, ks) & (pcs.bitmap[them][queen] | pcs.bitmap[them][rook])));
+    return (!(magics::attacks<bishop>(msk, ks) & (pc[queen] | pc[bishop])) &&
+	    !(magics::attacks<rook>(msk, ks) & (pc[queen] | pc[rook])));
   }
 
   // can castle flag has already been checked in movegen
-  else if (mt == castle_ks || mt == castle_qs) {
-
+  if (mt == castle_ks || mt == castle_qs) {
+    
     if (in_check()) return false;
     
     Square s1 = no_square;
@@ -238,10 +238,6 @@ bool position::is_legal(const Move& m) {
     U64 msk = (all_pieces() ^ bitboards::squares[ks]);
     return !is_attacked(t, us, them, msk);
   }
-
-  // pinned
-  else if ((bitboards::squares[f] & ifo.pinned) && !util::aligned(ks, f, t)) return false;
-
   
   return true;
 }

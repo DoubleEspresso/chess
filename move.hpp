@@ -4,7 +4,6 @@
 #include "bitboards.h"
 #include "position.h"
 
-
 using namespace bitboards;
 using namespace bits;
 
@@ -23,50 +22,65 @@ namespace {
 
 
 template<Movetype mt>
-inline void Movegen::encode(U64& b, const Square& f) {
+inline void Movegen::encode(U64& b, const int& f) {  
+  //while (b) list[last++].m = (f | (pop_lsb(b) << 6) | mt << 12);
   while (b) list[last++].set(f, pop_lsb(b), mt);
 }
 
 template<Movetype mt>
 inline void Movegen::encode_pawn_pushes(U64& b, const int& dir) {
   while (b) {
-    U8 to = pop_lsb(b);
-    list[last++].set(to + dir, to, mt);
+    int to = pop_lsb(b);
+    list[last++].set(to+dir, to, mt);
+  }
+}
+
+inline void Movegen::encode_promotions(U64& b, const int& dir) {
+  while (b) {
+    Square to = Square(pop_lsb(b));
+    Square f = Square(to + dir);
+    list[last++].set(f, to, promotion_q);
+    list[last++].set(f, to, promotion_r);
+    list[last++].set(f, to, promotion_b);
+    list[last++].set(f, to, promotion_n);
+    /*
+    list[last++].m = (f | (pop_lsb(b) << 6) | promotion_q << 12);
+    list[last++].m = (f | (pop_lsb(b) << 6) | promotion_r << 12);
+    list[last++].m = (f | (pop_lsb(b) << 6) | promotion_b << 12);
+    list[last++].m = (f | (pop_lsb(b) << 6) | promotion_n << 12);    
+    */
   }
 }
 
 inline void Movegen::encode_capture_promotions(U64& b, const int& dir) {
   while (b) {
-    U8 to = pop_lsb(b);
-    U8 frm = to + dir;
-    list[last++].set(frm, to, capture_promotion_q);
-    list[last++].set(frm, to, capture_promotion_r);
-    list[last++].set(frm, to, capture_promotion_b); 
-    list[last++].set(frm, to, capture_promotion_n); 
+    Square to = Square(pop_lsb(b));
+    Square f = Square(to + dir);
+    list[last++].set(f, to, capture_promotion_q);
+    list[last++].set(f, to, capture_promotion_r);
+    list[last++].set(f, to, capture_promotion_b);
+    list[last++].set(f, to, capture_promotion_n);
+    /*
+    list[last++].m = (f | (pop_lsb(b) << 6) | capture_promotion_q << 12);
+    list[last++].m = (f | (pop_lsb(b) << 6) | capture_promotion_r << 12);
+    list[last++].m = (f | (pop_lsb(b) << 6) | capture_promotion_b << 12);
+    list[last++].m = (f | (pop_lsb(b) << 6) | capture_promotion_n << 12);    
+    */
   }
 }
 
-inline void Movegen::encode_quiet_promotions(U64& b, const int& dir) {
-  while (b) {
-    U8 to = pop_lsb(b);
-    U8 frm = to + dir;
-    list[last++].set(frm, to, promotion_q);
-    list[last++].set(frm, to, promotion_r);
-    list[last++].set(frm, to, promotion_b); 
-    list[last++].set(frm, to, promotion_n); 
-  }
-}
 
 inline void Movegen::print() {
   for(int j=it; j<last; ++j) {    
-    std::cout << SanSquares[list[j].f] << SanSquares[list[j].t] << " "; 
+    //std::cout << get_from(list[j]) << get_to(list[j]) << " ";
+    std::cout << SanSquares[list[j].f] << SanSquares[list[j].t] << " ";
   }
   std::cout << "\n";
 }
 
 inline void Movegen::print_legal(position& p) {
   for(int j=it; j<last; ++j) {    
-    if (p.is_legal(list[j])) std::cout << SanSquares[list[j].f] << SanSquares[list[j].t] << " ";
+    if (p.is_legal(list[j]))  std::cout << SanSquares[list[j].f] << SanSquares[list[j].t] << " ";//std::cout << get_from(list[j]) << get_to(list[j]) << " ";
   }
   std::cout << "\n";
 }
@@ -85,6 +99,8 @@ inline void Movegen::initialize(const position& p) {
   can_castle_ks = p.can_castle_ks();
   can_castle_qs = p.can_castle_qs();
 
+  // todo : refactor to one capture-target, and one quiet-target
+  // check handling  
   check_target = p.checkers(); // checking piece(s)
   evasion_target = 0ULL;
   
@@ -99,7 +115,6 @@ inline void Movegen::initialize(const position& p) {
   }
   
   if (us == white) {
-    tmp_clock.start();
     rank2 = bitboards::row[r2];
     rank7 = bitboards::row[r7];
     pawns = p.get_pieces<white, pawn>();
@@ -111,7 +126,6 @@ inline void Movegen::initialize(const position& p) {
     enemies = p.get_pieces<black>();
   }
   else {
-    tmp_clock.start();
     rank2 = bitboards::row[r7];
     rank7 = bitboards::row[r2];
     pawns = p.get_pieces<black, pawn>();
@@ -129,7 +143,23 @@ inline void Movegen::initialize(const position& p) {
   eps = p.eps();
   pawns2 = pawns & rank2;
   pawns7 = pawns & rank7;
+}
 
+
+inline void Movegen::pawn_quiets(U64& single, U64& dbl) {
+  single = pawns & pawnmask[us]; // filter the promotion candidates
+  dbl = pawns & rank2;
+
+  auto s = (us == white ? shift<N> : shift<S>);
+  
+  s(single);
+  single &= qtarget;
+  
+  for (int i=0; i<2; ++i) {
+    s(dbl);
+    dbl &= empty;
+  }
+  if (evasion_target != 0ULL) dbl &= evasion_target;
 }
 
 
@@ -168,6 +198,37 @@ inline void Movegen::pawn_caps(U64& left, U64& right, U64& ep_left, U64& ep_righ
   }    
 }
 
+inline void Movegen::quiet_promotions(U64& quiets) {  
+  if (pawns7 == 0ULL) return;
+  quiets = pawns7;
+
+  auto s = (us == white ? shift<N> : shift<S>);
+  
+  s(quiets);
+
+  quiets &= qtarget;
+}
+
+inline void Movegen::capture_promotions(U64& right_caps, U64& left_caps) {
+  if (pawns7 == 0ULL) return;
+  
+  right_caps = pawns7 & pawnmaskright[us^1];
+  left_caps = pawns7 & pawnmaskleft[us^1];
+
+  auto sw = (us == white ? shift<NW> : shift<SE>);
+  auto se = (us == white ? shift<NE> : shift<SW>);
+
+  if (left_caps) {
+    se(left_caps);
+    left_caps &= ctarget;
+  }
+
+  if (right_caps) {
+    sw(right_caps);  
+    right_caps &= ctarget;
+  }
+}
+
 //------------------------------
 // pawn moves
 //------------------------------
@@ -175,34 +236,15 @@ inline void Movegen::pawn_caps(U64& left, U64& right, U64& ep_left, U64& ep_righ
 template<>
 inline void Movegen::generate<quiet, pawn>() {
   
-  U64 single = pawns & pawnmask[us]; // filter the promotion candidates
-  U64 dbl = pawns & rank2;
-  
+  U64 single_pushes = 0ULL;
+  U64 double_pushes = 0ULL;
   int d1 = (us == white ? -8 : 8);
   int d2 = 2 * d1;
-  
-  auto s = (us == white ? shift<N> : shift<S>);
 
-  // single pawn pushes
-  if (single) {
-    s(single);
-    single &= qtarget;
-  }
+  pawn_quiets(single_pushes, double_pushes);
 
-  // double pawn pushes
-  if (dbl) {
-    s(dbl);
-    dbl &= empty;
-
-    if (dbl) {
-      s(dbl);
-      dbl &= empty;
-      if (evasion_target) dbl &= evasion_target;
-    }
-  }
-
-  if (single != 0ULL) encode_pawn_pushes<quiet>(single, d1);  
-  if (dbl != 0ULL) encode_pawn_pushes<quiet>(dbl, d2);
+  if (single_pushes != 0ULL) encode_pawn_pushes<quiet>(single_pushes, d1);
+  if (double_pushes != 0ULL) encode_pawn_pushes<quiet>(double_pushes, d2);
 }
 
 
@@ -227,43 +269,18 @@ inline void Movegen::generate<capture, pawn>() {
 
 template<>
 inline void Movegen::generate<promotion, pawn>() {
-  if (pawns7 == 0ULL) return;
-  
-  U64 quiets = pawns7;
-
-  auto s = (us == white ? shift<N> : shift<S>);
-  
-  s(quiets);
-
-  quiets &= qtarget;
-  
-  if (quiets) encode_quiet_promotions(quiets, us == white ? -8 : 8);
+  U64 mvs = 0;
+  quiet_promotions(mvs);
+  if (mvs) encode_promotions(mvs, us == white ? -8 : 8);
 }
 
 template<>
 inline void Movegen::generate<capture_promotion, pawn>() {
-  
-  if (pawns7 == 0ULL) return;
-
-  Color them = Color(us ^ 1);
-  U64 caps_l = pawns7 & pawnmaskleft[them];
-  U64 caps_r = pawns7 & pawnmaskright[them];
+  U64 caps_l = 0;
+  U64 caps_r = 0;
   int d1 = (us == white ? -7 : 9);
   int d2 = (us == white ? -9 : 7);
-  
-  auto sw = (us == white ? shift<NW> : shift<SE>);
-  auto se = (us == white ? shift<NE> : shift<SW>);
-
-  if (caps_l) {
-    se(caps_l);
-    caps_l &= ctarget;
-  }
-
-  if (caps_r) {
-    sw(caps_r);  
-    caps_r &= ctarget;
-  }
-  
+  capture_promotions(caps_r, caps_l);
   if (caps_r != 0ULL) encode_capture_promotions(caps_r, d1);
   if (caps_l != 0ULL) encode_capture_promotions(caps_l, d2);
 }
@@ -273,16 +290,18 @@ inline void Movegen::generate<capture_promotion, pawn>() {
 // knight moves
 //------------------------------
 template<>
-inline void Movegen::generate<quiet, knight>() {
-  for (Square s = *knights; s != no_square; s = *++knights) {
+inline void Movegen::generate<quiet, knight>() {                                                                 
+  for (Square * sq = knights; *sq != no_square; ++sq) {
+    Square s = *sq;
     U64 mvs = bitboards::nmask[s] & qtarget;    
     if (mvs != 0ULL) encode<quiet>(mvs, s);
   }
 }
 
 template<>
-inline void Movegen::generate<capture, knight>() {
-  for (Square s = *knights; s != no_square; s = *++knights) {
+inline void Movegen::generate<capture, knight>() {  
+  for (Square * sq = knights; *sq != no_square; ++sq) {
+    Square s = *sq;
     U64 mvs = bitboards::nmask[s] & ctarget;     
     if ( mvs != 0ULL) encode<capture>(mvs, s);
   }
@@ -290,7 +309,9 @@ inline void Movegen::generate<capture, knight>() {
 
 template<>
 inline void Movegen::generate<pseudo_legal, knight>() {
-  for (Square s = *knights; s != no_square; s = *++knights) {
+  
+  for (Square * sq = knights; *sq != no_square; ++sq) {
+    Square s = *sq;
     U64 qmvs = bitboards::nmask[s] & qtarget;     
     if (qmvs != 0ULL) encode<quiet>(qmvs, s);
     
@@ -304,7 +325,8 @@ inline void Movegen::generate<pseudo_legal, knight>() {
 //------------------------------
 template<>
 inline void Movegen::generate<quiet, bishop>() {  
-  for (Square s = *bishops; s != no_square; s = *++bishops) {
+  for (Square * sq = bishops; *sq != no_square; ++sq) {
+    Square s = *sq;
     U64 mvs = magics::attacks<bishop>(all_pieces, s) & qtarget;
     if (mvs != 0ULL) encode<quiet>(mvs, s);
   }  
@@ -312,7 +334,8 @@ inline void Movegen::generate<quiet, bishop>() {
 
 template<>
 inline void Movegen::generate<capture, bishop>() {
-  for (Square s = *bishops; s != no_square; s = *++bishops) {
+  for (Square * sq = bishops; *sq != no_square; ++sq) {
+    Square s = *sq;
     U64 mvs = magics::attacks<bishop>(all_pieces, s) & ctarget;
     if (mvs != 0ULL) encode<capture>(mvs, s);
   }
@@ -320,7 +343,8 @@ inline void Movegen::generate<capture, bishop>() {
 
 template<>
 inline void Movegen::generate<pseudo_legal, bishop>() {
-  for (Square s = *bishops; s != no_square; s = *++bishops) {
+  for (Square * sq = bishops; *sq != no_square; ++sq) {
+    Square s = *sq;
     U64 mvs = magics::attacks<bishop>(all_pieces, s);
 
     U64 q = mvs & qtarget;
@@ -336,7 +360,8 @@ inline void Movegen::generate<pseudo_legal, bishop>() {
 //------------------------------
 template<>
 inline void Movegen::generate<quiet, rook>() {
-  for (Square s = *rooks; s != no_square; s = *++rooks) {
+  for (Square * sq = rooks; *sq != no_square; ++sq) {
+    Square s = *sq;
     U64 mvs = magics::attacks<rook>(all_pieces, s) & qtarget;
     if (mvs != 0ULL) encode<quiet>(mvs, s);
   }   
@@ -344,15 +369,17 @@ inline void Movegen::generate<quiet, rook>() {
 
 template<>
 inline void Movegen::generate<capture, rook>() {
-  for (Square s = *rooks; s != no_square; s = *++rooks) {
+  for (Square * sq = rooks; *sq != no_square; ++sq) {
+    Square s = *sq;
     U64 mvs = magics::attacks<rook>(all_pieces, s) & ctarget;
     if (mvs != 0ULL) encode<capture>(mvs, s);
   }
 }
 
 template<>
-inline void Movegen::generate<pseudo_legal, rook>() {
-  for (Square s = *rooks; s != no_square; s = *++rooks) {
+inline void Movegen::generate<pseudo_legal, rook>() {  
+  for (Square * sq = rooks; *sq != no_square; ++sq) {
+    Square s = *sq;
     U64 mvs = magics::attacks<rook>(all_pieces, s);
 
     U64 q = mvs & qtarget;
@@ -368,7 +395,8 @@ inline void Movegen::generate<pseudo_legal, rook>() {
 //------------------------------
 template<>
 inline void Movegen::generate<quiet, queen>() {
-  for (Square s = *queens; s != no_square; s = *++queens) {
+  for (Square * sq = queens; *sq != no_square; ++sq) {
+    Square s = *sq;
     U64 mvs = (magics::attacks<bishop>(all_pieces, s) |
 	       magics::attacks<rook>(all_pieces, s)) & qtarget;
     if (mvs != 0ULL) encode<quiet>(mvs, s);
@@ -376,9 +404,10 @@ inline void Movegen::generate<quiet, queen>() {
 }
 
 template<>
-inline void Movegen::generate<capture, queen>() {  
-  for (Square s = *queens; s != no_square; s = *++queens) {
-    
+inline void Movegen::generate<capture, queen>() {
+
+  for (Square * sq = queens; *sq != no_square; ++sq) {
+    Square s = *sq;
     U64 mvs = (magics::attacks<bishop>(all_pieces, s) |
 	       magics::attacks<rook>(all_pieces, s)) & ctarget;
     if (mvs != 0ULL) encode<capture>(mvs, s);
@@ -387,8 +416,9 @@ inline void Movegen::generate<capture, queen>() {
 
 template<>
 inline void Movegen::generate<pseudo_legal, queen>() {
-  for (Square s = *queens; s != no_square; s = *++queens) {
-    
+
+  for (Square * sq = queens; *sq != no_square; ++sq) {
+    Square s = *sq;
     U64 mvs = (magics::attacks<bishop>(all_pieces, s) |
 	       magics::attacks<rook>(all_pieces, s));
 
@@ -409,15 +439,19 @@ inline void Movegen::generate<quiet, king>() {
   if (mvs != 0ULL) encode<quiet>(mvs, kings[0]);
 }
 
-template<>
-inline void Movegen::generate<castles, king>() {
-  const Square f = (us == white ? E1 : E8);
-  if (can_castle_ks) list[last++].set(f, (us == white ? G1 : G8), castle_ks);
-  if (can_castle_qs) list[last++].set(f, (us == white ? C1 : C8), castle_qs);
-}
 
 template<>
-inline void Movegen::generate<capture, king>() {
+inline void Movegen::generate<castles, king>() {
+  //const Square f = (us == white ? E1 : E8);
+  //if (can_castle_ks) list[last++].m = (f | ((us == white ? G1 : G8) << 6) | castle_ks << 12);
+  //if (can_castle_qs) list[last++].m = (f | ((us == white ? G1 : G8) << 6) | castle_qs << 12);
+  if (can_castle_ks) list[last++].set(kings[0], ((us == white ? G1 : G8)), castle_ks);
+  if (can_castle_qs) list[last++].set(kings[0], ((us == white ? C1 : C8)), castle_qs);
+}
+
+
+template<>
+inline void Movegen::generate<capture, king>() {  
   U64 mvs = (bitboards::kmask[kings[0]] & enemies);
   if (mvs != 0ULL) encode<capture>(mvs, kings[0]);
 }
@@ -504,8 +538,8 @@ inline void Movegen::generate<pseudo_legal, pieces>() {
       generate<quiet, pawn>();
     }
     else {
-      generate<quiet, king>();
       generate<capture, king>(); 
+      generate<quiet, king>(); // more than one checker
     }
   }
 }
