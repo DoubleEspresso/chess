@@ -21,7 +21,6 @@ namespace zobrist {
   extern U64 stm_rands[2];
   extern U64 move50_rands[512];
   extern U64 hmv_rands[512];
-
-};
+}
 
 #endif
