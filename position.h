@@ -16,6 +16,7 @@
 #include "utils.h"
 #include "bitboards.h"
 #include "magics.h"
+#include "zobrist.h"
 
 struct Move;
 
@@ -51,9 +52,9 @@ struct piece_data {
   // utility methods for moving pieces
   void clear();
 
-  void set(const Color& c, const Piece& p, const Square& s);
+  void set(const Color& c, const Piece& p, const Square& s, info& ifo);
   
-  inline void do_quiet(const Color& c, const Piece& p, const Square& f, const Square& t);
+  inline void do_quiet(const Color& c, const Piece& p, const Square& f, const Square& t, info& ifo);
 
   template<Color c>
   inline void do_castle(const bool& kingside);
@@ -61,23 +62,23 @@ struct piece_data {
   template<Color c>
   inline void undo_castle(const bool& kingside);
 
-  inline void do_cap(const Color& c, const Piece& p, const Square& f, const Square& t);
+  inline void do_cap(const Color& c, const Piece& p, const Square& f, const Square& t, info& ifo);
   
-  inline void do_ep(const Color& c, const Square& f, const Square& t);
+  inline void do_ep(const Color& c, const Square& f, const Square& t, info& ifo);
 
   inline void do_promotion(const Color& c, const Piece& p,
-			   const Square& f, const Square& t);
+			   const Square& f, const Square& t, info& ifo);
 	     
   inline void do_promotion_cap(const Color& c,
-			const Piece& p, const Square& f, const Square& t);
+			       const Piece& p, const Square& f, const Square& t, info& ifo);
 
-  inline void do_castle_ks(const Color& c, const Square& f, const Square& t);
+  inline void do_castle_ks(const Color& c, const Square& f, const Square& t, info& ifo);
   
-  inline void do_castle_qs(const Color& c, const Square& f, const Square& t);
+  inline void do_castle_qs(const Color& c, const Square& f, const Square& t, info& ifo);
   
-  inline void remove_piece(const Color& c, const Piece& p, const Square& s);
+  inline void remove_piece(const Color& c, const Piece& p, const Square& s, info& ifo);
   
-  inline void add_piece(const Color& c, const Piece& p, const Square& s);
+  inline void add_piece(const Color& c, const Piece& p, const Square& s, info& ifo);
 };
 
 class position {  
@@ -124,7 +125,8 @@ class position {
   // position info access wrappers
   inline Square eps() const { return ifo.eps; }
   inline Color to_move() const { return ifo.stm; }
-  
+  inline U64 key() { return ifo.pkey; }
+  inline U64 dkey() { return ifo.dkey; }
   // piece access wrappers
   inline U64 all_pieces() const { return pcs.bycolor[white] | pcs.bycolor[black]; }
 
@@ -163,7 +165,7 @@ inline void piece_data::clear() {
 }
 
 inline void piece_data::do_quiet(const Color& c, const Piece& p,
-				 const Square& f, const Square& t) {
+				 const Square& f, const Square& t, info& ifo) {
 
   // bitmaps
   U64 fto = bitboards::squares[f] | bitboards::squares[t];
@@ -183,55 +185,56 @@ inline void piece_data::do_quiet(const Color& c, const Piece& p,
   piece_on[f] = no_piece;
   
   // zobrist update
+  ifo.pkey ^= (zobrist::piece(f, c, p) | zobrist::piece(t, c, p));
 }
 
 inline void piece_data::do_cap(const Color& c, const Piece& p,
-			const Square& f, const Square& t) {
+			       const Square& f, const Square& t, info& ifo) {
   Color them = Color(c ^ 1);
   Piece cap = piece_on[t];
-  remove_piece(them, cap, t);
-  do_quiet(c, p, f, t);
+  remove_piece(them, cap, t, ifo);
+  do_quiet(c, p, f, t, ifo);
 }
 
 inline void piece_data::do_promotion(const Color& c, const Piece& p,
-			      const Square& f, const Square& t) {
-  remove_piece(c, Piece::pawn, f);
-  add_piece(c, p, t);
+				     const Square& f, const Square& t, info& ifo) {
+  remove_piece(c, Piece::pawn, f, ifo);
+  add_piece(c, p, t, ifo);
 }
   
-inline void piece_data::do_ep(const Color& c, const Square& f, const Square& t) {
+inline void piece_data::do_ep(const Color& c, const Square& f, const Square& t, info& ifo) {
   Color them = Color(c ^ 1);
   Square cs = Square(them == white ? t + 8 : t - 8);
-  remove_piece(them, Piece::pawn, cs);
-  do_quiet(c, Piece::pawn, f, t);
+  remove_piece(them, Piece::pawn, cs, ifo);
+  do_quiet(c, Piece::pawn, f, t, ifo);
 }
 
 inline void piece_data::do_promotion_cap(const Color& c, const Piece& p,
-				  const Square& f, const Square& t) {
+					 const Square& f, const Square& t, info& ifo) {
   Color them = Color(c ^ 1);
   Piece cap = piece_on[t];
-  remove_piece(them, cap, t);
-  remove_piece(c, Piece::pawn, f);
-  add_piece(c, p, t);
+  remove_piece(them, cap, t, ifo);
+  remove_piece(c, Piece::pawn, f, ifo);
+  add_piece(c, p, t, ifo);
 }
 
-inline void piece_data::do_castle_ks(const Color& c, const Square& f, const Square& t) {
+inline void piece_data::do_castle_ks(const Color& c, const Square& f, const Square& t, info& ifo) {
   Square rf = (c == white ? H1 : H8);
   Square rt = (c == white ? F1 : F8);
   
-  do_quiet(c, king, f, t);
-  do_quiet(c, rook, rf, rt);
+  do_quiet(c, king, f, t, ifo);
+  do_quiet(c, rook, rf, rt, ifo);
 }
 
-inline void piece_data::do_castle_qs(const Color& c, const Square& f, const Square& t) {
+inline void piece_data::do_castle_qs(const Color& c, const Square& f, const Square& t, info& ifo) {
   Square rf = (c == white ? A1 : A8);
   Square rt = (c == white ? D1 : D8);
   
-  do_quiet(c, king, f, t);
-  do_quiet(c, rook, rf, rt);    
+  do_quiet(c, king, f, t, ifo);
+  do_quiet(c, rook, rf, rt, ifo);    
 }
 
-inline void piece_data::remove_piece(const Color& c, const Piece& p, const Square& s) {
+inline void piece_data::remove_piece(const Color& c, const Piece& p, const Square& s, info& ifo) {
   U64 sq = bitboards::squares[s];
   bycolor[c] ^= sq;
   bitmap[c][p] ^= sq;
@@ -248,10 +251,11 @@ inline void piece_data::remove_piece(const Color& c, const Piece& p, const Squar
   piece_idx[c][p][s] = 0;
   color_on[s] = no_color;
   piece_on[s] = no_piece;
-  // zobrist update 
+  // zobrist update
+  ifo.pkey ^= zobrist::piece(s, c, p);
 }
 
-inline void piece_data::add_piece(const Color& c, const Piece& p, const Square& s) {  
+inline void piece_data::add_piece(const Color& c, const Piece& p, const Square& s, info& ifo) {  
   U64 sq = bitboards::squares[s];
   bycolor[c] |= sq;
   bitmap[c][p] |= sq;
@@ -265,9 +269,10 @@ inline void piece_data::add_piece(const Color& c, const Piece& p, const Square& 
   piece_idx[c][p][s] = number_of[c][p];
   color_on[s] = c;
   //zobrist update
+  ifo.pkey |= zobrist::piece(s, c, p);
 }
 
-inline void piece_data::set(const Color& c, const Piece& p, const Square& s) {
+inline void piece_data::set(const Color& c, const Piece& p, const Square& s, info& ifo) {
   bitmap[c][p] |= bitboards::squares[s];
   bycolor[c] |= bitboards::squares[s];
   color_on[s] = c;
@@ -276,6 +281,8 @@ inline void piece_data::set(const Color& c, const Piece& p, const Square& s) {
   square_of[c][p][number_of[c][p]] = s;
   piece_on[s] = p;
   if (p == Piece::king) king_sq[c] = s;
+
+  ifo.pkey |= zobrist::piece(s, c, p);
 }
 
 #endif

@@ -25,27 +25,13 @@ bool uci::parse_command(const std::string& input) {
       std::istringstream fen(START_FEN);
       p.setup(cmd == "startpos" ? fen : instream);
       p.print();
-
-      
-      Movegen mvs(p);
-      mvs.generate<pseudo_legal, pieces>();
-      
-      int count = 0;
-      for (int i=0; i<mvs.size(); ++i) {
-	if (p.is_legal(mvs[i])) {
-	  //p.do_move(m);
-	  //p.undo_move(m);
-	  ++count;
-	}
-      }
-      p.print();
-      mvs.print();
-      std::cout << "made " << count << " mvs of " << mvs.size() << std::endl;
-      
-      
+      std::cout << "position hash key: " << p.key() << std::endl;
+      std::cout << "data hash key: " << p.dkey() << std::endl;
     }
     else if (cmd == "d") {
       p.print();
+      std::cout << "position hash key: " << p.key() << std::endl;
+      std::cout << "data hash key: " << p.dkey() << std::endl;
     }
     else if (cmd == "undo") {
       p.undo_move(dbgmove);
