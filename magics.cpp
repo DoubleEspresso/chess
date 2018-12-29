@@ -24,7 +24,7 @@ namespace magics {
   } // end namespace detail
 }
 
-U64 magics::next_magic(const unsigned int& bits, util::rand& r) {
+U64 magics::next_magic(const unsigned int& bits, util::rand<unsigned int>& r) {
   U64 res = 0ULL;
   for (unsigned int i=0; i<bits; ++i) res |= (1ULL << (r.next() & 63));
   return res;
@@ -62,7 +62,7 @@ bool magics::load() {
   
   std::vector<U64> occupancy, atks, used;
   occupancy.reserve(4096); atks.reserve(4096); used.reserve(4096);
-  util::rand r;
+  util::rand<unsigned int> r;
 
   // 4096 is computed from counting the number of possible blockers for a rook/bishop at a given square.
   // E.g. the rook@A1 has 12 squares which can be blocked (A8,H1 have been removed)

@@ -19,30 +19,22 @@
 
 struct Move;
 
-  struct checkinfo {
-    U64 disc_checks;
-    U64 contact;
-    U64 forks;
-    U64 more_than_one;
-    U64 blockers; // pieces blocking disc checks
-  };
-
-  struct info {
-    Color stm;
-    Square eps;
-    Square ks[2];
-    bool incheck;
-    Piece captured;    
-    U8 move50;
-    U16 hmvs;
-    U16 cmask; // castle mask
-    U64 checkers;
-    U64 pinned;
-    U64 key; // position
-    U64 mKey; // material
-    U64 pKey; // pawn
-    U64 dKey; // data ?
-  };
+struct info {
+  U64 checkers;
+  U64 pinned;
+  U64 pkey;
+  U64 dkey;
+  U64 mkey;
+  U64 pawnkey;
+  U16 hmvs;
+  U16 cmask;
+  U8 move50;
+  Color stm;
+  Square eps;
+  Square ks[2];
+  Piece captured;    
+  bool incheck;
+};
 
 struct piece_data {
   
@@ -90,7 +82,7 @@ struct piece_data {
 
 class position {  
   std::thread owner;  
-  info history[1024];
+  info history[512];
   info ifo;
   piece_data pcs;
   U64 hidx;
@@ -210,8 +202,8 @@ inline void piece_data::do_promotion(const Color& c, const Piece& p,
 inline void piece_data::do_ep(const Color& c, const Square& f, const Square& t) {
   Color them = Color(c ^ 1);
   Square cs = Square(them == white ? t + 8 : t - 8);
-    remove_piece(them, Piece::pawn, cs);
-    do_quiet(c, Piece::pawn, f, t);
+  remove_piece(them, Piece::pawn, cs);
+  do_quiet(c, Piece::pawn, f, t);
 }
 
 inline void piece_data::do_promotion_cap(const Color& c, const Piece& p,

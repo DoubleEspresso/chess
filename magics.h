@@ -19,7 +19,7 @@ namespace magics {
   template<Piece p>
   U64 attacks(const U64& occ, const Square& s);
  
-  U64 next_magic(const unsigned int& bits, util::rand& r);  
+  U64 next_magic(const unsigned int& bits, util::rand<unsigned int>& r);  
   bool load();    
 }
 

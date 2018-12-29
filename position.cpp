@@ -1,5 +1,6 @@
 #include "position.h"
 #include "move.h"
+#include "zobrist.h"
 
 position::position(std::istringstream& fen) { setup(fen); }
 						    
@@ -79,16 +80,21 @@ void position::do_move(const Move& m) {
   
   if (t == quiet) {
     pcs.do_quiet(us, p, from, to);
+    ifo.pkey ^= (zobrist::piece(from, us, p) | zobrist::piece(to, us, p));
   }
   
   else if (t == capture) {
     ifo.captured = piece_on(to); 
     pcs.do_cap(us, p, from, to);
+    ifo.pkey ^= (zobrist::piece(to, Color(us^1), ifo.captured));
+    ifo.pkey ^= (zobrist::piece(from, us, p) | zobrist::piece(to, us, p));
   }
 
   else if (t == ep) {
     ifo.captured = pawn;
     pcs.do_ep(us, from, to);
+    ifo.pkey ^= (zobrist::piece(Square(us == white ? to-8:to+8), Color(us^1), pawn));
+    ifo.pkey ^= (zobrist::piece(from, us, p) | zobrist::piece(to, us, p));
   }
 
   else if (t < capture_promotion_q) pcs.do_promotion(us, (t == promotion_q ? queen :
@@ -157,7 +163,7 @@ void position::undo_move(const Move& m) {
   }
 
   else if (t < capture_promotion_q) {
-    pcs.remove_piece(us, piece_on(from), from); // promoted piece
+    pcs.remove_piece(us, piece_on(from), from);
     pcs.add_piece(us, pawn, to);
   }
   
@@ -310,7 +316,9 @@ void position::set_piece(const char& p, const Square& s) {
   Piece piece = Piece(idx < 6 ? idx : idx - 6);  
   pcs.set(color, piece, s);
   if (piece == king) ifo.ks[color] = s;
-    
+  
+  ifo.pkey ^= zobrist::piece(s, color, piece);
+  
   // update zobrist keys
   // update material entries
   // update pawn keys
@@ -319,7 +327,7 @@ void position::set_piece(const char& p, const Square& s) {
 void position::clear() {
   pcs.clear();
   hidx = 0;
-  ifo = {};
+  ifo = {};  
 }
 
 void position::print() {

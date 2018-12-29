@@ -8,6 +8,7 @@
 #include "bitboards.h"
 #include "uci.h"
 #include "magics.h"
+#include "zobrist.h"
 
 std::unique_ptr<options> opts;
 
@@ -16,6 +17,8 @@ int main(int argc, char * argv[]) {
   opts = std::unique_ptr<options>(new options(argc, argv));
    
   greeting();
+  
+  zobrist::load();
   bitboards::load();  
   magics::load();    
 

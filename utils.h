@@ -31,14 +31,15 @@ namespace util {
       (same_row(s1, s2) && same_row(s1, s3)) ||
       (on_diagonal(s1, s3) && on_diagonal(s1, s2) && on_diagonal(s2, s3));
   }
-  
+
+  template<typename T>
   class rand {
     std::mt19937 gen;
-    std::uniform_int_distribution<unsigned int> dis;
+    std::uniform_int_distribution<T> dis;
     public:
     rand() : gen(0), dis(0, UINT_MAX) { }
     
-    unsigned int next() { return dis(gen); }
+    T next() { return dis(gen); }
   };     
 
 

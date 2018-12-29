@@ -46,10 +46,6 @@ struct Move {
 };
 
 class Movegen {
-
-  util::clock init_clock;
-  util::clock tmp_clock;
-  
   int it, last;
   Move list[218]; // max moves in any chess position
   Color us, them;

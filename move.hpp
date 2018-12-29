@@ -85,11 +85,8 @@ inline void Movegen::initialize(const position& p) {
   can_castle_ks = p.can_castle_ks();
   can_castle_qs = p.can_castle_qs();
 
-  // todo : refactor to one capture-target, and one quiet-target
-  // check handling  
-  check_target = p.checkers(); // checking piece(s)
+  check_target = p.checkers();
   evasion_target = 0ULL;
-  
   
   if (check_target != 0ULL && !bits::more_than_one(check_target)) { // only 1 checker
     U64 tmp = check_target;
@@ -133,7 +130,10 @@ inline void Movegen::initialize(const position& p) {
 
 
 inline void Movegen::pawn_quiets(U64& single, U64& dbl) {
-  single = pawns & pawnmask[us]; // filter the promotion candidates
+
+  if (pawns == 0ULL) return;
+  
+  single = pawns & pawnmask[us]; // filter the promotion candidates  
   dbl = pawns & rank2;
 
   auto s = (us == white ? shift<N> : shift<S>);
@@ -149,7 +149,10 @@ inline void Movegen::pawn_quiets(U64& single, U64& dbl) {
 }
 
 
-inline void Movegen::pawn_caps(U64& left, U64& right, U64& ep_left, U64& ep_right) {  
+inline void Movegen::pawn_caps(U64& left, U64& right, U64& ep_left, U64& ep_right) {
+
+  if (pawns == 0ULL) return;
+  
   // normal captures - non promotions
   left = pawns & pawnmaskleft[us];
   right = pawns & pawnmaskright[us];   
