@@ -21,7 +21,7 @@ namespace zobrist {
     U64 stm_rands[2];
     U64 move50_rands[50];
   }
-};
+}
 
 
 inline bool zobrist::load() {
