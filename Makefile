@@ -1,105 +1,79 @@
-# architecture
-ARCH = $(shell uname -p)
-BITS = $(shell uname -m)
-OS = $(shell uname) 
-OSFLAVOR =
+###########################################################
 
-USERMACROS = -DNDEBUG
-CFLAGS = -Wall -pedantic -O3 -fomit-frame-pointer -fstrict-aliasing -ffast-math -std=c++11 -mavx
-DFLAGS =
-LFLAGS =
-INSTALL = /usr/local/bin
-GIT_VERSION =
+## USER SPECIFIC DIRECTORIES ##
 
-# build info
-SRC := main.cpp magics.cpp bitboards.cpp position.cpp uci.cpp zobrist.cpp
+# CUDA directory:
+CUDA_ROOT_DIR=/usr/local/cuda
 
-# compiler
-ifeq ($(COMP),)
-   CC = g++
-else
-   CC = $(COMP)
-endif
+##########################################################
 
-# arch
+## CC COMPILER OPTIONS ##
 
-# bits
-ifeq ($(BITS),x86_64)
-   EXE_BITS = 64
-   CFLAGS += -m64
-   USERMACROS += -DBIT_64
-else
-   EXE_BITS = 32
-   CFLAGS += -m32
-   USERMACROS += -DBIT_32
-endif
+# CC compiler options:
+CC=g++
+CC_FLAGS= -std=c++11 #-Wall -pedantic -O3 -fomit-frame-pointer -fstrict-aliasing -ffast-math -std=c++11 -mavx
+CC_LIBS= #-lpthread
 
-# prefetch
-ifeq ($(USE_PREFETCH),true)
-   USERMACROS += -DUSE_PREFETCH
-endif
+##########################################################
 
-# os
-ifeq ($(OS),Darwin )
-   EXE_OS = osx
-   USERMACROS += -DOSX
-endif
+## NVCC COMPILER OPTIONS ##
 
-ifeq ($(OS),Linux )
-   EXE_OS = nix
-   USERMACROS += -DUnix
-endif
+# NVCC compiler options:
+NVCC=nvcc
+NVCC_FLAGS=-Xptxas -O3 -rdc=true -std=c++11
+NVCC_LIBS=
 
-# executable
+# CUDA library directory:
+CUDA_LIB_DIR= -L$(CUDA_ROOT_DIR)/lib64
+# CUDA include directory:
+CUDA_INC_DIR= -I$(CUDA_ROOT_DIR)/include
+# CUDA linking libraries:
+CUDA_LINK_LIBS= -lcudart
+
+##########################################################
+
+## Project file structure ##
+
+# Source file directory:
+SRC_DIR = .
+
+# Object file directory:
+OBJ_DIR = .
+
+# Include header file diretory:
+INC_DIR = .
+
+##########################################################
+
+## Make variables ##
+
+# Target executable name:
 EXE = chess.exe
 
-# git version info
-GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always --tags)
-USERMACROS += -DBUILD_DATE="\"$$(date)\""
-USERMACROS += -DVERSION=\"$(GIT_VERSION)\"
+# Object files:
+OBJS = $(OBJ_DIR)/main.o $(OBJ_DIR)/magics.o $(OBJ_DIR)/bitboards.o $(OBJ_DIR)/position.o $(OBJ_DIR)/uci.o $(OBJ_DIR)/zobrist.o $(OBJ_DIR)/test.o
 
-OBJ := $(patsubst %.cpp, %.o, $(filter %.cpp,$(SRC)))
+##########################################################
 
-.PHONY:all
-all: information link
+## Compile ##
 
-debug: CFLAGS += -g -ggdb
-debug: USERMACROS:=$(filter-out -DNDEBUG, $(USERMACROS))
-debug: USERMACROS += -DDEBUG
-debug: all
+# Link c++ and CUDA compiled object files to target executable:
+$(EXE) : $(OBJS)
+	$(CC) $(CC_FLAGS) $(OBJS) -o $@ $(CUDA_INC_DIR) $(CUDA_LIB_DIR) $(CUDA_LINK_LIBS)
 
-information:
-	@echo ".............................."
-	@echo "...ARCH    = "$(ARCH)
-	@echo "...BITS    = "$(BITS)
-	@echo "...CC      = "$(CC)
-	@echo "...OS      = "$(OS)
-	@echo "...CFLAGS  = "$(CFLAGS)
-	@echo "...MACROS  = "$(USERMACROS)
-	@echo "...EXE     = "$(EXE)
-	@echo "..............................."
-	@echo ""
+# Compile main .cpp file to object files:
+$(OBJ_DIR)/%.o : %.cpp
+	$(CC) $(CC_FLAGS) -c $< -o $@
 
-link: $(OBJ)
-	$(CC) -o $(EXE) $(OBJ) $(LFLAGS)
+# Compile C++ source files to object files:
+$(OBJ_DIR)/%.o : $(SRC_DIR)/%.cpp include/%.h
+	$(CC) $(CC_FLAGS) -c $< -o $@
 
-%.o:%.cpp
-	$(CC) -c $(CFLAGS) $(USERMACROS) $< -o $@
+# Compile CUDA source files to object files:
+$(OBJ_DIR)/%.o : $(SRC_DIR)/%.cu
+	$(NVCC) $(NVCC_FLAGS) -c $< -o $@ $(NVCC_LIBS)
 
-install: all
-	if [ ! -d $(INSTALL) ]; then \
-		mkdir -p $(INSTALL); \
-	fi 
-	mv $(EXE) $(INSTALL)
-	find . -name "*.o" | xargs rm -vf 
-
-TAGS:   $(SRC)
-	etags $(SRC)
-
-depend:
-	makedepend -- $(DFLAGS) -- $(SRC)
-
-.PHONY:clean
+# Clean objects in object directory.
 clean:
 	find . -name "*.o" | xargs rm -vf
 	find . -name "*.ii" | xargs rm -vf
