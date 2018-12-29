@@ -184,7 +184,6 @@ inline void piece_data::do_quiet(const Color& c, const Piece& p,
   piece_on[t] = p;
   piece_on[f] = no_piece;
   
-  // zobrist update
   ifo.pkey ^= (zobrist::piece(f, c, p) | zobrist::piece(t, c, p));
 }
 
@@ -251,7 +250,6 @@ inline void piece_data::remove_piece(const Color& c, const Piece& p, const Squar
   piece_idx[c][p][s] = 0;
   color_on[s] = no_color;
   piece_on[s] = no_piece;
-  // zobrist update
   ifo.pkey ^= zobrist::piece(s, c, p);
 }
 
@@ -259,16 +257,12 @@ inline void piece_data::add_piece(const Color& c, const Piece& p, const Square& 
   U64 sq = bitboards::squares[s];
   bycolor[c] |= sq;
   bitmap[c][p] |= sq;
-
-  // bug here - we are overwriting the "other" piece -- see previous code for how this was handled..
-  // e.g. if we have 2-rooks, one is captured, then we undo the capture, number_of = 2 (again)
   
   number_of[c][p] += 1;
   square_of[c][p][number_of[c][p]] = s;
   piece_on[s] = p;
   piece_idx[c][p][s] = number_of[c][p];
   color_on[s] = c;
-  //zobrist update
   ifo.pkey |= zobrist::piece(s, c, p);
 }
 

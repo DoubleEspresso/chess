@@ -21,10 +21,14 @@ void position::setup(std::istringstream& fen) {
   ifo.dkey ^= zobrist::stm(ifo.stm);
   
   // the castle rights
-  fen >> token;
-  
+  fen >> token;  
   ifo.cmask = U16(0);
-  for (auto& c : token) ifo.cmask |= CastleRights.at(c);
+  for (auto& c : token) {
+    U16 cr = CastleRights.at(c);
+    ifo.cmask |= cr;
+    ifo.dkey ^= zobrist::castle(ifo.stm, cr);
+  }
+  
 
   // ep square
   fen >> token;
@@ -67,15 +71,28 @@ void position::do_move(const Move& m) {
     pcs.king_sq[us] = to;
     ifo.ks[us] = to;
     ifo.cmask &= (us == white ? clearw : clearb);
+    ifo.dkey ^= (us == white ? zobrist::castle(white, clearw) : zobrist::castle(black, clearb));
   }
   else if (p == rook) {
     if (us == white) {
-      if (from == A1) ifo.cmask &= clearwqs;
-      else if (from == H1) ifo.cmask &= clearwks;      
+      if (from == A1) {
+	ifo.cmask &= clearwqs;
+	ifo.dkey ^= zobrist::castle(white, clearwqs);
+      }
+      else if (from == H1) {
+	ifo.cmask &= clearwks;	
+	ifo.dkey ^= zobrist::castle(white, clearwks);
+      }
     }
     else {
-      if (from == A8) ifo.cmask &= clearbqs;
-      else if (from == H8) ifo.cmask &= clearbks;      
+      if (from == A8) {
+	ifo.cmask &= clearbqs;
+	ifo.dkey ^= zobrist::castle(white, clearbqs);
+      }
+      else if (from == H8) {
+	ifo.cmask &= clearbks;
+	ifo.dkey ^= zobrist::castle(white, clearbks);
+      }
     }
   }
 
@@ -317,11 +334,7 @@ void position::set_piece(const char& p, const Square& s) {
   Color color = (idx < 6 ? white : black);
   Piece piece = Piece(idx < 6 ? idx : idx - 6);  
   pcs.set(color, piece, s, ifo);
-  if (piece == king) ifo.ks[color] = s; 
-  
-  // update zobrist keys
-  // update material entries
-  // update pawn keys
+  if (piece == king) ifo.ks[color] = s;  
 }
 
 void position::clear() {
