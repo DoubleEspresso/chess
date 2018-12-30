@@ -3,7 +3,7 @@
 
 CC=g++
 CC_FLAGS= -Wall -pedantic -O3 -fomit-frame-pointer -fstrict-aliasing -ffast-math -std=c++11 -mavx
-CC_LIBS= -lpthread
+CC_LIBS=
 
 ##########################################################
 ## Sources
@@ -11,7 +11,7 @@ CC_LIBS= -lpthread
 SRC_DIR = .
 OBJ_DIR = .
 INC_DIR = .
-CC_SRCS = main.cpp magics.cpp bitboards.cpp position.cpp uci.cpp zobrist.cpp
+CC_SRCS = main.cpp magics.cpp bitboards.cpp position.cpp hashtable.cpp uci.cpp zobrist.cpp
 CU_SRCS = test.cu
 
 ##########################################################

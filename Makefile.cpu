@@ -3,7 +3,7 @@
 
 CC=g++
 CC_FLAGS= -Wall -pedantic -O3 -fomit-frame-pointer -fstrict-aliasing -ffast-math -std=c++11 -mavx
-CC_LIBS= -lpthread
+CC_LIBS=
 
 ifeq ($(DBG),true)
      CC_FLAGS += -g -ggdb
@@ -15,7 +15,7 @@ endif
 SRC_DIR = .
 OBJ_DIR = .
 INC_DIR = .
-CC_SRCS = main.cpp magics.cpp bitboards.cpp position.cpp uci.cpp zobrist.cpp
+CC_SRCS = main.cpp magics.cpp bitboards.cpp hashtable.cpp position.cpp uci.cpp zobrist.cpp
 
 
 EXE = chess.exe
