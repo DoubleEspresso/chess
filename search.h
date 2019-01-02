@@ -9,7 +9,7 @@ enum Nodetype { root, pv, non_pv };
 namespace Search {
   
   template<Nodetype type>
-  int16 go(position& p, int16 alpha, int16 beta, U16 depth);
+  Score search(position& p, int16 alpha, int16 beta, U16 depth);
   
 }
 

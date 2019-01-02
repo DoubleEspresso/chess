@@ -87,8 +87,8 @@ bool uci::parse_command(const std::string& input) {
     else if (cmd == "go") {
       int16 alpha = -9999;
       int16 beta = 9999;
-      U16 depth = 32;
-      search_threads.enqueue(Search::go<root>, p, alpha, beta, depth); 
+      U16 depth = 6;
+      search_threads.enqueue(Search::search<root>, p, alpha, beta, depth); 
     }
     else if (cmd == "exit" || cmd == "quit") {
       running = false;

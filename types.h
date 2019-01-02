@@ -51,6 +51,7 @@ enum Square {
 };
 enum Row { r1, r2, r3, r4, r5, r6, r7, r8, rows, no_row };
 enum Col { A, B, C, D, E, F, G, H, cols, no_col };
+enum Score { inf = 9999, ninf = -9999, mate = inf-1, mated = ninf + 1 };
 
 const std::string SanSquares[64] =
   {
