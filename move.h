@@ -37,12 +37,11 @@ enum Movetype {
 struct Move {
   U8 f;
   U8 t;
-  Movetype type;
-  //int val;
+  Movetype type; // 4 bytes
+  int16 val;
   inline void set(const U8& frm, const U8& to, const Movetype& mt) {
     f = frm; t = to; type = mt;
   }
-  
 };
 
 class Movegen {
