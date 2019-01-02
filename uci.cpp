@@ -1,6 +1,7 @@
 #include "uci.h"
 #include "move.h"
 #include "bench.h"
+#include "search.h"
 
 position p;
 Move dbgmove;
@@ -82,6 +83,12 @@ bool uci::parse_command(const std::string& input) {
     else if (cmd == "divide" && instream >> cmd) {
       Perft perft;
       perft.divide(p, atoi(cmd.c_str()));
+    }
+    else if (cmd == "go") {
+      int16 alpha = -9999;
+      int16 beta = 9999;
+      U16 depth = 32;
+      search_threads.enqueue(Search::go<root>, p, alpha, beta, depth); 
     }
     else if (cmd == "exit" || cmd == "quit") {
       running = false;
