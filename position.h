@@ -37,7 +37,7 @@ struct info {
   bool incheck;
 };
 
-struct piece_data {
+struct piece_data {  
   
   std::array<U64, 2> bycolor;
   std::array<Square, 2> king_sq;
@@ -47,7 +47,10 @@ struct piece_data {
   std::array<std::array<U64, squares>, colors> bitmap;
   std::array<std::array<std::array<int, squares>, pieces>, 2> piece_idx;
   std::array<std::array<std::array<Square, 11>, pieces>, 2> square_of;
-  
+
+  piece_data() { };
+  piece_data(const piece_data& pd);
+  piece_data& operator=(const piece_data& pd);
   
   // utility methods for moving pieces
   void clear();
@@ -95,9 +98,9 @@ class position {
   position(const position& p, const std::thread& t);
   position(const position& p);
   position(const position&& p);
-  position& operator=(const position&);
+  position& operator=(const position& p);
   position& operator=(const position&&);
-  ~position() { } 
+  ~position() { std::cout << "position d'tor" << std::endl; } 
 
   // setup/clear a position
   void setup(std::istringstream& fen);

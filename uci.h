@@ -19,4 +19,5 @@ namespace uci {
   bool parse_command(const std::string& input);
 }
 
+
 #endif

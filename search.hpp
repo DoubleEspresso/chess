@@ -1,9 +1,55 @@
+#include <memory>
+
 #include "position.h"
 #include "move.h"
 #include "types.h"
 #include "hashtable.h"
+#include "utils.h"
 
-Threadpool search_threads(4);
+Threadpool search_threads(5);
+
+
+void Search::start(position& p, U16 depth) {
+  
+  std::vector<std::unique_ptr<position>> pv;
+  
+  search_threads.enqueue(search_timer);
+  is_searching = true;
+  for (unsigned i=0; i < search_threads.size() - 2; ++i) {
+
+    if (i != 0) continue; // just 1 thread for now
+
+    pv.emplace_back(make_unique<position>(p));
+    search_threads.enqueue(iterative_deepening, *pv[i], depth);
+  }
+
+  search_threads.wait_finished();
+  is_searching = false;
+}
+
+
+
+void Search::search_timer() {
+  std::cout << "timer starts" << std::endl;
+  std::cout << "timer stops" << std::endl;
+  return;
+}
+
+
+void Search::iterative_deepening(position& p, U16 depth) {
+
+  int16 alpha = ninf;
+  int16 beta = inf;
+  Score eval = ninf;
+
+  
+  for (unsigned id = 1; id <= depth; ++id) {
+    eval = search<root>(p, alpha, beta, id);
+  }
+  std::cout << " eval = " << eval << std::endl;
+}
+
+
 
 template<Nodetype type>
 Score Search::search(position& p, int16 alpha, int16 beta, U16 depth) {

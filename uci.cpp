@@ -2,9 +2,11 @@
 #include "move.h"
 #include "bench.h"
 #include "search.h"
+#include "threads.h"
 
 position p;
 Move dbgmove;
+Threadpool worker(1);
 
 void uci::loop() {
   std::string input = "";
@@ -84,11 +86,10 @@ bool uci::parse_command(const std::string& input) {
       Perft perft;
       perft.divide(p, atoi(cmd.c_str()));
     }
-    else if (cmd == "go") {
-      int16 alpha = -9999;
-      int16 beta = 9999;
-      U16 depth = 6;
-      search_threads.enqueue(Search::search<root>, p, alpha, beta, depth); 
+    else if (!Search::is_searching && cmd == "go" && instream >> cmd) {     
+      
+      int depth = atoi(cmd.c_str());
+      worker.enqueue(Search::start, p, depth);
     }
     else if (cmd == "exit" || cmd == "quit") {
       running = false;

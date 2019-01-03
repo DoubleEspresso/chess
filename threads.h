@@ -21,7 +21,8 @@ class Threadpool {
   std::atomic_uint busy;
   std::atomic_uint processed;
   std::atomic_bool stop;
-
+  unsigned int num_threads;
+  
   void thread_func() {
     while (true) {
       std::unique_lock<std::mutex> lock(m);
@@ -44,7 +45,7 @@ class Threadpool {
  public:
   
  Threadpool(const unsigned int n = std::thread::hardware_concurrency()-1) :
-  busy(0), processed(0), stop(false)
+  busy(0), processed(0), stop(false), num_threads(n)
     {
       for (unsigned int i=0; i<n; ++i)
 	workers.emplace_back(std::bind(&Threadpool::thread_func, this));
@@ -58,6 +59,8 @@ class Threadpool {
     tasks.emplace_back(std::bind(std::forward<T>(f), std::ref(std::forward<Args>(args))...));
     cv_task.notify_one();
   }
+
+  unsigned int size() { return num_threads; }
   
   void wait_finished() {
     std::unique_lock<std::mutex> lock(m);
@@ -75,5 +78,6 @@ class Threadpool {
   }
 };
 
+extern Threadpool search_threads;
 
 #endif

@@ -2,7 +2,50 @@
 #include "move.h"
 
 position::position(std::istringstream& fen) { setup(fen); }
-						    
+
+position::position(const position& p) {
+  std::cout << "position copy c'tor" << std::endl;
+  std::copy(std::begin(p.history), std::end(p.history), std::begin(history));
+  ifo = p.ifo;
+  pcs = p.pcs;
+  hidx = p.hidx;
+  print();
+}
+
+position& position::operator=(const position& p) {
+  std::copy(std::begin(p.history), std::end(p.history), std::begin(history));
+  ifo = p.ifo;
+  pcs = p.pcs;
+  hidx = p.hidx;
+  return *(this);
+}
+
+piece_data::piece_data(const piece_data& pd) {
+  std::cout << "piece data copy c'tor" << std::endl;
+  std::copy(std::begin(pd.bycolor), std::end(pd.bycolor), std::begin(bycolor));
+  std::copy(std::begin(pd.king_sq), std::end(pd.king_sq), std::begin(king_sq));
+  std::copy(std::begin(pd.color_on), std::end(pd.color_on), std::begin(color_on));
+  std::copy(std::begin(pd.piece_on), std::end(pd.piece_on), std::begin(piece_on));
+  std::copy(std::begin(pd.number_of), std::end(pd.number_of), std::begin(number_of));
+  std::copy(std::begin(pd.bitmap), std::end(pd.bitmap), std::begin(bitmap));
+  std::copy(std::begin(pd.piece_idx), std::end(pd.piece_idx), std::begin(piece_idx));
+  std::copy(std::begin(pd.square_of), std::end(pd.square_of), std::begin(square_of));
+}
+
+piece_data& piece_data::operator=(const piece_data& pd) {
+  std::cout << "piece data copy c'tor" << std::endl;
+  std::copy(std::begin(pd.bycolor), std::end(pd.bycolor), std::begin(bycolor));
+  std::copy(std::begin(pd.king_sq), std::end(pd.king_sq), std::begin(king_sq));
+  std::copy(std::begin(pd.color_on), std::end(pd.color_on), std::begin(color_on));
+  std::copy(std::begin(pd.piece_on), std::end(pd.piece_on), std::begin(piece_on));
+  std::copy(std::begin(pd.number_of), std::end(pd.number_of), std::begin(number_of));
+  std::copy(std::begin(pd.bitmap), std::end(pd.bitmap), std::begin(bitmap));
+  std::copy(std::begin(pd.piece_idx), std::end(pd.piece_idx), std::begin(piece_idx));
+  std::copy(std::begin(pd.square_of), std::end(pd.square_of), std::begin(square_of));
+  return (*this);
+}
+
+
 void position::setup(std::istringstream& fen) {
   clear();
   std::string token;

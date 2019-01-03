@@ -3,7 +3,7 @@
 
 CC=g++
 CC_FLAGS= -Wall -pedantic -O3 -fomit-frame-pointer -fstrict-aliasing -ffast-math -std=c++11 -mavx
-CC_LIBS=
+CC_LIBS=-lpthread
 
 ifeq ($(DBG),true)
      CC_FLAGS += -g -ggdb
