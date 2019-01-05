@@ -90,6 +90,7 @@ class position {
   info ifo;
   piece_data pcs;
   U64 hidx;
+  U64 nodes_searched;
   
  public:
   position() {}
@@ -100,7 +101,7 @@ class position {
   position(const position&& p);
   position& operator=(const position& p);
   position& operator=(const position&&);
-  ~position() { std::cout << "position d'tor" << std::endl; } 
+  ~position() { } 
 
   // setup/clear a position
   void setup(std::istringstream& fen);
@@ -140,6 +141,9 @@ class position {
   inline Square king_square() const { return ifo.ks[ifo.stm]; }
 
   inline Color color_on(const Square& s) { return pcs.color_on[s]; }
+
+  inline U64 nodes() const { return nodes_searched; }
+  inline void adjust_nodes(const U64& dn) { nodes_searched += dn; }
   
   template<Color c, Piece p>
   inline U64 get_pieces() const { return pcs.bitmap[c][p]; }

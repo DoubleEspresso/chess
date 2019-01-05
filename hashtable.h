@@ -48,6 +48,8 @@ class hash_table {
 	    const Move& m,
 	    const int16& score);
   bool fetch(const U64& key, entry& e);
+  bool searching(const U64& key, const U64& dkey);
+  void unset_searching(const U64& key);
   inline entry * first_entry(const U64& key);
   void clear();
 };

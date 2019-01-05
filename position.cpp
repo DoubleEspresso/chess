@@ -9,7 +9,7 @@ position::position(const position& p) {
   ifo = p.ifo;
   pcs = p.pcs;
   hidx = p.hidx;
-  print();
+  nodes_searched = p.nodes_searched;
 }
 
 position& position::operator=(const position& p) {
@@ -17,6 +17,7 @@ position& position::operator=(const position& p) {
   ifo = p.ifo;
   pcs = p.pcs;
   hidx = p.hidx;
+  nodes_searched = p.nodes_searched;
   return *(this);
 }
 
@@ -202,6 +203,7 @@ void position::do_move(const Move& m) {
   ifo.incheck = is_attacked(king_square(), ifo.stm, us);
   ifo.checkers = (ifo.incheck ? attackers_of(king_square(), Color(ifo.stm^1)) : 0ULL);
   ifo.pinned = pinned();
+  ++nodes_searched;
 }
 
 void position::undo_move(const Move& m) {
@@ -383,6 +385,7 @@ void position::set_piece(const char& p, const Square& s) {
 void position::clear() {
   pcs.clear();
   hidx = 0;
+  nodes_searched = 0;
   ifo = {};  
 }
 
