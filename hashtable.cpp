@@ -41,19 +41,23 @@ bool hash_table::fetch(const U64& key, entry& e) {
 }
 
 
-bool hash_table::searching(const U64& key, const U64& dkey) {
+bool hash_table::searching(const U64& key, const U64& dkey, entry& eo) {
   entry * e = first_entry(key);
   U16 key16 = key >> 48;
   U16 data16 = dkey >> 48;
   
   for (unsigned i = 0; i < cluster_size; ++i, ++e) {
     if ((e->pkey ^ e->dkey) == key16) {
+
+      eo = *e;
+      
       if ((e->bound & 128) == 128) return true;
 
       break;
     }
   }
-  
+
+  eo = *e;
   e->pkey = key16 ^ data16;
   e->dkey = data16;
   e->bound |= 128;    

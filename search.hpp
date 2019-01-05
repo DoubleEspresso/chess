@@ -111,7 +111,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, unsigned t
 
     {
       //std::unique_lock<std::mutex> lock(mtx);
-      if (ttable.searching(p.key(), p.dkey())) {
+      if (ttable.searching(p.key(), p.dkey(), e)) {
 	p.adjust_nodes(-1);
 	p.undo_move(mvs[i]);
 	continue;
@@ -121,9 +121,10 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, unsigned t
     
     Score score = Score(depth <= 1 ? 0 : -search<non_pv>(p, -beta, -alpha, depth-1, tid));
 
+    e.bound ^= 128;
     //{
-    //std::unique_lock<std::mutex> lock(mtx);
-    //ttable.unset_searching(p.key());
+      //std::unique_lock<std::mutex> lock(mtx);
+      //ttable.unset_searching(p.key());
     //}
 
     p.undo_move(mvs[i]);
