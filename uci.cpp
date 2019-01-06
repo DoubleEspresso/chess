@@ -29,12 +29,10 @@ bool uci::parse_command(const std::string& input) {
       p.setup(cmd == "startpos" ? fen : instream);
       p.print();
       std::cout << "position hash key: " << p.key() << std::endl;
-      std::cout << "data hash key: " << p.dkey() << std::endl;
     }
     else if (cmd == "d") {
       p.print();
       std::cout << "position hash key: " << p.key() << std::endl;
-      std::cout << "data hash key: " << p.dkey() << std::endl;
     }
     else if (cmd == "undo") {
       p.undo_move(dbgmove);
@@ -47,7 +45,7 @@ bool uci::parse_command(const std::string& input) {
 	if (!p.is_legal(mvs[i])) continue;
 	std::string tmp = SanSquares[mvs[i].f] + SanSquares[mvs[i].t];
 	std::string ps = "";	
-	Movetype t = mvs[i].type;
+	Movetype t = Movetype(mvs[i].type);
 	
 	if (t >= 0 && t < capture_promotion_q) {
 	  ps = (t == 0 ? "q" :
@@ -62,7 +60,7 @@ bool uci::parse_command(const std::string& input) {
 	tmp += ps;
 	
 	if (tmp == cmd) {
-	  dbgmove.set(mvs[i].f, mvs[i].t, mvs[i].type);
+	  dbgmove.set(mvs[i].f, mvs[i].t, Movetype(mvs[i].type));
 	  isok = true;
 	  break;
 	}	

@@ -19,11 +19,12 @@ void Search::start(position& p, U16 depth) {
   util::clock c;
   c.start();
   
-  for (unsigned i=0; i < search_threads.size() - 2; ++i) {
+  for (unsigned i = 0; i < search_threads.size() - 2; ++i) {
 
     //if (i != 0) continue; // just 1 thread for now
 
     pv.emplace_back(make_unique<position>(p));
+    pv[i]->set_id(i);
     search_threads.enqueue(iterative_deepening, *pv[i], depth, i);
   }
 
@@ -43,8 +44,8 @@ void Search::start(position& p, U16 depth) {
 
 
 void Search::search_timer() {
-  std::cout << "timer starts" << std::endl;
-  std::cout << "timer stops" << std::endl;
+  //std::cout << "timer starts" << std::endl;
+  //std::cout << "timer stops" << std::endl;
   return;
 }
 
@@ -55,82 +56,94 @@ void Search::iterative_deepening(position& p, U16 depth, unsigned tid) {
   int16 beta = inf;
   Score eval = ninf;
 
-  /*
+  
   for (unsigned id = 1; id <= depth; ++id) {
-    eval = search<root>(p, alpha, beta, id);
+    
+    eval = search<root>(p, alpha, beta, id, tid);
+    
+    if (p.is_master()) {
+      readout_pv(p, eval, id);
+    }    
   }
-  */
-
-  eval = search<root>(p, alpha, beta, depth, tid);
-  std::cout << " eval = " << eval << std::endl;
+  
 }
 
 template<Nodetype type>
 Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, unsigned tid) {
 
   Score best_score = Score::ninf;
-  Move best_move;
+  Move best_move = {};
+
+  Move ttm;
+  Score ttvalue = Score::ninf;
   
-  //const bool in_check = p.in_check();
+  const bool in_check = p.in_check();
   //const bool pv_type = (type == root || type == pv);
   //const bool forward_prune = (!in_check && !pv_type);
 
-  // hashtable lookup
   
-  const U64 key = p.key();
-  const U64 dkey = p.dkey();  
-  entry e;
-  Move ttm;
-  Score ttvalue = Score::ninf;
-  if (ttable.fetch(key, e)) {
-    ttm = e.move;
-    ttvalue = Score(e.value);
+  { // mate distance pruning
+    Score mating_score = Score(Score::mate - depth);
+    beta = std::min(mating_score, Score(beta));
+    if (alpha >= mating_score) return mating_score;
     
-    if (e.depth >= depth) {
-      return ttvalue;
+    Score mated_score = Score(Score::mated + depth);
+    alpha = std::max(mated_score, Score(alpha));
+    if (beta <= mated_score) return mated_score;
+  }
+
+  
+  {  // hashtable lookup
+    hash_data e;
+    if (ttable.fetch(p.key(), e)) {
+      ttm = e.move;
+      ttvalue = Score(e.score);
+      
+      if (e.depth >= depth) {
+	return ttvalue;
+      }
     }
   }
   
-  
-  // forward pruning stage
+  // forward pruning
 
 
   // main search
   Movegen mvs(p);
   mvs.generate<pseudo_legal, pieces>();
+  U16 moves_searched = 0;
   
-  for (int i=0; i<mvs.size(); ++i) {
+  for (int i = 0; i < mvs.size(); ++i) {
     
     if (!p.is_legal(mvs[i])) {
       continue;
-    }
-
+    }    
 	  
     p.do_move(mvs[i]);
 
-
+    
+    entry e;
     {
-      //std::unique_lock<std::mutex> lock(mtx);
-      if (ttable.searching(p.key(), p.dkey(), e)) {
+      if (depth > 6 && ttable.searching(p.key(), e)) {      
 	p.adjust_nodes(-1);
 	p.undo_move(mvs[i]);
 	continue;
       }
+             
     }
-    
     
     Score score = Score(depth <= 1 ? 0 : -search<non_pv>(p, -beta, -alpha, depth-1, tid));
 
-    e.bound ^= 128;
-    //{
-      //std::unique_lock<std::mutex> lock(mtx);
-      //ttable.unset_searching(p.key());
-    //}
-
-    p.undo_move(mvs[i]);
-        
     
-    /*
+    //std::unique_lock<std::mutex> lock(mtx);
+    e.unset_searching(p.key());      
+
+    
+    ++moves_searched;
+    
+    p.undo_move(mvs[i]);
+
+    
     if (score >= best_score) {
       best_score = score;
       best_move = mvs[i];
@@ -141,13 +154,54 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, unsigned t
 	break;
       }
     } 
-    */
+    
   }
 
-  {
-    std::unique_lock<std::mutex> lock(mtx);
-    ttable.save(p.key(), p.dkey(), depth, U8(type), best_move, best_score);
+
+  
+  if (moves_searched == 0) {
+    return (in_check ? Score::mated : Score::draw);
   }
 
+  
+
+  if (best_move.type != Movetype::no_type) {
+    //std::unique_lock<std::mutex> lock(mtx);        
+    ttable.save(p.key(), depth, U8(type), best_move, best_score);
+  }
+
+  
   return best_score;
+}
+
+
+
+void Search::readout_pv(position& p, const Score& eval, const U16& depth) {
+  
+    hash_data e;
+    std::string res = "";
+    std::vector<Move> moves;
+    
+    for (unsigned j = 0;
+	 ttable.fetch(p.key(), e) &&
+	   //e.move.type != Movetype::no_type &&
+	   //e.move.f != e.move.t &&
+	   p.is_legal(e.move) &&
+	   j < depth; ++j) {
+      
+      res += SanSquares[e.move.f] + SanSquares[e.move.t] + " ";
+      p.do_move(e.move);
+      moves.push_back(e.move);      
+    }
+    
+    while(!moves.empty()) {
+      Move m = moves.back();
+      p.undo_move(m);
+      moves.pop_back();
+    }
+        
+    printf("info score cp %d depth %d pv ",
+           eval,
+           depth);
+    std::cout << res << std::endl;  
 }

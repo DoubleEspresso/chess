@@ -4,11 +4,11 @@
 position::position(std::istringstream& fen) { setup(fen); }
 
 position::position(const position& p) {
-  std::cout << "position copy c'tor" << std::endl;
   std::copy(std::begin(p.history), std::end(p.history), std::begin(history));
   ifo = p.ifo;
   pcs = p.pcs;
   hidx = p.hidx;
+  thread_id = p.thread_id;
   nodes_searched = p.nodes_searched;
 }
 
@@ -17,12 +17,12 @@ position& position::operator=(const position& p) {
   ifo = p.ifo;
   pcs = p.pcs;
   hidx = p.hidx;
+  thread_id = p.thread_id;
   nodes_searched = p.nodes_searched;
   return *(this);
 }
 
 piece_data::piece_data(const piece_data& pd) {
-  std::cout << "piece data copy c'tor" << std::endl;
   std::copy(std::begin(pd.bycolor), std::end(pd.bycolor), std::begin(bycolor));
   std::copy(std::begin(pd.king_sq), std::end(pd.king_sq), std::begin(king_sq));
   std::copy(std::begin(pd.color_on), std::end(pd.color_on), std::begin(color_on));
@@ -34,7 +34,6 @@ piece_data::piece_data(const piece_data& pd) {
 }
 
 piece_data& piece_data::operator=(const piece_data& pd) {
-  std::cout << "piece data copy c'tor" << std::endl;
   std::copy(std::begin(pd.bycolor), std::end(pd.bycolor), std::begin(bycolor));
   std::copy(std::begin(pd.king_sq), std::end(pd.king_sq), std::begin(king_sq));
   std::copy(std::begin(pd.color_on), std::end(pd.color_on), std::begin(color_on));
@@ -62,7 +61,7 @@ void position::setup(std::istringstream& fen) {
   // side to move
   fen >> token;
   ifo.stm = (token == "w" ? Color::white : Color::black);
-  ifo.dkey ^= zobrist::stm(ifo.stm);
+  ifo.key ^= zobrist::stm(ifo.stm);
   
   // the castle rights
   fen >> token;  
@@ -70,7 +69,7 @@ void position::setup(std::istringstream& fen) {
   for (auto& c : token) {
     U16 cr = CastleRights.at(c);
     ifo.cmask |= cr;
-    ifo.dkey ^= zobrist::castle(ifo.stm, cr);
+    ifo.key ^= zobrist::castle(ifo.stm, cr);
   }
   
 
@@ -83,15 +82,15 @@ void position::setup(std::istringstream& fen) {
     if (c == '3' || c == '6') row = Row(c - '1');
   }
   ifo.eps = Square(8 * row + col);
-  if (ifo.eps != Square::no_square) ifo.dkey ^= zobrist::ep(util::col(ifo.eps));
+  if (ifo.eps != Square::no_square) ifo.key ^= zobrist::ep(util::col(ifo.eps));
   
   // half-moves since last pawn move/capture
   fen >> ifo.move50;
-  ifo.dkey ^= zobrist::mv50(ifo.move50);
+  ifo.key ^= zobrist::mv50(ifo.move50);
   
   // move counter
   fen >> ifo.hmvs;
-  ifo.dkey ^= zobrist::hmvs(ifo.hmvs);
+  ifo.key ^= zobrist::hmvs(ifo.hmvs);
 
   // check info
   Color stm = to_move();
@@ -106,7 +105,7 @@ void position::do_move(const Move& m) {
   history[hidx++] = ifo;
   const Square from = Square(m.f); 
   const Square to = Square(m.t);
-  const Movetype t = m.type;
+  const Movetype t = Movetype(m.type);
   const Piece p = piece_on(from);
   const Color us = to_move();
 
@@ -115,27 +114,27 @@ void position::do_move(const Move& m) {
     pcs.king_sq[us] = to;
     ifo.ks[us] = to;
     ifo.cmask &= (us == white ? clearw : clearb);
-    ifo.dkey ^= (us == white ? zobrist::castle(white, clearw) : zobrist::castle(black, clearb));
+    ifo.key ^= (us == white ? zobrist::castle(white, clearw) : zobrist::castle(black, clearb));
   }
   else if (p == rook) {
     if (us == white) {
       if (from == A1) {
 	ifo.cmask &= clearwqs;
-	ifo.dkey ^= zobrist::castle(white, clearwqs);
+	ifo.key ^= zobrist::castle(white, clearwqs);
       }
       else if (from == H1) {
 	ifo.cmask &= clearwks;	
-	ifo.dkey ^= zobrist::castle(white, clearwks);
+	ifo.key ^= zobrist::castle(white, clearwks);
       }
     }
     else {
       if (from == A8) {
 	ifo.cmask &= clearbqs;
-	ifo.dkey ^= zobrist::castle(white, clearbqs);
+	ifo.key ^= zobrist::castle(white, clearbqs);
       }
       else if (from == H8) {
 	ifo.cmask &= clearbks;
-	ifo.dkey ^= zobrist::castle(white, clearbks);
+	ifo.key ^= zobrist::castle(white, clearbks);
       }
     }
   }
@@ -183,21 +182,21 @@ void position::do_move(const Move& m) {
   ifo.eps = no_square;
   if (p == pawn && abs(from-to) == 16) {    
     ifo.eps = Square(from + (us == white ? 8 : -8));
-    ifo.dkey ^= zobrist::ep(util::col(to));
+    ifo.key ^= zobrist::ep(util::col(to));
   }
 
   // move50
   if (p == pawn || t == capture) ifo.move50 = 0;
   else ifo.move50++;
-  ifo.dkey ^= zobrist::mv50(ifo.move50);
+  ifo.key ^= zobrist::mv50(ifo.move50);
 
   // half-moves
   ifo.hmvs++;
-  ifo.dkey ^= zobrist::hmvs(ifo.hmvs);
+  ifo.key ^= zobrist::hmvs(ifo.hmvs);
   
   // side to move
   ifo.stm = Color(ifo.stm ^ 1);
-  ifo.dkey ^= zobrist::stm(ifo.stm);
+  ifo.key ^= zobrist::stm(ifo.stm);
 
   
   ifo.incheck = is_attacked(king_square(), ifo.stm, us);
@@ -209,7 +208,7 @@ void position::do_move(const Move& m) {
 void position::undo_move(const Move& m) {
   const Square from = Square(m.t); 
   const Square to = Square(m.f);
-  const Movetype t = m.type;
+  const Movetype t = Movetype(m.type);
   const Piece p = piece_on(from);
   const Color us = Color(to_move()^1);
   Piece cp = ifo.captured;
@@ -257,7 +256,7 @@ bool position::is_legal(const Move& m) {
   Square f = Square(m.f);
   Square t = Square(m.t);
   Piece p = piece_on(f);
-  Movetype mt = m.type;
+  Movetype mt = Movetype(m.type);
   Square ks = king_square();
   Color us = to_move();
   Color them = Color(us ^ 1);
@@ -385,6 +384,7 @@ void position::set_piece(const char& p, const Square& s) {
 void position::clear() {
   pcs.clear();
   hidx = 0;
+  thread_id = 0;
   nodes_searched = 0;
   ifo = {};  
 }

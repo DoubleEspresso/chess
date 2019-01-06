@@ -25,93 +25,63 @@ void hash_table::clear() {
 
 
 
-bool hash_table::fetch(const U64& key, entry& e) {
+bool hash_table::fetch(const U64& key, hash_data& e) {
   entry * stored = first_entry(key);
-
-  U16 key16 = key >> 48;
-
+  
   for (unsigned i = 0; i<cluster_size; ++i, ++stored) {
-    if ((stored->pkey > 0) &&
-	(((stored->pkey) ^ (stored->dkey)) == key16)) {
-      e = *stored;
+    if ((stored->pkey ^ stored->dkey) == key) {
+      e.decode(stored->dkey);      
       return true;
     }
   }
-  return false;
-}
-
-
-bool hash_table::searching(const U64& key, const U64& dkey, entry& eo) {
-  entry * e = first_entry(key);
-  U16 key16 = key >> 48;
-  U16 data16 = dkey >> 48;
   
-  for (unsigned i = 0; i < cluster_size; ++i, ++e) {
-    if ((e->pkey ^ e->dkey) == key16) {
-
-      eo = *e;
-      
-      if ((e->bound & 128) == 128) return true;
-
-      break;
-    }
-  }
-
-  eo = *e;
-  e->pkey = key16 ^ data16;
-  e->dkey = data16;
-  e->bound |= 128;    
   return false;
 }
 
-void hash_table::unset_searching(const U64& key) {
+
+bool hash_table::searching(const U64& key, entry& eo) {
+
   entry * e = first_entry(key);
-  U16 key16 = key >> 48;
 
   for (unsigned i = 0; i < cluster_size; ++i, ++e) {
-    if ( (!e->pkey) || ((e->pkey ^ e->dkey) == key16)) {
-      
-      if ((e->bound & 128) == 128) e->bound ^= 128;
-      return;
+    if ((e->pkey ^ e->dkey) == key) {
+
+      if (e->is_searching()) {
+	eo = *e;
+	return true;
+      }
     }
+    else if (e->empty()) break;
   }
+
+  
+  e->dkey ^= U64(1ULL << 63);
+  e->pkey = key ^ e->dkey;
+  eo = *e;
+  return false;
 }
 
 void hash_table::save(const U64& key,
-		      const U64& dkey,
 		      const U8& depth,
 		      const U8& bound,
 		      const Move& m,
 		      const int16& score) {
   
   entry * e, *replace;
-  U16 key16 = key >> 48;
-  U16 data16 = dkey >> 48;
-
   e = replace = first_entry(key);
 
   for (unsigned i = 0; i < cluster_size; ++i, ++e) {
     
-    if ( (!e->pkey) || (((e->pkey) ^ (e->dkey)) == key16) ) {
-
-      if (m.type == Movetype::no_type) {
-	e->move = m;
-      }
-
-      // note: we always replace on collision
+    if (e->empty() || ((e->pkey) ^ (e->dkey)) == key ) {
       replace = e;
       break;      
     }
 
-    if (e->depth > depth) {
+    if (e->depth() > depth) {
       replace = e;
     }    
   }
 
-  replace->pkey = key16 ^ data16;
-  replace->dkey = data16;
-  replace->depth = depth + 1; // to adjust negative qsearch depth
-  replace->bound = bound;
-  replace->move = m;
-  replace->value = score;
+  replace->encode(depth, bound, m, score);
+  replace->pkey = key ^ replace->dkey;
 }

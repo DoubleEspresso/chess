@@ -23,8 +23,7 @@ struct Move;
 struct info {
   U64 checkers;
   U64 pinned;
-  U64 pkey;
-  U64 dkey;
+  U64 key;
   U64 mkey;
   U64 pawnkey;
   U16 hmvs;
@@ -85,7 +84,7 @@ struct piece_data {
 };
 
 class position {  
-  std::thread owner;  
+  U16 thread_id;
   info history[512];
   info ifo;
   piece_data pcs;
@@ -129,8 +128,7 @@ class position {
   // position info access wrappers
   inline Square eps() const { return ifo.eps; }
   inline Color to_move() const { return ifo.stm; }
-  inline U64 key() { return ifo.pkey; }
-  inline U64 dkey() { return ifo.dkey; }
+  inline U64 key() { return ifo.key; }
   // piece access wrappers
   inline U64 all_pieces() const { return pcs.bycolor[white] | pcs.bycolor[black]; }
 
@@ -141,6 +139,12 @@ class position {
   inline Square king_square() const { return ifo.ks[ifo.stm]; }
 
   inline Color color_on(const Square& s) { return pcs.color_on[s]; }
+
+  inline U16 id() { return thread_id; }
+
+  inline void set_id(U16 id) { thread_id = id; }
+
+  inline bool is_master() { return thread_id == 0; }
 
   inline U64 nodes() const { return nodes_searched; }
   inline void adjust_nodes(const U64& dn) { nodes_searched += dn; }
@@ -191,7 +195,7 @@ inline void piece_data::do_quiet(const Color& c, const Piece& p,
   piece_on[t] = p;
   piece_on[f] = no_piece;
   
-  ifo.pkey ^= (zobrist::piece(f, c, p) | zobrist::piece(t, c, p));
+  ifo.key ^= (zobrist::piece(f, c, p) | zobrist::piece(t, c, p));
 }
 
 inline void piece_data::do_cap(const Color& c, const Piece& p,
@@ -257,7 +261,7 @@ inline void piece_data::remove_piece(const Color& c, const Piece& p, const Squar
   piece_idx[c][p][s] = 0;
   color_on[s] = no_color;
   piece_on[s] = no_piece;
-  ifo.pkey ^= zobrist::piece(s, c, p);
+  ifo.key ^= zobrist::piece(s, c, p);
 }
 
 inline void piece_data::add_piece(const Color& c, const Piece& p, const Square& s, info& ifo) {  
@@ -270,7 +274,7 @@ inline void piece_data::add_piece(const Color& c, const Piece& p, const Square& 
   piece_on[s] = p;
   piece_idx[c][p][s] = number_of[c][p];
   color_on[s] = c;
-  ifo.pkey |= zobrist::piece(s, c, p);
+  ifo.key |= zobrist::piece(s, c, p);
 }
 
 inline void piece_data::set(const Color& c, const Piece& p, const Square& s, info& ifo) {
@@ -283,7 +287,7 @@ inline void piece_data::set(const Color& c, const Piece& p, const Square& s, inf
   piece_on[s] = p;
   if (p == Piece::king) king_sq[c] = s;
 
-  ifo.pkey |= zobrist::piece(s, c, p);
+  ifo.key |= zobrist::piece(s, c, p);
 }
 
 #endif
