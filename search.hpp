@@ -1,7 +1,6 @@
 #include <memory>
 
 #include "position.h"
-#include "move.h"
 #include "types.h"
 #include "hashtable.h"
 #include "utils.h"
@@ -13,19 +12,19 @@ void Search::start(position& p, U16 depth) {
   
   std::vector<std::unique_ptr<position>> pv;
   
-  search_threads.enqueue(search_timer);
+  //search_threads.enqueue(search_timer);
   is_searching = true;
 
   util::clock c;
   c.start();
   
-  for (unsigned i = 0; i < search_threads.size() - 2; ++i) {
+  for (unsigned i = 0; i < search_threads.size(); ++i) {
 
-    //if (i != 0) continue; // just 1 thread for now
+    if (i != 0) continue; // just 1 thread for now
 
     pv.emplace_back(make_unique<position>(p));
     pv[i]->set_id(i);
-    search_threads.enqueue(iterative_deepening, *pv[i], depth, i);
+    search_threads.enqueue(iterative_deepening, *pv[i], depth);
   }
 
   search_threads.wait_finished();
@@ -50,16 +49,22 @@ void Search::search_timer() {
 }
 
 
-void Search::iterative_deepening(position& p, U16 depth, unsigned tid) {
+void Search::iterative_deepening(position& p, U16 depth) {
 
   int16 alpha = ninf;
   int16 beta = inf;
   Score eval = ninf;
 
+  const unsigned stack_size = 64 + 4;
+  node stack[stack_size];
+  std::memset(stack, 0, sizeof(node) * stack_size);
   
   for (unsigned id = 1; id <= depth; ++id) {
+
+
+    stack->ply = (stack+1)->ply = 0; 
     
-    eval = search<root>(p, alpha, beta, id, tid);
+    eval = search<root>(p, alpha, beta, id, stack + 2);
     
     if (p.is_master()) {
       readout_pv(p, eval, id);
@@ -69,7 +74,7 @@ void Search::iterative_deepening(position& p, U16 depth, unsigned tid) {
 }
 
 template<Nodetype type>
-Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, unsigned tid) {
+Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * stack) {
 
   Score best_score = Score::ninf;
   Move best_move = {};
@@ -81,13 +86,16 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, unsigned t
   //const bool pv_type = (type == root || type == pv);
   //const bool forward_prune = (!in_check && !pv_type);
 
+  stack->ply = (stack-1)->ply + 1;  
+  U16 root_dist = stack->ply;
+  
   
   { // mate distance pruning
-    Score mating_score = Score(Score::mate - depth);
+    Score mating_score = Score(Score::mate - root_dist);
     beta = std::min(mating_score, Score(beta));
     if (alpha >= mating_score) return mating_score;
     
-    Score mated_score = Score(Score::mated + depth);
+    Score mated_score = Score(Score::mated + root_dist);
     alpha = std::max(mated_score, Score(alpha));
     if (beta <= mated_score) return mated_score;
   }
@@ -118,7 +126,8 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, unsigned t
     if (!p.is_legal(mvs[i])) {
       continue;
     }    
-	  
+
+        
     p.do_move(mvs[i]);
 
     
@@ -132,7 +141,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, unsigned t
              
     }
     
-    Score score = Score(depth <= 1 ? 0 : -search<non_pv>(p, -beta, -alpha, depth-1, tid));
+    Score score = Score(depth <= 1 ? 0 : -search<non_pv>(p, -beta, -alpha, depth-1, stack+1));
 
     
     //std::unique_lock<std::mutex> lock(mtx);
@@ -144,7 +153,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, unsigned t
     p.undo_move(mvs[i]);
 
     
-    if (score >= best_score) {
+    if (score > best_score) {
       best_score = score;
       best_move = mvs[i];
 
@@ -160,16 +169,12 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, unsigned t
 
   
   if (moves_searched == 0) {
-    return (in_check ? Score::mated : Score::draw);
+    return (in_check ? Score(Score::mated + root_dist) : Score::draw);
   }
 
-  
-
-  if (best_move.type != Movetype::no_type) {
-    //std::unique_lock<std::mutex> lock(mtx);        
-    ttable.save(p.key(), depth, U8(type), best_move, best_score);
-  }
-
+ 
+  //std::unique_lock<std::mutex> lock(mtx);
+  ttable.save(p.key(), depth, U8(type), best_move, best_score);
   
   return best_score;
 }

@@ -11,6 +11,7 @@
 #include <string>
 #include <sstream>
 #include <cstring>
+#include <memory>
 
 #include "types.h"
 #include "utils.h"
@@ -35,6 +36,7 @@ struct info {
   Piece captured;    
   bool incheck;
 };
+
 
 struct piece_data {  
   

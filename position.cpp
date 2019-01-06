@@ -3,6 +3,7 @@
 
 position::position(std::istringstream& fen) { setup(fen); }
 
+
 position::position(const position& p) {
   std::copy(std::begin(p.history), std::end(p.history), std::begin(history));
   ifo = p.ifo;
@@ -11,6 +12,7 @@ position::position(const position& p) {
   thread_id = p.thread_id;
   nodes_searched = p.nodes_searched;
 }
+
 
 position& position::operator=(const position& p) {
   std::copy(std::begin(p.history), std::end(p.history), std::begin(history));
@@ -22,6 +24,7 @@ position& position::operator=(const position& p) {
   return *(this);
 }
 
+/*
 piece_data::piece_data(const piece_data& pd) {
   std::copy(std::begin(pd.bycolor), std::end(pd.bycolor), std::begin(bycolor));
   std::copy(std::begin(pd.king_sq), std::end(pd.king_sq), std::begin(king_sq));
@@ -32,6 +35,7 @@ piece_data::piece_data(const piece_data& pd) {
   std::copy(std::begin(pd.piece_idx), std::end(pd.piece_idx), std::begin(piece_idx));
   std::copy(std::begin(pd.square_of), std::end(pd.square_of), std::begin(square_of));
 }
+*/
 
 piece_data& piece_data::operator=(const piece_data& pd) {
   std::copy(std::begin(pd.bycolor), std::end(pd.bycolor), std::begin(bycolor));

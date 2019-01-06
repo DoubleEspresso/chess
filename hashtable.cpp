@@ -55,7 +55,7 @@ bool hash_table::searching(const U64& key, entry& eo) {
   }
 
   
-  e->dkey ^= U64(1ULL << 63);
+  e->dkey ^= search_bit;
   e->pkey = key ^ e->dkey;
   eo = *e;
   return false;

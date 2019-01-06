@@ -7,6 +7,7 @@
 #include "types.h"
 #include "move.h"
 
+const U64 search_bit = (1ULL << 63);
 
 struct entry {
   entry() : pkey(0ULL), dkey(0ULL) { }
@@ -16,7 +17,7 @@ struct entry {
 
   
   inline bool empty() { return pkey == 0ULL && dkey == 0ULL; }
-  inline bool is_searching() { return (dkey & U64(1ULL << 63)) == U64(1ULL << 63); }
+  inline bool is_searching() { return (dkey & search_bit) == search_bit; }
   inline void encode(const U8& depth,
 		     const U8& bound,
 		     const Move& m,
@@ -31,7 +32,7 @@ struct entry {
     dkey |= (U64(score < 0 ? 1ULL : 0ULL) << 60);    
   }
   inline void unset_searching(const U64& key) {
-    dkey ^= U64(1ULL << 63);
+    dkey ^= search_bit;
     pkey = key ^ dkey;
   }
 
@@ -44,9 +45,9 @@ struct hash_data {
   U8 depth;
   U8 bound;
   int16 score;
-  Move move; // 3 bytes
   U16 pkey;
   U16 dkey;
+  Move move; // 3 bytes
 
   inline void decode(const U64& dkey) {
     
