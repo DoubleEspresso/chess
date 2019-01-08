@@ -137,8 +137,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 	p.adjust_nodes(-1);
 	p.undo_move(mvs[i]);
 	continue;
-      }
-             
+      }             
     }
     
     Score score = Score(depth <= 1 ? 0 : -search<non_pv>(p, -beta, -alpha, depth-1, stack+1));
