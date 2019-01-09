@@ -46,7 +46,7 @@ bool pgn::parse_files() {
     ++fcount;
     pgn_file.close();
   }
-  
+  std::cout << "..parsed " << games.size() << " chess games." << std::endl;
   return true;
 }
 
@@ -57,6 +57,15 @@ bool pgn::parse_moves(const std::string& line, game& g) {
 
   while(ss >> std::skipws >> token) {
     
+    if (token == "1/2-1/2" || token == "1-0" ||
+	token == "0-1" || token == "*") {
+      
+      g.result = (token == "1/2-1/2" ? Result::pgn_draw :
+		  token == "1-0" ? Result::pgn_wwin :
+		  Result::pgn_bwin);
+      
+      return true;
+    }
   }
 
   return true;
