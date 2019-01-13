@@ -88,6 +88,9 @@ class Movegen {
   template<Movetype mt, Piece p>
   inline void generate();
 
+  template<Piece p>
+  inline void generate();
+  
   // utilities
   inline int size() { return last; }    
   inline void print();

@@ -15,7 +15,7 @@ endif
 SRC_DIR = .
 OBJ_DIR = .
 INC_DIR = .
-CC_SRCS = main.cpp pgn.cpp ../magics.cpp ../bitboards.cpp ../zobrist.cpp
+CC_SRCS = main.cpp pgn.cpp ../magics.cpp ../bitboards.cpp ../zobrist.cpp ../position.cpp
 
 
 EXE = tune.exe

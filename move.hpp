@@ -431,6 +431,45 @@ inline void Movegen::generate<capture, king>() {
 }
 
 //------------------------------
+// moves by piece type
+//------------------------------
+template<>
+inline void Movegen::generate<king>() {
+  generate<capture, king>();
+  generate<quiet, king>();
+  generate<castles, king>();
+}
+
+template<>
+inline void Movegen::generate<queen>() {
+  generate<pseudo_legal, queen>();
+}
+
+template<>
+inline void Movegen::generate<rook>() {
+  generate<pseudo_legal, rook>();
+}
+
+template<>
+inline void Movegen::generate<bishop>() {
+  generate<pseudo_legal, bishop>();
+}
+
+template<>
+inline void Movegen::generate<knight>() {
+  generate<pseudo_legal, knight>();
+}
+
+template<>
+inline void Movegen::generate<pawn>() {
+  generate<capture_promotion, pawn>();
+  generate<promotion, pawn>();
+  generate<capture, pawn>();
+  generate<quiet, pawn>();
+}
+
+
+//------------------------------
 // pseudo-legal quiet
 //------------------------------
 template<>
