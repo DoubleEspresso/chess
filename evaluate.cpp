@@ -1,0 +1,111 @@
+
+#include "evaluate.h"
+#include "squares.h"
+#include "magics.h"
+
+
+
+namespace {
+  
+  float do_eval(const position& p);
+  
+  template<Color c> float eval_knights(const position& p, info& ei);
+  template<Color c> float eval_bishops(const position& p, info& ei);
+  template<Color c> float eval_rooks(const position& p, info& ei);
+  template<Color c> float eval_queens(const position& p, info& ei);
+  template<Color c> float eval_king(const position& p, info& ei);
+
+  
+  std::vector<float> sq_score_scaling { 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 };
+
+
+
+
+
+  float do_eval(const position& p) {
+    
+    float score = 0;
+    info ei = {};
+    
+    score += (eval_knights<white>(p, ei) - eval_knights<black>(p, ei));
+    score += (eval_bishops<white>(p, ei) - eval_bishops<black>(p, ei));
+    score += (eval_rooks<white>(p, ei) - eval_rooks<black>(p, ei));
+    score += (eval_queens<white>(p, ei) - eval_queens<black>(p, ei));
+    score += (eval_king<white>(p, ei) - eval_king<black>(p, ei));
+
+    
+    return p.to_move() == white ? score : -score;
+  }
+
+
+  
+  template<Color c> float eval_knights(const position& p, info& ei) {
+    float score = 0;    
+    Square * knights = p.squares_of<c, knight>();
+    
+    for (Square s = *knights; s != no_square; s = *++knights) {      
+      score += sq_score_scaling[knight] * square_score<c>(knight, s);      
+    }
+    
+    return score;
+  }
+
+  
+  template<Color c> float eval_bishops(const position& p, info& ei) {
+    float score = 0;    
+    Square * bishops = p.squares_of<c, bishop>();
+    
+    for (Square s = *bishops; s != no_square; s = *++bishops) {      
+      score += sq_score_scaling[bishop] * square_score<c>(bishop, s);      
+    }
+    
+    return score;
+  }
+  
+  
+  template<Color c> float eval_rooks(const position& p, info& ei) {
+    float score = 0;    
+    Square * rooks = p.squares_of<c, rook>();
+    
+    for (Square s = *rooks; s != no_square; s = *++rooks) {      
+      score += sq_score_scaling[rook] * square_score<c>(rook, s);      
+    }
+    
+    return score;
+  }
+
+
+  
+  template<Color c> float eval_queens(const position& p, info& ei) {
+    float score = 0;    
+    Square * queens = p.squares_of<c, queen>();
+    
+    for (Square s = *queens; s != no_square; s = *++queens) {      
+      score += sq_score_scaling[queen] * square_score<c>(queen, s);      
+    }
+    
+    return score;
+  }
+
+
+
+  template<Color c> float eval_king(const position& p, info& ei) {
+    float score = 0;    
+    Square * kings = p.squares_of<c, king>();
+    
+    for (Square s = *kings; s != no_square; s = *++kings) {      
+      score += sq_score_scaling[king] * square_score<c>(king, s);      
+    }
+    
+    return score;
+  }
+
+  
+};
+
+
+
+
+namespace eval {
+  float evaluate(const position& p) { return do_eval(p); }
+};

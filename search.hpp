@@ -4,6 +4,7 @@
 #include "types.h"
 #include "hashtable.h"
 #include "utils.h"
+#include "evaluate.h"
 
 Threadpool search_threads(5);
 
@@ -50,19 +51,17 @@ void Search::search_timer() {
 
 
 void Search::iterative_deepening(position& p, U16 depth) {
-
   int16 alpha = ninf;
   int16 beta = inf;
-  Score eval = ninf;
-
+  Score eval = ninf;       
+  
   const unsigned stack_size = 64 + 4;
   node stack[stack_size];
   std::memset(stack, 0, sizeof(node) * stack_size);
   
   for (unsigned id = 1; id <= depth; ++id) {
-
-
-    stack->ply = (stack+1)->ply = 0; 
+    
+      stack->ply = (stack+1)->ply = 0; 
     
     eval = search<root>(p, alpha, beta, id, stack + 2);
     
@@ -140,7 +139,8 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       }             
     }
     
-    Score score = Score(depth <= 1 ? 0 : -search<non_pv>(p, -beta, -alpha, depth-1, stack+1));
+    
+    Score score = Score(depth <= 1 ? 100 * eval::evaluate(p) : -search<non_pv>(p, -beta, -alpha, depth-1, stack+1));
 
     
     //std::unique_lock<std::mutex> lock(mtx);
