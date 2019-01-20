@@ -33,7 +33,10 @@ bool pgn::parse_files() {
     
     while (std::getline(pgn_file, line)) {
 
-      if (is_empty(line) || is_header(line)) { continue; }
+      if (is_empty(line) || is_header(line)) {
+	if (is_elo(line)) parse_elo(g, line);
+	continue;
+      }
       
       if (!parse_moves(p, line, g)) {	
 	std::cout << "..error parsing line: " << line << std::endl;
@@ -66,7 +69,15 @@ bool pgn::parse_moves(position& p, const std::string& line, game& g) {
   std::stringstream ss(line);
   std::string token;
   bool success = true;
+  bool comment = false;
   while(ss >> std::skipws >> token) {
+
+    if (token.find('}') != std::string::npos) { comment = false; continue; }
+	
+    if (token.find('{') != std::string::npos) { comment = true; }    
+
+    if (comment) continue;
+
 
     
     if (token == "1/2-1/2" || token == "1-0" ||
@@ -90,9 +101,10 @@ bool pgn::parse_moves(position& p, const std::string& line, game& g) {
     }
     if (is_empty(token)) continue;
     
+
     
     Move m;
-    if (!move_from_san(p, token, m)) {
+    if (token.size() <= 1 || !move_from_san(p, token, m)) {
       std::cout << "failed to parse move: " << token << std::endl;
       std::cout << " line = " << line << std::endl;
       success = false;

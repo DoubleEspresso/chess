@@ -6,6 +6,7 @@
 #include <sstream>
 #include <string>
 #include <iostream>
+#include <cmath>
 
 #include "../move.h"
 #include "../position.h"
@@ -18,11 +19,13 @@ const std::string START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQk
 
 struct game {
   Result result;
+  unsigned white_elo, black_elo;
   std::vector<Move> moves;
   
   game() { clear(); }
   bool finished() { return result != Result::pgn_none; }
-  void clear() { moves.clear(); result = Result::pgn_none; }
+  void clear() { moves.clear(); result = Result::pgn_none; white_elo = 0; black_elo = 0; }
+  inline unsigned rating_diff() const { return fabs(white_elo - black_elo); }
 };
 
 
@@ -36,7 +39,9 @@ class pgn {
   bool move_from_san(position& p, std::string& s, Move& m);
 
   inline bool is_header(const std::string& line);
+  inline bool is_elo(const std::string& line);
   inline bool is_empty(const std::string& line);
+  inline void parse_elo(game& g, const std::string& line);
   inline void strip(std::string& token);
   inline Square get_square(const std::string& s, int start);
 
@@ -56,6 +61,25 @@ class pgn {
   
 };
 
+inline bool pgn::is_elo(const std::string& line) {
+  return (line.find("[WhiteElo") != std::string::npos ||
+	  line.find("[BlackElo") != std::string::npos);
+}
+
+
+inline void pgn::parse_elo(game& g, const std::string& line) {
+  // assume this is a valid elo-tag from a pgn file (!!)
+  bool white = line.find("[WhiteElo") != std::string::npos;
+  
+  std::string segment;
+  std::stringstream tmp(line);
+  std::getline(tmp, segment, ' ');
+  std::getline(tmp, segment, ' ');
+  strip(segment);
+  
+  if (white) { g.white_elo = std::stoi(segment); }
+  else { g.black_elo = std::stoi(segment); }
+}
 
 
 inline bool pgn::is_header(const std::string& line) {
