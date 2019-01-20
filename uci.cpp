@@ -34,6 +34,11 @@ bool uci::parse_command(const std::string& input) {
       p.print();
       std::cout << "position hash key: " << p.key() << std::endl;
     }
+    else if (cmd == "eval") {
+      p.print();
+      std::cout << "position hash key: " << p.key() << std::endl;
+      std::cout << "evaluation: " << eval::evaluate(p) << std::endl;
+    }
     else if (cmd == "undo") {
       p.undo_move(dbgmove);
     }

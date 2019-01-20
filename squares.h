@@ -87,12 +87,12 @@ namespace {
 
   
   template<> float square_score<black>(const Piece& p, const Square& s) {
-    return sq_scores[p][56 - 8 * util::row(s) + util::col(s)];
+    return 20 * sq_scores[p][56 - 8 * util::row(s) + util::col(s)];
   }
   
   
   template<> float square_score<white>(const Piece& p, const Square& s) {   
-    return sq_scores[p][s];
+    return 20 * sq_scores[p][s];
   }  
 };
 

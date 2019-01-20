@@ -7,6 +7,7 @@
 #include "pbil.h"
 #include "pgn.h"
 #include "square_tune.h"
+#include "material_tune.h"
 
 #include "../bitboards.h"
 #include "../magics.h"
@@ -75,7 +76,9 @@ void parse_args(int argc, char * argv[]) {
 	
 	closedir(dir);
 	pgn io(pgn_files); // run analysis
-	square_tune st(io.parsed_games());
+
+	//square_tune st(io.parsed_games());
+	material_tune mt(io.parsed_games());
       }
       else {
 	std::cout << "..pgn directory "

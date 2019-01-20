@@ -140,7 +140,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     }
     
     
-    Score score = Score(depth <= 1 ? 100 * eval::evaluate(p) : -search<non_pv>(p, -beta, -alpha, depth-1, stack+1));
+    Score score = Score(depth <= 1 ? -eval::evaluate(p) : -search<non_pv>(p, -beta, -alpha, depth-1, stack+1));
 
     
     //std::unique_lock<std::mutex> lock(mtx);
