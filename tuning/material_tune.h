@@ -242,7 +242,7 @@ void material_tune::analyze() {
 
 	ms.refresh(p);
 	
-	{ //if (fabs(ms.score()) != 0) {
+	{ 
 
 	  bool found = false;
 	  double score = ms.score();
@@ -277,71 +277,13 @@ void material_tune::analyze() {
     
   } // end for loop over filtered games
 
-  //std::cout << "filtered games = " << filtered.size() << std::endl;
-
+  
   for (int i=0; i<scores.size(); ++i) {
 
     std::cout << "score = " << scores[i] <<
-      " " << results[i][0] << " " << results[i][1] << " " << results[i][2] << " " << totals[i] << std::endl;
-    
-    
+      " " << results[i][0] << " " << results[i][1] << " " << results[i][2] << " " << totals[i] << std::endl;        
   }
   
-
-  /*
-  for (int i=0; i<hash.size(); ++i) {
-    material_score ms = hash[i];
-    
-    if (ms.pawns_diff() == 0 && ms.knights_diff() == 0 &&
-	ms.bishops_diff() == 0 && ms.rooks_diff() == 0 &&
-	ms.queens_diff() == 0) {
-      std::cout << "pawn diff = 0 sc: " << scores[i][0] << " " << scores[i][1] << " " << scores[i][2] << " " << totals[i] << std::endl;
-    }
-    else if (ms.pawns_diff() == 1 && ms.knights_diff() == 0 &&
-	     ms.bishops_diff() == 0 && ms.rooks_diff() == 0 &&
-	     ms.queens_diff() == 0) {
-      std::cout << "pawn diff = 1 sc: " << scores[i][0] << " " << scores[i][1] << " " << scores[i][2] << " " << totals[i] << std::endl;
-    }
-    else if (ms.pawns_diff() == -1 && ms.knights_diff() == 0 &&
-	     ms.bishops_diff() == 0 && ms.rooks_diff() == 0 &&
-	     ms.queens_diff() == 0) {
-      std::cout << "pawn diff = -1 sc: " << scores[i][0] << " " << scores[i][1] << " " << scores[i][2] << " " << totals[i] << std::endl;
-    }
-    else if (ms.pawns_diff() == 2 && ms.knights_diff() == 0 &&
-	     ms.bishops_diff() == 0 && ms.rooks_diff() == 0 &&
-	     ms.queens_diff() == 0) {
-      std::cout << "pawn diff = 2 sc: " << scores[i][0] << " " << scores[i][1] << " " << scores[i][2] << " " << totals[i] << std::endl;
-    }
-        else if (ms.pawns_diff() == -2 && ms.knights_diff() == 0 &&
-	     ms.bishops_diff() == 0 && ms.rooks_diff() == 0 &&
-	     ms.queens_diff() == 0) {
-      std::cout << "pawn diff = -2 sc: " << scores[i][0] << " " << scores[i][1] << " " << scores[i][2] << " " << totals[i] << std::endl;
-    }
-    else if (ms.pawns_diff() == 0 && ms.knights_diff() == 1 &&
-	     ms.bishops_diff() == 0 && ms.rooks_diff() == 0 &&
-	     ms.queens_diff() == 0) {
-      std::cout << "knight diff = 1 sc: " << scores[i][0] << " " << scores[i][1] << " " << scores[i][2] << " " << totals[i] << std::endl;
-    }
-    
-    else if (ms.pawns_diff() == 0 && ms.knights_diff() == -1 &&
-	     ms.bishops_diff() == 0 && ms.rooks_diff() == 0 &&
-	     ms.queens_diff() == 0) {
-      std::cout << "knight diff = -1 sc: " << scores[i][0] << " " << scores[i][1] << " " << scores[i][2] << " " << totals[i] << std::endl;
-    }
-    else if (ms.pawns_diff() == 0 && ms.knights_diff() == 0 &&
-	     ms.bishops_diff() == 1 && ms.rooks_diff() == 0 &&
-	     ms.queens_diff() == 0) {
-      std::cout << "bishop diff = 1 sc: " << scores[i][0] << " " << scores[i][1] << " " << scores[i][2] << " " << totals[i] << std::endl;
-    }
-    
-    else if (ms.pawns_diff() == 0 && ms.knights_diff() == 0 &&
-	     ms.bishops_diff() == -1 && ms.rooks_diff() == 0 &&
-	     ms.queens_diff() == 0) {
-      std::cout << "bishop diff = -1 sc: " << scores[i][0] << " " << scores[i][1] << " " << scores[i][2] << " " << totals[i] << std::endl;
-    }
-
-  }  
-  */
 }
 
 
