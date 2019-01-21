@@ -40,16 +40,20 @@ struct material_score {
       num_pawns[i] = 0; num_knights[i] = 0; num_bishops[i] = 0;
       num_rooks[i] = 0; num_queens[i] = 0; result = Result::pgn_none;
     }
-    pawn_val = knight_val = bishop_val = rook_val = queen_val = 1.0;
+    pawn_val = 1.0;
+    knight_val = 3.0;
+    bishop_val = 3.1;
+    rook_val = 5.0;
+    queen_val = 9.0;
     empty = true;
   }
   
-  inline double score(const Color& c) {
-    return pawn_val * num_pawns[c] +
-      knight_val * num_knights[c] +
-      bishop_val * num_bishops[c] +
-      rook_val * num_rooks[c] +
-      queen_val * num_queens[c];
+  inline double score() {
+    return pawn_val * pawns_diff() +
+      knight_val * knights_diff() +
+      bishop_val * bishops_diff() +
+      rook_val * rooks_diff() +
+      queen_val * queens_diff();
   }
   
   inline U64 encoding() {
@@ -128,10 +132,6 @@ struct material_score {
       rooks_diff() + queens_diff();
   }
   
-  inline double material_advantage() {
-    return score(white) - score(black);
-  }
-
 
   inline void refresh(const position& p) {
     clear();
@@ -177,13 +177,17 @@ class material_tune {
 void material_tune::analyze() {
   
   std::vector<double> totals;
-  std::vector<double*> scores;
-  std::vector<material_score> hash;
+  std::vector<double> scores;
+  std::vector<double*> results;
+  //std::vector<material_score> hash;
+  std::vector<game> filtered;
+
   
   for (const auto& g : games) {
 
-    // assume evenly matched opponents 
-    if (g.rating_diff() > 50) { continue; } 
+    // assume evenly matched opponents
+    // filter down to games decided on material scores (?)
+    if (g.rating_diff() > 50 || g.moves.size() > 30) { continue; }
     
     position p;
     std::istringstream fen(START_FEN);    
@@ -191,48 +195,100 @@ void material_tune::analyze() {
     size_t count = 0;
     material_score ms;    
     size_t qcount = 0;
+    bool filter = false;
     
     for (const auto& m : g.moves) {
 
       if (m.type == quiet) ++qcount;
       else qcount = 0;
-            
-      if (qcount > 2 && count > 15 && count < 35) {
+
+      
+      if (qcount > 2 && count > 15) {
+
 	ms.refresh(p);
-	U64 enc = ms.encoding();
-	bool found = false;
-	size_t idx = 0;
 	
-	for (auto& h : hash) {
-	  if (h.encoding() == enc) {
-	    found = true;
-	    scores[idx][(g.result == Result::pgn_wwin ? 2 : g.result == Result::pgn_bwin ? 0 : 1)]++;
-	    totals[idx] += 1;
-	    break;
-	  }
-	  else { ++idx; }
+	if (fabs(ms.score()) > 2) {	  
+	  if (ms.score() > 2 && (g.result == Result::pgn_draw || g.result == Result::pgn_bwin)) { filter = true; }
+	  else if (ms.score() < -2 && (g.result == Result::pgn_draw || g.result == Result::pgn_wwin)) { filter = true; }
 	}
-	
-	if (!found) {
-	  double * tmp = new double[3] {0, 0, 0};
-	  tmp[(g.result == Result::pgn_wwin ? 2 : g.result == Result::pgn_bwin ? 0 : 1)]++;
-	  scores.push_back(tmp);
-	  hash.push_back(ms);
-	  totals.push_back(1);
-	}
-
-
-	break;
       }
-      
-      p.do_move(m);
-      
+
+      p.do_move(m);      
       ++count;	  
-    }
+      
+    } // end moves loop
+
+    if (!filter) filtered.push_back(g);
   }
 
-
+  std::cout << "final games after filter = " << filtered.size() << std::endl;
   
+  for (const auto& g : filtered) {
+
+    position p;
+    std::istringstream fen(START_FEN);    
+    p.setup(fen); // start position for each game
+    size_t count = 0;
+    material_score ms;    
+    size_t qcount = 0;
+
+    for (const auto& m : g.moves) {
+      
+      if (m.type == quiet) ++qcount;
+      else qcount = 0;
+      
+      
+      if (qcount > 2 && count > 15) {
+
+	ms.refresh(p);
+	
+	{ //if (fabs(ms.score()) != 0) {
+
+	  bool found = false;
+	  double score = ms.score();
+	  size_t idx = 0;
+	  
+	  for (const auto& s : scores) {
+	    if (s == score) {
+	      found = true;
+
+	      results[idx][(g.result == Result::pgn_wwin ? 2 : g.result == Result::pgn_bwin ? 0 : 1)]++;
+	      totals[idx]++;
+	      break;
+	    }
+	    else { ++idx; }
+	  }
+
+	  if (!found) {
+	    double * tmp = new double[3] {0, 0, 0};
+	    tmp[(g.result == Result::pgn_wwin ? 2 : g.result == Result::pgn_bwin ? 0 : 1)]++;
+	    results.push_back(tmp);
+	    scores.push_back(score);
+	    totals.push_back(1);
+	  }
+	  
+	}      
+      }
+
+      p.do_move(m);      
+      ++count;	  
+
+    } // end for loop over mvs
+    
+  } // end for loop over filtered games
+
+  //std::cout << "filtered games = " << filtered.size() << std::endl;
+
+  for (int i=0; i<scores.size(); ++i) {
+
+    std::cout << "score = " << scores[i] <<
+      " " << results[i][0] << " " << results[i][1] << " " << results[i][2] << " " << totals[i] << std::endl;
+    
+    
+  }
+  
+
+  /*
   for (int i=0; i<hash.size(); ++i) {
     material_score ms = hash[i];
     
@@ -285,6 +341,7 @@ void material_tune::analyze() {
     }
 
   }  
+  */
 }
 
 
