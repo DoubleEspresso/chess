@@ -21,7 +21,7 @@ namespace {
 
   std::vector<float> pawn_scaling { 0.86, 0.90, 0.95, 1.00, 1.00, 0.95, 0.90, 0.86 };
 
-  std::vector<float> material_vals { 100.0, 315.0 , 345.0, 530.0, 1020.0 };
+  std::vector<float> material_vals { 100.0, 300.0 , 315.0, 480.0, 910.0 };
 
 
 

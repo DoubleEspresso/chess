@@ -17,7 +17,7 @@ namespace Search {
   
   struct node {
     U16 ply;
-    bool in_check, null_search;
+    bool in_check, null_search, gen_checks;
     Move curr_move, best_move, threat_move;
   };
 
@@ -28,6 +28,9 @@ namespace Search {
   
   template<Nodetype type>
   Score search(position& p, int16 alpha, int16 beta, U16 depth, node * stack);
+
+  template<Nodetype type>
+  Score qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * stack);
 }
 
 

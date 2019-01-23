@@ -42,7 +42,7 @@ struct entry {
 
 
 struct hash_data {
-  U8 depth;
+  char depth;
   U8 bound;
   int16 score;
   U16 pkey;
