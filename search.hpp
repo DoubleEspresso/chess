@@ -103,6 +103,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 
   
   {  // hashtable lookup
+    
     hash_data e;
     if (ttable.fetch(p.key(), e)) {
       ttm = e.move;
@@ -111,7 +112,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       if (e.depth >= depth) {
 	return ttvalue;
       }
-    }
+    }   
   }
   
   // forward pruning
@@ -140,19 +141,19 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 	continue;
       }             
     }
-    
+
     
     Score score = Score(depth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
 			-search<non_pv>(p, -beta, -alpha, depth-1, stack+1));
 
     
-    //std::unique_lock<std::mutex> lock(mtx);
-    e.unset_searching(p.key());      
-
+    //std::unique_lock<std::mutex> lock(mtx);    
+    e.unset_searching(p.key());
     
     ++moves_searched;
     
     p.undo_move(mvs[i]);
+
 
     
     if (score > best_score) {
@@ -200,6 +201,7 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
   
 
   {  // hashtable lookup
+    
     hash_data e;
     if (ttable.fetch(p.key(), e)) {
       ttm = e.move;
@@ -209,6 +211,7 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
 	return ttvalue;
       }
     }
+    
   }
 
   
@@ -236,11 +239,22 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
 
     p.do_move(mvs[i]);
 
+    entry e;
+    {
+      if (depth > 6 && ttable.searching(p.key(), e)) {      
+	//p.adjust_nodes(-1);
+	p.undo_move(mvs[i]);
+	continue;
+      }             
+    }
+
     Score score = Score(-qsearch<type>(p, -beta, -alpha, (depth - 1 <= 0 ? 0 : depth - 1), stack + 1));
 
     ++moves_searched;
 
     p.undo_move(mvs[i]);
+
+    e.unset_searching(p.key());      
 
     
     if (score > best_score) {
@@ -258,7 +272,7 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
     return Score(Score::mated + root_dist);
   }
 
-  //ttable.save(p.key(), depth, U8(type), best_move, best_score);
+  ttable.save(p.key(), depth, U8(type), best_move, best_score);
   
   return best_score;  
 }
@@ -272,8 +286,8 @@ void Search::readout_pv(position& p, const Score& eval, const U16& depth) {
     
     for (unsigned j = 0;
 	 ttable.fetch(p.key(), e) &&
-	   //e.move.type != Movetype::no_type &&
-	   //e.move.f != e.move.t &&
+	   e.move.type != Movetype::no_type &&
+	   e.move.f != e.move.t &&
 	   p.is_legal(e.move) &&
 	   j < depth; ++j) {
       

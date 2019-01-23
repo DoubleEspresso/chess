@@ -346,7 +346,8 @@ bool position::in_check() {
   return ifo.incheck;
 }
 
-bool position::is_attacked(const Square& s, const Color& us, const Color& them, U64 m) {  
+bool position::is_attacked(const Square& s, const Color& us, const Color& them, U64 m) {
+  // is square owned by "us" attacked by "them"
   auto p = pcs.bitmap[them];  
   U64 stepper_attacks = ((bitboards::pattks[us][s] & p[pawn]) |
 			 (bitboards::nmask[s] & p[knight]) |
@@ -361,6 +362,7 @@ bool position::is_attacked(const Square& s, const Color& us, const Color& them, 
 }
 
 U64 position::attackers_of(const Square& s, const Color& c) {
+  // attackers of square "s" by color "c"
   U64 m = all_pieces();
   auto p = pcs.bitmap[c];
   U64 battck = magics::attacks<bishop>(m, s);

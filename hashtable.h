@@ -31,6 +31,7 @@ struct entry {
     dkey |= (U64(score < 0 ? -score : score) << 44); // 16 bits
     dkey |= (U64(score < 0 ? 1ULL : 0ULL) << 60);    
   }
+  
   inline void unset_searching(const U64& key) {
     dkey ^= search_bit;
     pkey = key ^ dkey;

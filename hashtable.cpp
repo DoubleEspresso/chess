@@ -68,6 +68,7 @@ void hash_table::save(const U64& key,
 		      const int16& score) {
   
   entry * e, *replace;
+
   e = replace = first_entry(key);
 
   for (unsigned i = 0; i < cluster_size; ++i, ++e) {
@@ -81,7 +82,7 @@ void hash_table::save(const U64& key,
       replace = e;
     }    
   }
-
+  
   replace->encode(depth, bound, m, score);
   replace->pkey = key ^ replace->dkey;
 }
