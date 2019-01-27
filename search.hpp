@@ -34,9 +34,6 @@ void Search::start(position& p, U16 depth) {
   
   std::vector<std::unique_ptr<position>> pv;
   
-  //search_threads.enqueue(search_timer);
-  is_searching = true;
-
   util::clock c;
   c.start();
   
@@ -62,7 +59,6 @@ void Search::start(position& p, U16 depth) {
   std::cout << "time : " << c.ms() << "ms" << std::endl; 
   std::cout << "nodes: " << nodes << std::endl;
   std::cout << "knps: " << (nodes / c.ms()) << std::endl;
-  is_searching = false;
 }
 
 
@@ -248,8 +244,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 
   // re-try deferred moves (already passed legality check)
   for (size_t i = 0; i < deferred; ++i) {
-
-    
+ 
     p.do_move(stack->deferred_moves[i]);
     
     Score score = Score(depth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
@@ -280,7 +275,6 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 	}
       }   
        
-
       
       if (score >= beta) {
 	break;
@@ -296,7 +290,6 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   }
 
  
-  //std::unique_lock<std::mutex> lock(mtx);
   Bound bound = (best_score >= beta ? bound_low :
 		 best_score < alpha ? bound_high : bound_exact);
   ttable.save(p.key(), depth, U8(bound), best_move, best_score);
@@ -325,7 +318,6 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
   
 
   {  // hashtable lookup
-    //std::unique_lock<std::mutex> lock(mtx);    
     hash_data e;
     if (ttable.fetch(p.key(), e)) {
       ttm = e.move;
@@ -392,7 +384,6 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
   }
 
   
-  //std::unique_lock<std::mutex> lock(mtx);   
   Bound bound = (best_score >= beta ? bound_low :
 		 best_score < alpha ? bound_high : bound_exact);
   ttable.save(p.key(), depth, U8(bound), best_move, best_score);
