@@ -6,7 +6,7 @@
 #include "utils.h"
 #include "evaluate.h"
 
-Threadpool search_threads(5);
+Threadpool search_threads(2);
 
 
 struct search_bounds {
@@ -15,6 +15,7 @@ struct search_bounds {
   int16 best_score;
   U16 depth;
   Move best_move;  
+  volatile bool search_finished;
   
   void init() {
     alpha = ninf;
@@ -22,12 +23,12 @@ struct search_bounds {
     best_score = ninf;
     best_move = {};
     depth = 0;
+    search_finished = false;
   }
 };
 
 search_bounds sb;
 unsigned thread_depth = 3;
-
 
 void Search::start(position& p, U16 depth) {
   
@@ -49,7 +50,7 @@ void Search::start(position& p, U16 depth) {
     pv[i]->set_id(i);
     search_threads.enqueue(iterative_deepening, *pv[i], depth);
   }
-
+  
   search_threads.wait_finished();
   c.stop();
   
@@ -60,9 +61,9 @@ void Search::start(position& p, U16 depth) {
   }
   std::cout << "time : " << c.ms() << "ms" << std::endl; 
   std::cout << "nodes: " << nodes << std::endl;
+  std::cout << "knps: " << (nodes / c.ms()) << std::endl;
   is_searching = false;
 }
-
 
 
 void Search::search_timer() {
@@ -91,12 +92,15 @@ void Search::iterative_deepening(position& p, U16 depth) {
       readout_pv(p, eval, id);
     }    
   }
-  
+
+  if (p.is_master()) { sb.search_finished = true; }
 }
 
 template<Nodetype type>
 Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * stack) {
 
+  if (sb.search_finished) { return Score::draw; }
+  
   Score best_score = Score::ninf;
   Move best_move = {};
   size_t deferred = 0;
@@ -126,7 +130,6 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 
   
   {  // hashtable lookup
-    //std::unique_lock<std::mutex> lock(mtx);    
     hash_data e;
     if (ttable.fetch(p.key(), e)) {
       ttm = e.move;
@@ -150,23 +153,19 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   U16 moves_searched = 0;
   
   for (int i = 0; i < mvs.size(); ++i) {
+
+    if (sb.search_finished) { return Score::draw; }
     
     {
       // re-search if another thread has found better search bounds
-      //std::unique_lock<std::mutex> lock(mtx);
       if (moves_searched > 0 && depth > thread_depth &&
-	  (alpha < sb.alpha || sb.beta < beta) &&
+	  (sb.alpha > alpha || sb.beta < beta) &&
 	  sb.alpha < sb.beta &&
 	  sb.depth >= depth) {
 	research = true;
 	break;
       }      
     }
-    
-    
-    if (!p.is_legal(mvs[i])) {
-      continue;
-    }    
     
     // edge case: if we deferred a move causing a beta cut - recheck the hashtable and return early
     if (deferred > 0) {
@@ -177,7 +176,12 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 	}	
       }
     }
+
     
+    if (!p.is_legal(mvs[i])) {
+      continue;
+    }    
+        
     p.do_move(mvs[i]);
 
 
@@ -303,6 +307,8 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 
 template<Nodetype type>
 Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * stack) {
+
+  if (sb.search_finished) { return Score::draw; }
   
   Score best_score = Score::ninf;
   Move best_move = {};
@@ -354,6 +360,8 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
 
   for (int i = 0; i < mvs.size(); ++i) {
 
+    if (sb.search_finished) { return Score::draw; }
+    
     if (!p.is_legal(mvs[i])) {
       continue;
     }
