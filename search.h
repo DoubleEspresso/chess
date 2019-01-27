@@ -19,6 +19,7 @@ namespace Search {
     U16 ply;
     bool in_check, null_search, gen_checks;
     Move curr_move, best_move, threat_move;
+    Move deferred_moves[218];
   };
 
   void search_timer();

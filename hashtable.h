@@ -41,6 +41,7 @@ struct entry {
 };
 
 
+enum Bound { bound_low, bound_high, bound_exact, no_bound };
 
 struct hash_data {
   char depth;
