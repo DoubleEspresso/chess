@@ -120,11 +120,11 @@ namespace {
   }
 
   
-};
+}
 
 
 
 
 namespace eval {
   float evaluate(const position& p) { return do_eval(p); }
-};
+}

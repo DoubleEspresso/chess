@@ -14,6 +14,6 @@ namespace eval {
   };
 
   float evaluate(const position& p);
-};
+}
 
 #endif

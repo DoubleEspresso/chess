@@ -94,6 +94,6 @@ namespace {
   template<> float square_score<white>(const Piece& p, const Square& s) {   
     return 20 * sq_scores[p][s];
   }  
-};
+}
 
 #endif
