@@ -7,10 +7,6 @@
 #include "utils.h"
 #include "evaluate.h"
 
-Threadpool search_threads(4);
-volatile bool slaves_start;
-std::condition_variable cv;
-
 struct search_bounds {
   int16 alpha;
   int16 beta;
@@ -30,8 +26,14 @@ struct search_bounds {
   }
 };
 
+
+Threadpool search_threads(4);
+volatile bool slaves_start;
+std::condition_variable cv;
 search_bounds sb;
-unsigned thread_depth = 3;
+unsigned thread_depth = 13;
+
+
 
 void Search::start(position& p, U16 depth) {
   
@@ -40,7 +42,7 @@ void Search::start(position& p, U16 depth) {
   util::clock c;
   c.start();
   slaves_start = false;
-  bool parallel = true;
+  bool parallel = false; //true;
   
   for (unsigned i = 0; i < search_threads.size(); ++i) {
     if (i == 0) { sb.init(); }

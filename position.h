@@ -18,6 +18,7 @@
 #include "bitboards.h"
 #include "magics.h"
 #include "zobrist.h"
+#include "order.h"
 
 struct Move;
 
@@ -84,6 +85,7 @@ struct piece_data {
   
   inline void add_piece(const Color& c, const Piece& p, const Square& s, info& ifo);
 };
+
 
 class position {  
   U16 thread_id;
