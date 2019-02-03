@@ -24,18 +24,6 @@ position& position::operator=(const position& p) {
   return *(this);
 }
 
-/*
-piece_data::piece_data(const piece_data& pd) {
-  std::copy(std::begin(pd.bycolor), std::end(pd.bycolor), std::begin(bycolor));
-  std::copy(std::begin(pd.king_sq), std::end(pd.king_sq), std::begin(king_sq));
-  std::copy(std::begin(pd.color_on), std::end(pd.color_on), std::begin(color_on));
-  std::copy(std::begin(pd.piece_on), std::end(pd.piece_on), std::begin(piece_on));
-  std::copy(std::begin(pd.number_of), std::end(pd.number_of), std::begin(number_of));
-  std::copy(std::begin(pd.bitmap), std::end(pd.bitmap), std::begin(bitmap));
-  std::copy(std::begin(pd.piece_idx), std::end(pd.piece_idx), std::begin(piece_idx));
-  std::copy(std::begin(pd.square_of), std::end(pd.square_of), std::begin(square_of));
-}
-*/
 
 piece_data& piece_data::operator=(const piece_data& pd) {
   std::copy(std::begin(pd.bycolor), std::end(pd.bycolor), std::begin(bycolor));
@@ -256,6 +244,38 @@ void position::undo_move(const Move& m) {
   ifo = history[--hidx];
 }
 
+
+void position::do_null_move() {
+  const Color us = to_move();
+  const Color them = Color(us^1);
+
+  history[hidx++] = ifo;
+
+  // eps square
+  if (ifo.eps != Square::no_square) {
+    ifo.key ^= zobrist::ep(util::col(ifo.eps));
+    ifo.eps = Square::no_square;    
+  }
+
+  // side to move
+  ifo.stm = them;
+  ifo.key ^= zobrist::stm(ifo.stm);
+
+  // move50
+  ifo.move50++;
+  ifo.key ^= zobrist::mv50(ifo.move50);
+
+  // half-moves
+  ifo.hmvs++;
+  ifo.key ^= zobrist::hmvs(ifo.hmvs);
+}
+
+
+void position::undo_null_move() {
+  ifo = history[--hidx]; 
+}
+
+
 bool position::is_legal(const Move& m) {
   Square f = Square(m.f);
   Square t = Square(m.t);
@@ -395,7 +415,7 @@ void position::clear() {
   ifo = {};  
 }
 
-void position::print() {
+void position::print() const {
   std::cout << "   +---+---+---+---+---+---+---+---+" << std::endl;
   for (Row r = r8; r >= r1; --r) {    
     std::cout << " " << r + 1 << " ";

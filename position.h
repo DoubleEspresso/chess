@@ -108,9 +108,11 @@ class position {
   void setup(std::istringstream& fen);
   void clear();
   void set_piece(const char& p, const Square& s);
-  void print();  
+  void print() const;
   void do_move(const Move& m);
   void undo_move(const Move& m);
+  void do_null_move();
+  void undo_null_move();
 
   // utilities
   bool is_attacked(const Square& s, const Color& us, const Color& them, U64 m = 0ULL);

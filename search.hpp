@@ -7,7 +7,7 @@
 #include "utils.h"
 #include "evaluate.h"
 
-Threadpool search_threads(2);
+Threadpool search_threads(4);
 volatile bool slaves_start;
 std::condition_variable cv;
 
@@ -129,7 +129,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   
   bool in_check = p.in_check();
   stack->in_check = in_check;
-  //const bool pv_type = (type == root || type == pv);
+  const bool pv_type = (type == root || type == pv);
   //const bool forward_prune = (!in_check && !pv_type);
 
   stack->ply = (stack-1)->ply + 1;
@@ -162,8 +162,38 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     }   
   }
   
-  // forward pruning
+  // static evaluation
+  Score static_eval = (ttvalue != Score::ninf ?
+		       ttvalue : Score(eval::evaluate(p)));
 
+  // forward pruning
+  const bool forward_prune = (!in_check &&
+			      !pv_type &&
+			      !stack->null_search);
+  
+  // 1. null move pruning
+  if (forward_prune &&
+      depth >= 2 &&
+      static_eval >= beta) {
+    
+    int16 R = (depth >= 8 ? depth / 2 + (depth - 8)/4 : 2);
+    int16 ndepth = depth - R;
+    
+    (stack+1)->null_search = true;
+    
+    p.do_null_move();
+    
+    Score null_eval = Score(ndepth <= 1 ?
+			    -qsearch<non_pv>(p, -beta, -beta+1, 0, stack+1) :
+			    -search<non_pv>(p, -beta, -beta+1, ndepth, stack+1));
+    
+    p.undo_null_move();
+    
+    (stack+1)->null_search = false;
+    
+    if (null_eval >= beta) return null_eval;
+  }
+  
 
   // main search
   Movegen mvs(p);
