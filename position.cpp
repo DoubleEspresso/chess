@@ -8,6 +8,7 @@ position::position(const position& p) {
   std::copy(std::begin(p.history), std::end(p.history), std::begin(history));
   ifo = p.ifo;
   pcs = p.pcs;
+  stats = p.stats;
   hidx = p.hidx;
   thread_id = p.thread_id;
   nodes_searched = p.nodes_searched;
@@ -18,6 +19,7 @@ position& position::operator=(const position& p) {
   std::copy(std::begin(p.history), std::end(p.history), std::begin(history));
   ifo = p.ifo;
   pcs = p.pcs;
+  stats = p.stats;
   hidx = p.hidx;
   thread_id = p.thread_id;
   nodes_searched = p.nodes_searched;
@@ -409,6 +411,7 @@ void position::set_piece(const char& p, const Square& s) {
 
 void position::clear() {
   pcs.clear();
+  stats.clear();
   hidx = 0;
   thread_id = 0;
   nodes_searched = 0;

@@ -31,7 +31,7 @@ Threadpool search_threads(4);
 volatile bool slaves_start;
 std::condition_variable cv;
 search_bounds sb;
-unsigned thread_depth = 13;
+unsigned thread_depth = 3;
 
 
 
@@ -42,7 +42,7 @@ void Search::start(position& p, U16 depth) {
   util::clock c;
   c.start();
   slaves_start = false;
-  bool parallel = false; //true;
+  bool parallel = true;
   
   for (unsigned i = 0; i < search_threads.size(); ++i) {
     if (i == 0) { sb.init(); }

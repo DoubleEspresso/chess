@@ -14,19 +14,22 @@ struct Move;
 
 
 struct move_history {
-  int history[colors][squares][squares];
+  std::array<std::array<std::array<int, squares>, squares>, colors> history;
+  
+  move_history() { clear(); }
+    
+  move_history& operator=(const move_history& mh);
+  
   
   void update(const Move& m,
 	      const Move& previous,
 	      const int16& depth,
-	      Move * quiets);
-  
-  inline void clear();
+	      Move * quiets);  
+  void clear();
   
   template<Color c>
   int score(const Move& m);
 };
-
 
 
 

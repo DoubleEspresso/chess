@@ -90,6 +90,7 @@ struct piece_data {
 class position {  
   U16 thread_id;
   info history[512];
+  move_history stats;
   info ifo;
   piece_data pcs;
   U64 hidx;
