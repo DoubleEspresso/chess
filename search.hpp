@@ -132,7 +132,8 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   bool in_check = p.in_check();
   stack->in_check = in_check;
   const bool pv_type = (type == root || type == pv);
-  //const bool forward_prune = (!in_check && !pv_type);
+
+  std::vector<Move> quiets;
 
   stack->ply = (stack-1)->ply + 1;
   U16 root_dist = stack->ply;
@@ -240,6 +241,8 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 	continue;
       }             
     }
+
+    stack->curr_move = mvs[i];
     
     
     Score score = Score(depth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
@@ -263,7 +266,12 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       }
                   
       if (score >= beta) {
-	// history updates
+	
+	if (best_move.type == Movetype::quiet) {
+	  quiets.emplace_back(best_move);
+	  p.stats_update(best_move, (stack-1)->curr_move, depth, quiets);
+	}
+							      
 	break;
       }
 
@@ -295,6 +303,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 
     p.do_move(stack->deferred_moves[i]);
 
+    stack->curr_move = stack->deferred_moves[i];
     
     Score score = Score(depth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
 			-search<non_pv>(p, -beta, -alpha, depth-1, stack+1));
@@ -312,6 +321,12 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       }
       
       if (score >= beta) {
+
+	if (best_move.type == Movetype::quiet) {
+	  quiets.emplace_back(best_move);
+	  p.stats_update(best_move, (stack-1)->curr_move, depth, quiets);
+	}
+	
 	break;
       }
       /*

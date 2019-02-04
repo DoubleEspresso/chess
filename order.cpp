@@ -1,5 +1,6 @@
 #include "order.h"
 #include "move.h"
+#include "position.h"
 
 
 move_history& move_history::operator=(const move_history& mh) {  
@@ -7,11 +8,28 @@ move_history& move_history::operator=(const move_history& mh) {
   return (*this);
 }
 
-void move_history::update(const Move& m,
+void move_history::update(const position& p,
+			  const Move& m,
 			  const Move& previous,
 			  const int16& depth,
-			  Move * quiets) {
-  std::cout << "update!" << std::endl;
+			  const std::vector<Move>& quiets) {
+
+  const Color c = p.to_move();
+  int score = pow(depth, 2);
+  
+  if (m.type == Movetype::quiet) {
+    history[c][m.f][m.t] += score;
+  }
+
+  if (previous.type == Movetype::quiet) {
+    history[c ^ 1][previous.f][previous.t] -= score;
+  }  
+  
+  for (auto& q : quiets) {
+    history[c][q.f][q.t] -= score;
+  }
+  
+  // killers
 }
 
 

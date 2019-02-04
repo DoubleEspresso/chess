@@ -116,6 +116,12 @@ class position {
   void undo_move(const Move& m);
   void do_null_move();
   void undo_null_move();
+  inline void stats_update(const Move& m,
+			   const Move& previous, 
+			   const int16& depth,
+			   const std::vector<Move>& quiets) {
+    stats.update(*this, m, previous, depth, quiets);
+  }
 
   // utilities
   bool is_attacked(const Square& s, const Color& us, const Color& them, U64 m = 0ULL);
