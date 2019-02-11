@@ -277,6 +277,93 @@ void position::undo_null_move() {
   ifo = history[--hidx]; 
 }
 
+bool position::is_legal_hashmove(const Move& m) {
+
+  Square f = Square(m.f);
+  Square t = Square(m.t);
+  Piece p = piece_on(f);
+  Color us = to_move();
+  Color them = Color(us ^ 1);
+  Square eks = king_square(them);
+  bool slider = (p == rook || p == bishop || p == queen);
+  Movetype mt = Movetype(m.type);
+
+  if (f == t) return false;
+  if (t == eks) return false;
+  if (color_on(t) == us) return false;
+  if (color_on(f) != us) return false;
+  if ((mt == ep || mt == quiet || mt == promotion) && color_on(t) != Color::no_color) return false;
+  if ((mt == capture || mt == capture_promotion) && color_on(t) != them) return false;
+  if (mt == ep && t != ifo.eps) return false;
+  
+  if (!is_legal(m)) return false;
+  
+  if (p == pawn) {
+    if (util::row_dist(f, t) != 1 && util::row_dist(f,t) != 2) return false;
+    
+    if (us == black && util::row(f) <= util::row(t)) return false;
+
+    if (us == white && util::row(f) >= util::row(t)) return false;
+    
+    if (mt == quiet && util::col_dist(f, t) > 0) return false;
+    
+    if (mt == capture && (util::row_dist(f, t) != 1 || util::col_dist(f, t) != 1)) return false;        
+  }
+
+  if (p == knight) {
+    int rd = util::row_dist(f, t);
+    int cd = util::col_dist(f, t);
+    if (std::min(rd, cd) != 1 || std::max(rd, cd) != 2) return false;
+  }
+
+  if (p == rook) {
+    if (!util::same_row(f, t) && !util::same_col(f, t)) return false;
+  }
+
+  if (p == bishop) {
+    if (!util::on_diagonal(f, t)) return false;
+  }
+
+  if (p == queen) {
+    if (!util::same_row(f, t) && !util::same_col(f, t) && !util::on_diagonal(f, t)) return false;
+  }
+
+  if (p == king) {
+    if (util::row_dist(f, t) != 1 || util::col_dist(f, t) != 1) return false;
+  }
+  
+  if (slider) {
+    U64 bb = bitboards::between[f][t];
+    bb ^= bitboards::squares[f];
+    bb ^= bitboards::squares[t];
+    bb &= all_pieces();
+    if (bits::count(bb) != 0) return false;
+  }
+
+  // if we are in check, hash move should either capture the checker
+  // or block the check (king moves checked previously)
+  if (in_check() && p != king) {
+    U64 checks = checkers();
+    if (bits::more_than_one(checks)) return false;
+
+    Square check_f = Square(pop_lsb(checks));
+    if (mt == capture && t != check_f) return false;
+
+    Piece checker = piece_on(check_f);
+
+    if (mt == quiet && (checker == pawn || checker == knight)) return false;
+    
+    if (checker == bishop || checker == rook || checker == queen) {
+      U64 empty = ~all_pieces();
+      U64 evasion_target = bitboards::between[check_f][king_square()] & empty;
+      U64 block_bb = evasion_target & bitboards::squares[t];
+      if (mt == quiet && block_bb == 0ULL) return false;
+    }
+
+  }
+  
+  return true;
+}
 
 bool position::is_legal(const Move& m) {
   Square f = Square(m.f);
@@ -286,8 +373,17 @@ bool position::is_legal(const Move& m) {
   Square ks = king_square();
   Color us = to_move();
   Color them = Color(us ^ 1);
+  Square eks = king_square(them);
   auto pc = pcs.bitmap[them];
 
+  // basic checks on hash moves
+  if (f == t) return false;
+  if (t == eks) return false;
+  if (color_on(t) == us) return false;
+  if (color_on(f) != us) return false;
+  if ((mt == ep || mt == quiet || mt == promotion) && color_on(t) != Color::no_color) return false;
+  if ((mt == capture || mt == capture_promotion) && color_on(t) != them) return false;
+  
   // pinned
   if ((bitboards::squares[f] & ifo.pinned) && !util::aligned(ks, f, t)) return false;
   

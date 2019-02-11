@@ -44,7 +44,7 @@ struct Move {
 };
 
 class Movegen {
-  int it, last;
+  int last;
   Move list[218]; // max moves in any chess position
   Color us, them;
   U64 rank2, rank7;
@@ -76,10 +76,11 @@ class Movegen {
   inline void encode_capture_promotions(U64& b, const int& f);
   
  public:
-  Movegen() : it(0), last(0) {}
-  Movegen(const position& pos) : it(0), last(0) { initialize(pos); }
+  Movegen() : last(0) {}
+  Movegen(const position& pos) : last(0) { initialize(pos); }
   Movegen(const Movegen& o) = delete;
   Movegen(const Movegen&& o) = delete;
+  ~Movegen() {}
   
   Movegen& operator=(const Movegen& o) = delete;
   Movegen& operator=(const Movegen&& o) = delete;
@@ -95,6 +96,7 @@ class Movegen {
   inline int size() { return last; }    
   inline void print();
   inline void print_legal(position& p);
+  inline void reset() { last = 0; }
 };
 
 #include "move.hpp"

@@ -58,14 +58,14 @@ inline void Movegen::encode_capture_promotions(U64& b, const int& dir) {
 
 
 inline void Movegen::print() {
-  for(int j=it; j<last; ++j) {    
+  for(int j=0; j<last; ++j) {    
     std::cout << SanSquares[list[j].f] << SanSquares[list[j].t] << " ";
   }
   std::cout << "\n";
 }
 
 inline void Movegen::print_legal(position& p) {
-  for(int j=it; j<last; ++j) {    
+  for(int j=0; j<last; ++j) {    
     if (p.is_legal(list[j]))  std::cout << SanSquares[list[j].f] << SanSquares[list[j].t] << " ";
   }
   std::cout << "\n";
@@ -280,29 +280,28 @@ inline void Movegen::generate<capture_promotion, pawn>() {
 //------------------------------
 template<>
 inline void Movegen::generate<quiet, knight>() {
-  for (Square s = *knights; s != no_square; s = *++knights) {
-    U64 mvs = bitboards::nmask[s] & qtarget;    
-    if (mvs != 0ULL) encode<quiet>(mvs, s);
+  for (Square * s = &knights[0]; *s != no_square; ++s) {
+    U64 mvs = bitboards::nmask[*s] & qtarget;    
+    if (mvs != 0ULL) encode<quiet>(mvs, *s);
   }
 }
 
 template<>
 inline void Movegen::generate<capture, knight>() {
-  for (Square s = *knights; s != no_square; s = *++knights) {
-    U64 mvs = bitboards::nmask[s] & ctarget;     
-    if ( mvs != 0ULL) encode<capture>(mvs, s);
+  for (Square * s = &knights[0]; *s != no_square; ++s) {
+    U64 mvs = bitboards::nmask[*s] & ctarget;     
+    if ( mvs != 0ULL) encode<capture>(mvs, *s);
   }
 }
 
 template<>
-inline void Movegen::generate<pseudo_legal, knight>() {
-  
-  for (Square s = *knights; s != no_square; s = *++knights) {
-    U64 qmvs = bitboards::nmask[s] & qtarget;     
-    if (qmvs != 0ULL) encode<quiet>(qmvs, s);
+inline void Movegen::generate<pseudo_legal, knight>() {  
+  for (Square * s = &knights[0]; *s != no_square; ++s) {
+    U64 qmvs = bitboards::nmask[*s] & qtarget;     
+    if (qmvs != 0ULL) encode<quiet>(qmvs, *s);
     
-    U64 cmvs = bitboards::nmask[s] & ctarget;     
-    if (cmvs != 0ULL) encode<capture>(cmvs, s);
+    U64 cmvs = bitboards::nmask[*s] & ctarget;     
+    if (cmvs != 0ULL) encode<capture>(cmvs, *s);
   }
 }
 
@@ -311,30 +310,30 @@ inline void Movegen::generate<pseudo_legal, knight>() {
 //------------------------------
 template<>
 inline void Movegen::generate<quiet, bishop>() {
-  for (Square s = *bishops; s != no_square; s = *++bishops) {
-    U64 mvs = magics::attacks<bishop>(all_pieces, s) & qtarget;
-    if (mvs != 0ULL) encode<quiet>(mvs, s);
+  for (Square * s = &bishops[0]; *s != no_square; ++s) {
+    U64 mvs = magics::attacks<bishop>(all_pieces, *s) & qtarget;
+    if (mvs != 0ULL) encode<quiet>(mvs, *s);
   }  
 }
 
 template<>
 inline void Movegen::generate<capture, bishop>() {
-  for (Square s = *bishops; s != no_square; s = *++bishops) {
-    U64 mvs = magics::attacks<bishop>(all_pieces, s) & ctarget;
-    if (mvs != 0ULL) encode<capture>(mvs, s);
+  for (Square * s = &bishops[0]; *s != no_square; ++s) {
+    U64 mvs = magics::attacks<bishop>(all_pieces, *s) & ctarget;
+    if (mvs != 0ULL) encode<capture>(mvs, *s);
   }
 }
 
 template<>
 inline void Movegen::generate<pseudo_legal, bishop>() {
-  for (Square s = *bishops; s != no_square; s = *++bishops) {
-    U64 mvs = magics::attacks<bishop>(all_pieces, s);
+  for (Square * s = &bishops[0]; *s != no_square; ++s){ 
+    U64 mvs = magics::attacks<bishop>(all_pieces, *s);
 
     U64 q = mvs & qtarget;
-    if (q != 0ULL) encode<quiet>(q, s);
+    if (q != 0ULL) encode<quiet>(q, *s);
     
     U64 c = mvs & ctarget;
-    if (c != 0ULL) encode<capture>(c, s);
+    if (c != 0ULL) encode<capture>(c, *s);
   }
 }
 
@@ -343,30 +342,30 @@ inline void Movegen::generate<pseudo_legal, bishop>() {
 //------------------------------
 template<>
 inline void Movegen::generate<quiet, rook>() {
-  for (Square s = *rooks; s != no_square; s = *++rooks) {
-    U64 mvs = magics::attacks<rook>(all_pieces, s) & qtarget;
-    if (mvs != 0ULL) encode<quiet>(mvs, s);
+  for (Square * s = &rooks[0]; *s != no_square; ++s) {
+    U64 mvs = magics::attacks<rook>(all_pieces, *s) & qtarget;
+    if (mvs != 0ULL) encode<quiet>(mvs, *s);
   }   
 }
 
 template<>
-inline void Movegen::generate<capture, rook>() {
-  for (Square s = *rooks; s != no_square; s = *++rooks) {
-    U64 mvs = magics::attacks<rook>(all_pieces, s) & ctarget;
-    if (mvs != 0ULL) encode<capture>(mvs, s);
+inline void Movegen::generate<capture, rook>() {  
+  for (Square * s = &rooks[0]; *s != no_square; ++s) {
+    U64 mvs = magics::attacks<rook>(all_pieces, *s) & ctarget;
+    if (mvs != 0ULL) encode<capture>(mvs, *s);
   }
 }
 
 template<>
 inline void Movegen::generate<pseudo_legal, rook>() {  
-  for (Square s = *rooks; s != no_square; s = *++rooks) {
-    U64 mvs = magics::attacks<rook>(all_pieces, s);
+  for (Square * s = &rooks[0]; *s != no_square; ++s) {
+    U64 mvs = magics::attacks<rook>(all_pieces, *s);
 
     U64 q = mvs & qtarget;
-    if (q != 0ULL) encode<quiet>(q, s);
+    if (q != 0ULL) encode<quiet>(q, *s);
 
     U64 c = mvs & ctarget;
-    if (c != 0ULL) encode<capture>(c, s);
+    if (c != 0ULL) encode<capture>(c, *s);
   }
 }
 
@@ -375,35 +374,35 @@ inline void Movegen::generate<pseudo_legal, rook>() {
 //------------------------------
 template<>
 inline void Movegen::generate<quiet, queen>() {
-  for (Square s = *queens; s != no_square; s = *++queens) {
-    U64 mvs = (magics::attacks<bishop>(all_pieces, s) |
-	       magics::attacks<rook>(all_pieces, s)) & qtarget;
-    if (mvs != 0ULL) encode<quiet>(mvs, s);
+  for (Square * s = &queens[0]; *s != no_square; ++s) {
+    U64 mvs = (magics::attacks<bishop>(all_pieces, *s) |
+	       magics::attacks<rook>(all_pieces, *s)) & qtarget;
+    if (mvs != 0ULL) encode<quiet>(mvs, *s);
   }   
 }
 
 template<>
 inline void Movegen::generate<capture, queen>() {
 
-  for (Square s = *queens; s != no_square; s = *++queens) {
-    U64 mvs = (magics::attacks<bishop>(all_pieces, s) |
-	       magics::attacks<rook>(all_pieces, s)) & ctarget;
-    if (mvs != 0ULL) encode<capture>(mvs, s);
+  for (Square * s = &queens[0]; *s != no_square; ++s) {
+    U64 mvs = (magics::attacks<bishop>(all_pieces, *s) |
+	       magics::attacks<rook>(all_pieces, *s)) & ctarget;
+    if (mvs != 0ULL) encode<capture>(mvs, *s);
   }
 }
 
 template<>
 inline void Movegen::generate<pseudo_legal, queen>() {
 
-  for (Square s = *queens; s != no_square; s = *++queens) {
-    U64 mvs = (magics::attacks<bishop>(all_pieces, s) |
-	       magics::attacks<rook>(all_pieces, s));
+  for (Square * s = &queens[0]; *s != no_square; ++s) {
+    U64 mvs = (magics::attacks<bishop>(all_pieces, *s) |
+	       magics::attacks<rook>(all_pieces, *s));
 
     U64 q = mvs & qtarget;
-    if (q != 0ULL) encode<quiet>(q, s);
+    if (q != 0ULL) encode<quiet>(q, *s);
 
     U64 c = mvs & ctarget;
-    if (c != 0ULL) encode<capture>(c, s);
+    if (c != 0ULL) encode<capture>(c, *s);
   }
 }
 
@@ -476,14 +475,31 @@ template<>
 inline void Movegen::generate<quiet, pieces>() {
   // todo: order move generation by game phase
   // data-driven approach for this?
-  generate<promotion, pawn>();
-  generate<quiet, knight>();
-  generate<quiet, bishop>();
-  generate<quiet, rook>();
-  generate<quiet, queen>();
-  generate<quiet, pawn>();
-  generate<quiet, king>();
-  generate<castles, king>();
+  if (check_target == 0ULL) {
+    generate<promotion, pawn>();
+    generate<quiet, knight>();
+    generate<quiet, bishop>();
+    generate<quiet, rook>();
+    generate<quiet, queen>();
+    generate<quiet, pawn>();
+    generate<quiet, king>();
+    generate<castles, king>();
+  }
+  else if (check_target != 0ULL && evasion_target == 0ULL) {
+    generate<quiet, king>();
+  }
+  else if (check_target != 0ULL && evasion_target != 0ULL) {
+    if (!more_than_one(check_target)) {
+      generate<quiet, knight>();
+      generate<quiet, bishop>();
+      generate<quiet, rook>();
+      generate<quiet, queen>();
+      generate<promotion, pawn>();
+      generate<quiet, pawn>();
+    }
+    generate<quiet, king>();
+  }
+  
 }
 
 //------------------------------
@@ -493,13 +509,43 @@ template<>
 inline void Movegen::generate<capture, pieces>() {
   // todo: order move generation by game phase
   // data-driven approach for this?
-  generate<capture_promotion, pawn>();
-  generate<capture, knight>();
-  generate<capture, bishop>();
-  generate<capture, rook>();
-  generate<capture, queen>();
-  generate<capture, pawn>();
-  generate<capture, king>();
+  if (check_target == 0ULL) {
+    generate<capture_promotion, pawn>();
+    generate<capture, pawn>();
+    generate<capture, knight>();
+    generate<capture, bishop>();
+    generate<capture, rook>();
+    generate<capture, queen>();
+    generate<capture, king>();
+  }
+  else if (check_target != 0ULL && evasion_target == 0ULL) {
+    if (!more_than_one(check_target)) {
+      generate<capture_promotion, pawn>();
+      generate<capture, king>();
+      generate<capture, pawn>();
+      generate<capture, knight>();
+      generate<capture, bishop>();
+      generate<capture, rook>();
+      generate<capture, queen>();
+    }
+    else {
+      generate<capture, king>(); 
+    }
+  }
+  else if (check_target != 0ULL && evasion_target != 0ULL) {
+    if (!more_than_one(check_target)) {
+      generate<capture_promotion, pawn>();
+      generate<capture, pawn>();
+      generate<capture, king>();
+      generate<capture, knight>();
+      generate<capture, bishop>();
+      generate<capture, rook>();
+      generate<capture, queen>();
+    }
+    else {
+      generate<capture, king>(); 
+    }
+  }  
 }
 
 //------------------------------

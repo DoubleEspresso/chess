@@ -6,6 +6,7 @@
 #include "hashtable.h"
 #include "utils.h"
 #include "evaluate.h"
+#include "order.h"
 
 struct search_bounds {
   int16 alpha;
@@ -126,7 +127,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   Move best_move = {};
   size_t deferred = 0;
 
-  Move ttm;
+  Move ttm = {}; ttm.type = Movetype::no_type; // refactor me
   Score ttvalue = Score::ninf;
   
   bool in_check = p.in_check();
@@ -158,8 +159,8 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       
       if (e.depth >= depth) {
 	if ((ttvalue >= beta && e.bound == bound_low) ||	    
-	    (ttvalue < alpha && e.bound == bound_high) ||
-	    (ttvalue >= alpha && ttvalue < beta && e.bound == bound_exact))
+	    (ttvalue <= alpha && e.bound == bound_high) ||
+	    (ttvalue > alpha && ttvalue < beta && e.bound == bound_exact))
 	  return ttvalue;
       }
     }   
@@ -175,7 +176,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 			      !stack->null_search);
   
   // 1. null move pruning
-  if (forward_prune &&
+  if (forward_prune && 
       depth >= 2 &&
       static_eval >= beta) {
     
@@ -196,17 +197,19 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     
     if (null_eval >= beta) return null_eval;
   }
-  
+
 
   // main search
-  Movegen mvs(p);
-  mvs.generate<pseudo_legal, pieces>();
   U16 moves_searched = 0;
-  
-  for (int i = 0; i < mvs.size(); ++i) {
+  move_order mvs(p, ttm);
+  Move move;
+
+  while (mvs.next_move<search_type::main>(move)) {
 
     if (sb.search_finished) { return Score::draw; }
-    
+
+    //std::cout << " .. .. search mv = " <<
+    //(SanSquares[move.f] + SanSquares[move.t]) << std::endl;
 
     // thread update (todo)
     
@@ -221,13 +224,12 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     }
     
     
-    if (!p.is_legal(mvs[i])) {
+    if (move.type == Movetype::no_type || !p.is_legal(move)) {
+      //std::cout << " .. .. .. skipping illegal mv" << std::endl;
       continue;
     }    
         
-    p.do_move(mvs[i]);
-
-
+    p.do_move(move);
     
     // continue if another thread is already searching this position
 
@@ -236,13 +238,13 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     {
       if (depth > thread_depth && moves_searched > 0 && ttable.searching(p.key(), e)) {      
 	p.adjust_nodes(-1);
-	p.undo_move(mvs[i]);
-	stack->deferred_moves[deferred++] = mvs[i];
+	p.undo_move(move);
+	stack->deferred_moves[deferred++] = move;
 	continue;
       }             
     }
 
-    stack->curr_move = mvs[i];
+    stack->curr_move = move;
     
     
     Score score = Score(depth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
@@ -251,7 +253,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     //std::unique_lock<std::mutex> lock(mtx);        
     ++moves_searched;
     
-    p.undo_move(mvs[i]);
+    p.undo_move(move);
 
     if (e.is_searching()) e.unset_searching(p.key());
 	
@@ -259,7 +261,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 
     if (score > best_score) {
       best_score = score;      
-      best_move = mvs[i];
+      best_move = move;
 
       if (score >= alpha) {
 	alpha = score;
@@ -356,7 +358,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 
   
   Bound bound = (best_score >= beta ? bound_low :
-		 best_score < alpha ? bound_high : bound_exact);
+		 best_score <= alpha ? bound_high : bound_exact);
   ttable.save(p.key(), depth, U8(bound), best_move, best_score);
     
   return best_score;
@@ -370,8 +372,10 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
   
   Score best_score = Score::ninf;
   Move best_move = {};
+  best_move.type = Movetype::no_type;
 
-  Move ttm;
+  Move ttm = {};
+  ttm.type = Movetype::no_type;
   Score ttvalue = Score::ninf;
 
   stack->ply = (stack-1)->ply + 1;
@@ -390,8 +394,8 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
       
       if (e.depth >= depth) {
 	if ((ttvalue >= beta && e.bound == bound_low) ||	    
-	    (ttvalue < alpha && e.bound == bound_high) ||
-	    (ttvalue >= alpha && ttvalue < beta && e.bound == bound_exact))
+	    (ttvalue <= alpha && e.bound == bound_high) ||
+	    (ttvalue > alpha && ttvalue < beta && e.bound == bound_exact))
 	  return ttvalue;
       }
     }    
@@ -409,33 +413,32 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
 
   // main search
   U16 moves_searched = 0;
-  Movegen mvs(p);
-  if (in_check) { mvs.generate<pseudo_legal, pieces>(); }
-  else { mvs.generate<capture, pieces>(); }
+  move_order mvs(p, ttm); // start here - templated nextmove (?)
+  Move move;
 
-
-  for (int i = 0; i < mvs.size(); ++i) {
+  while (mvs.next_move<search_type::qsearch>(move)) {
+    
 
     if (sb.search_finished) { return Score::draw; }
 
     
-    if (!p.is_legal(mvs[i])) {
+    if (move.type == Movetype::no_type || !p.is_legal(move)) {
       continue;
     }
 
-    p.do_move(mvs[i]);
+    p.do_move(move);
 
     Score score = Score(-qsearch<type>(p, -beta, -alpha, (depth - 1 <= 0 ? 0 : depth - 1), stack + 1));
 
     ++moves_searched;
 
-    p.undo_move(mvs[i]);
+    p.undo_move(move);
 
 
     
     if (score > best_score) {
       best_score = score;
-      best_move = mvs[i];
+      best_move = move;
 
       if (score >= alpha) alpha = score;
       if (score >= beta) { break; }      
@@ -453,7 +456,7 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
   {
     //std::unique_lock<std::mutex> lock(mtx);
     Bound bound = (best_score >= beta ? bound_low :
-		   best_score < alpha ? bound_high : bound_exact);
+		   best_score <= alpha ? bound_high : bound_exact);
     ttable.save(p.key(), depth, U8(bound), best_move, best_score);
   }
   

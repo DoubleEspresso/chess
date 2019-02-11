@@ -122,6 +122,7 @@ class position {
 			   const std::vector<Move>& quiets) {
     stats.update(*this, m, previous, depth, quiets);
   }
+  move_history& history_stats() { return stats; }
 
   // utilities
   bool is_attacked(const Square& s, const Color& us, const Color& them, U64 m = 0ULL);
@@ -129,6 +130,7 @@ class position {
   U64 checkers() const { return ifo.checkers; }
   bool in_check();
   bool is_legal(const Move& m);
+  bool is_legal_hashmove(const Move& m);
   U64 pinned();
   inline bool can_castle_ks() const {
     return (ifo.cmask & (ifo.stm == white ? wks : bks)) == (ifo.stm == white ? wks : bks);

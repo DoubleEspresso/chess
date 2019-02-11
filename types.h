@@ -53,7 +53,8 @@ enum Row { r1, r2, r3, r4, r5, r6, r7, r8, rows, no_row };
 enum Col { A, B, C, D, E, F, G, H, cols, no_col };
 enum Score { inf = 10000, ninf = -10000, mate = inf - 1, mated = ninf + 1, draw = 0 };
 enum Nodetype { root, pv, non_pv, searching = 128 };
-
+enum OrderPhase { hash_move, mate_killer1, mate_killer2, good_captures,
+		  killer1, killer2, bad_captures, quiets, end };
 const std::string SanSquares[64] =
   {
     "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1",
@@ -73,6 +74,7 @@ template<> struct is_enum<Color> : std::true_type {};
 template<> struct is_enum<Square> : std::true_type {};
 template<> struct is_enum<Row> : std::true_type {};
 template<> struct is_enum<Col> : std::true_type {};
+template<> struct is_enum<OrderPhase> : std::true_type{};
 
 template<typename T, 
   typename = typename std::enable_if<is_enum<T>::value>::type >
