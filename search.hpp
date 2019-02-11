@@ -32,7 +32,7 @@ Threadpool search_threads(4);
 volatile bool slaves_start;
 std::condition_variable cv;
 search_bounds sb;
-unsigned thread_depth = 3;
+unsigned thread_depth = 13;
 
 
 
@@ -43,7 +43,7 @@ void Search::start(position& p, U16 depth) {
   util::clock c;
   c.start();
   slaves_start = false;
-  bool parallel = true;
+  bool parallel = false;
   
   for (unsigned i = 0; i < search_threads.size(); ++i) {
     if (i == 0) { sb.init(); }
@@ -98,6 +98,7 @@ void Search::iterative_deepening(position& p, U16 depth) {
   const unsigned stack_size = 64 + 4;
   node stack[stack_size];
   std::memset(stack, 0, sizeof(node) * stack_size);
+
   
   for (unsigned id = 1 + p.id(); id <= depth; ++id) {
     
@@ -115,7 +116,7 @@ void Search::iterative_deepening(position& p, U16 depth) {
     }    
   }
 
-  if (p.is_master()) { sb.search_finished = true; }
+  //if (p.is_master()) { sb.search_finished = true; }
 }
 
 template<Nodetype type>
@@ -176,11 +177,11 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 			      !stack->null_search);
   
   // 1. null move pruning
-  if (forward_prune && 
+  if (forward_prune &&
       depth >= 2 &&
       static_eval >= beta) {
     
-    int16 R = (depth >= 8 ? depth / 2 + (depth - 8)/4 : 2);
+    int16 R = (depth >= 6 ? depth / 2 : 2);
     int16 ndepth = depth - R;
     
     (stack+1)->null_search = true;
@@ -199,6 +200,27 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   }
 
 
+  // 2. -- internal iterative deepening
+  if (ttm.type == Movetype::no_type &&
+      depth >= (pv_type ? 6 : 4) &&
+      (pv_type || static_eval + 50 >= beta)) {
+    
+    int R = (depth >= 6 ? depth / 2 : 2);
+    int iid = depth - R; 
+    
+    stack->null_search = true;
+    
+    if (pv_type) search<pv>(p, alpha, beta, iid, stack);	
+    else search<non_pv>(p, alpha, beta, iid, stack);
+    
+    stack->null_search = false;
+
+    {
+      hash_data e;
+      if (ttable.fetch(p.key(), e)) { ttm = e.move; }
+    }
+  }
+  
   // main search
   U16 moves_searched = 0;
   move_order mvs(p, ttm);
@@ -252,6 +274,8 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     
     //std::unique_lock<std::mutex> lock(mtx);        
     ++moves_searched;
+
+    if (move.type == Movetype::quiet) quiets.emplace_back(move);
     
     p.undo_move(move);
 
@@ -270,7 +294,6 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       if (score >= beta) {
 	
 	if (best_move.type == Movetype::quiet) {
-	  quiets.emplace_back(best_move);
 	  p.stats_update(best_move, (stack-1)->curr_move, depth, quiets);
 	}
 							      
@@ -312,6 +335,8 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 
     ++moves_searched;
     
+    if (stack->deferred_moves[i].type == Movetype::quiet) quiets.emplace_back(stack->deferred_moves[i]);
+    
     p.undo_move(stack->deferred_moves[i]);
     
     if (score > best_score) {
@@ -325,7 +350,6 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       if (score >= beta) {
 
 	if (best_move.type == Movetype::quiet) {
-	  quiets.emplace_back(best_move);
 	  p.stats_update(best_move, (stack-1)->curr_move, depth, quiets);
 	}
 	
