@@ -32,7 +32,7 @@ Threadpool search_threads(4);
 volatile bool slaves_start;
 std::condition_variable cv;
 search_bounds sb;
-unsigned thread_depth = 5;
+unsigned thread_depth = 3;
 
 
 
@@ -220,10 +220,72 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       if (ttable.fetch(p.key(), e)) { ttm = e.move; }
     }
   }
+
+
+  /*
+    // todo : recheck promotions in move ordering (multiple moves)
+    // are being added to the list - but shouldn't be
+  {
+    // dbg move ordering
+    std::vector<Move> newmvs;
+    std::vector<Move> oldmvs;
+    
+    move_order o(p, ttm, stack->killers);
+    Move move;
+    while (o.next_move<search_type::main>(p, move)) {
+      if (move.type == Movetype::no_type || !p.is_legal(move)) {
+	//std::cout << " .. .. .. skipping illegal mv" << std::endl;
+	continue;
+      }
+      newmvs.push_back(move);
+    }
+
+    
+    Movegen mvs(p);
+    mvs.generate<pseudo_legal, pieces>();
+    for (int j=0; j<mvs.size(); ++j) {
+      if (!p.is_legal(mvs[j])) continue;
+      oldmvs.push_back(mvs[j]);
+    }
+
+
+    if (newmvs.size() != oldmvs.size()) {
+      p.print();
+      std::cout << "ERROR: new = " << newmvs.size() << " old = " << oldmvs.size() << std::endl;
+      std::cout << "hashmv = " << (SanSquares[ttm.f] + SanSquares[ttm.t]) << std::endl;
+      std::cout << "hashmv type = " << (int)(ttm.type) << std::endl;
+      std::cout << "hashmv legal = " << p.is_legal_hashmove(ttm) << std::endl;
+      std::cout << "hashmv frm p = " << p.piece_on(Square(ttm.f)) << std::endl;
+      std::cout << "killer0 = " <<
+	(SanSquares[stack->killers[0].f] + SanSquares[stack->killers[0].t]) << std::endl;
+      std::cout << "killer0 legal = " << p.is_legal_hashmove(stack->killers[0]) << std::endl;
+      std::cout << "killer0 frm p = " << p.piece_on(Square(stack->killers[0].f)) << std::endl;
+      std::cout << "killer0 frm type = " << (int)(stack->killers[0].type) << std::endl;
+      std::cout << "killer1 = " <<
+	(SanSquares[stack->killers[1].f] + SanSquares[stack->killers[1].t]) << std::endl;
+      std::cout << "killer1 legal = " << p.is_legal_hashmove(stack->killers[1]) << std::endl;
+      std::cout << "killer1 frm p = " << p.piece_on(Square(stack->killers[1].f)) << std::endl;
+      std::cout << "killer1 frm type = " << (int)(stack->killers[1].type) << std::endl;
+      
+      std::cout << "=== old mvs == = " << std::endl;
+      for (auto& om : oldmvs) { 
+	std::cout << (SanSquares[om.f] + SanSquares[om.t]) << std::endl;
+      }
+
+      std::cout << "=== new mvs == = " << std::endl;
+      for (auto& n : newmvs) { 
+	std::cout << (SanSquares[n.f] + SanSquares[n.t]) << std::endl;
+      }
+      std::cout << "" << std::endl;
+      std::cout << "" << std::endl;      
+    }
+  }
+  */
+  
   
   // main search
   U16 moves_searched = 0;
-  move_order mvs(p, ttm);
+  move_order mvs(p, ttm, stack->killers);
   Move move;
 
   while (mvs.next_move<search_type::main>(p, move)) {
@@ -292,7 +354,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       if (score >= beta) {
 	
 	if (best_move.type == Movetype::quiet) {
-	  p.stats_update(best_move, (stack-1)->curr_move, depth, quiets);
+	  p.stats_update(best_move, (stack-1)->curr_move, depth, quiets, stack->killers);
 	}
 							      
 	break;
@@ -348,7 +410,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       if (score >= beta) {
 
 	if (best_move.type == Movetype::quiet) {
-	  p.stats_update(best_move, (stack-1)->curr_move, depth, quiets);
+	  p.stats_update(best_move, (stack-1)->curr_move, depth, quiets, stack->killers);
 	}
 	
 	break;
@@ -369,7 +431,6 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       }
       */
     }
-    
   }
   
 
@@ -433,8 +494,70 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
   }
 
 
+  /*
+  {
+    // dbg move ordering
+    std::vector<Move> newmvs;
+    std::vector<Move> oldmvs;
+    
+    move_order o(p, ttm, stack->killers);
+    Move move;
+    while (o.next_move<search_type::qsearch>(p, move)) {
+      if (move.type == Movetype::no_type || !p.is_legal(move)) {
+	//std::cout << " .. .. .. skipping illegal mv" << std::endl;
+	continue;
+      }
+      newmvs.push_back(move);
+    }
+
+    
+    Movegen mvs(p);
+    if (!in_check) mvs.generate<capture, pieces>();
+    else mvs.generate<pseudo_legal, pieces>();
+    
+    for (int j=0; j<mvs.size(); ++j) {
+      if (!p.is_legal(mvs[j])) continue;
+      oldmvs.push_back(mvs[j]);
+    }
+
+
+    if (newmvs.size() != oldmvs.size()) {
+      p.print();
+      std::cout << "ERROR: new = " << newmvs.size() << " old = " << oldmvs.size() << std::endl;
+      std::cout << "hashmv = " << (SanSquares[ttm.f] + SanSquares[ttm.t]) << std::endl;
+      std::cout << "hashmv type = " << (int)(ttm.type) << std::endl;
+      std::cout << "hashmv legal = " << p.is_legal_hashmove(ttm) << std::endl;
+      std::cout << "hashmv frm p = " << p.piece_on(Square(ttm.f)) << std::endl;
+      std::cout << "killer0 = " <<
+	(SanSquares[stack->killers[0].f] + SanSquares[stack->killers[0].t]) << std::endl;
+      std::cout << "killer0 legal = " << p.is_legal_hashmove(stack->killers[0]) << std::endl;
+      std::cout << "killer0 frm p = " << p.piece_on(Square(stack->killers[0].f)) << std::endl;
+      std::cout << "killer0 frm type = " << (int)(stack->killers[0].type) << std::endl;
+      std::cout << "killer1 = " <<
+	(SanSquares[stack->killers[1].f] + SanSquares[stack->killers[1].t]) << std::endl;
+      std::cout << "killer1 legal = " << p.is_legal_hashmove(stack->killers[1]) << std::endl;
+      std::cout << "killer1 frm p = " << p.piece_on(Square(stack->killers[1].f)) << std::endl;
+      std::cout << "killer1 frm type = " << (int)(stack->killers[1].type) << std::endl;
+      
+      std::cout << "=== old mvs == = " << std::endl;
+      for (auto& om : oldmvs) { 
+	std::cout << (SanSquares[om.f] + SanSquares[om.t]) << std::endl;
+      }
+
+      std::cout << "=== new mvs == = " << std::endl;
+      for (auto& n : newmvs) { 
+	std::cout << (SanSquares[n.f] + SanSquares[n.t]) << std::endl;
+      }
+      std::cout << "" << std::endl;
+      std::cout << "" << std::endl;      
+    }
+  }
+  */
+
+
+  
   U16 moves_searched = 0;
-  move_order mvs(p, ttm);
+  move_order mvs(p, ttm, stack->killers);
   Move move;
 
   while (mvs.next_move<search_type::qsearch>(p, move)) {

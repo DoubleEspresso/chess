@@ -55,6 +55,7 @@ enum Score { inf = 10000, ninf = -10000, mate = inf - 1, mated = ninf + 1, draw 
 enum Nodetype { root, pv, non_pv, searching = 128 };
 enum OrderPhase { hash_move, mate_killer1, mate_killer2, good_captures,
 		  killer1, killer2, bad_captures, quiets, end };
+
 const std::string SanSquares[64] =
   {
     "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1",

@@ -288,6 +288,7 @@ bool position::is_legal_hashmove(const Move& m) {
   bool slider = (p == rook || p == bishop || p == queen);
   Movetype mt = Movetype(m.type);
 
+  if (mt == Movetype::no_type) return false;  
   if (f == t) return false;
   if (t == eks) return false;
   if (color_on(t) == us) return false;
@@ -303,6 +304,15 @@ bool position::is_legal_hashmove(const Move& m) {
   if (!is_legal(m)) return false;
   
   if (p == pawn) {
+    if (mt == quiet && util::row_dist(f, t) == 2) {
+      
+      if (us == white && util::row(f) != 1) return false;
+      if (us == black && util::row(f) != 6) return false;
+      
+      Square s = Square(f + (us == white ? 8 : -8));
+      if (piece_on(s) != no_piece) return false;
+    }
+     
     if (util::row_dist(f, t) != 1 && util::row_dist(f,t) != 2) return false;
     
     if (us == black && util::row(f) <= util::row(t)) return false;
@@ -333,7 +343,11 @@ bool position::is_legal_hashmove(const Move& m) {
   }
 
   if (p == king) {
-    if (util::row_dist(f, t) != 1 || util::col_dist(f, t) != 1) return false;
+    if (!util::same_row(f, t) && !util::same_col(f, t) && !util::on_diagonal(f, t)) return false;
+    else if (util::same_row(f, t) && util::col_dist(f, t) != 1) return false;
+    else if (util::same_col(f, t) && util::row_dist(f, t) != 1) return false;
+    else if (util::on_diagonal(f,t) && (util::row_dist(f,t) != 1 || util::col_dist(f,t) != 1)) return false;
+    
   }
   
   if (slider) {

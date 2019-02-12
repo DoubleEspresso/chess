@@ -119,8 +119,9 @@ class position {
   inline void stats_update(const Move& m,
 			   const Move& previous, 
 			   const int16& depth,
-			   const std::vector<Move>& quiets) {
-    stats.update(*this, m, previous, depth, quiets);
+			   const std::vector<Move>& quiets,
+			   Move * killers) {
+    stats.update(*this, m, previous, depth, quiets, killers);
   }
   move_history& history_stats() { return stats; }
 

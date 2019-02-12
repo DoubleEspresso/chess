@@ -15,7 +15,7 @@ class Movegen;
 class position;
 
 struct move_history {
-  std::array<std::array<std::array<int, squares>, squares>, colors> history;
+  std::array<std::array<std::array<int, squares>, squares>, colors> history;  
   
   move_history() { clear(); }
     
@@ -26,7 +26,9 @@ struct move_history {
 	      const Move& m,
 	      const Move& previous,
 	      const int16& depth,
-	      const std::vector<Move>& quiets);  
+	      const std::vector<Move>& quiets,
+	      Move * killers);
+  
   void clear();
   
   template<Color c>
@@ -58,14 +60,14 @@ class move_order {
   Move * hashmove;
   move_history * stats;
   Movegen * moves;
+  Move * killers;
   Color to_move;
   bool incheck;
   std::vector<scored_move> list;
 
  public:
   move_order() { }
-  move_order(move_history& mh, const search_type& t);
-  move_order(position& p, Move& hashmove);
+  move_order(position& p, Move& hashmove, Move * kill);
   move_order(const move_order& mo) = delete;
   move_order(const move_order&& mo) = delete;  
   move_order& operator=(const move_order& o) = delete;
@@ -73,7 +75,7 @@ class move_order {
   ~move_order();
 
   template<search_type st>
-  bool next_move(const position& pos, Move& m);
+  bool next_move(position& pos, Move& m);
   
   void sort();
   bool skip(const Move& m);
