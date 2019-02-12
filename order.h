@@ -73,7 +73,7 @@ class move_order {
   ~move_order();
 
   template<search_type st>
-  bool next_move(Move& m);
+  bool next_move(const position& pos, Move& m);
   
   void sort();
   bool skip(const Move& m);

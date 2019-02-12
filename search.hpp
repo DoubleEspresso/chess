@@ -32,7 +32,7 @@ Threadpool search_threads(4);
 volatile bool slaves_start;
 std::condition_variable cv;
 search_bounds sb;
-unsigned thread_depth = 13;
+unsigned thread_depth = 5;
 
 
 
@@ -43,7 +43,7 @@ void Search::start(position& p, U16 depth) {
   util::clock c;
   c.start();
   slaves_start = false;
-  bool parallel = false;
+  bool parallel = true;
   
   for (unsigned i = 0; i < search_threads.size(); ++i) {
     if (i == 0) { sb.init(); }
@@ -116,7 +116,7 @@ void Search::iterative_deepening(position& p, U16 depth) {
     }    
   }
 
-  //if (p.is_master()) { sb.search_finished = true; }
+  if (p.is_master()) { sb.search_finished = true; }
 }
 
 template<Nodetype type>
@@ -226,7 +226,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   move_order mvs(p, ttm);
   Move move;
 
-  while (mvs.next_move<search_type::main>(move)) {
+  while (mvs.next_move<search_type::main>(p, move)) {
 
     if (sb.search_finished) { return Score::draw; }
 
@@ -250,12 +250,10 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       //std::cout << " .. .. .. skipping illegal mv" << std::endl;
       continue;
     }    
-        
+    
     p.do_move(move);
     
-    // continue if another thread is already searching this position
-
-    
+    // continue if another thread is already searching this position    
     entry e;
     {
       if (depth > thread_depth && moves_searched > 0 && ttable.searching(p.key(), e)) {      
@@ -435,12 +433,11 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
   }
 
 
-  // main search
   U16 moves_searched = 0;
-  move_order mvs(p, ttm); // start here - templated nextmove (?)
+  move_order mvs(p, ttm);
   Move move;
 
-  while (mvs.next_move<search_type::qsearch>(move)) {
+  while (mvs.next_move<search_type::qsearch>(p, move)) {
     
 
     if (sb.search_finished) { return Score::draw; }

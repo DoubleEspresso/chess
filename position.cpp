@@ -293,7 +293,11 @@ bool position::is_legal_hashmove(const Move& m) {
   if (color_on(t) == us) return false;
   if (color_on(f) != us) return false;
   if ((mt == ep || mt == quiet || mt == promotion) && color_on(t) != Color::no_color) return false;
-  if ((mt == capture || mt == capture_promotion) && color_on(t) != them) return false;
+  if ((mt == capture ||
+       mt == capture_promotion_q ||
+       mt == capture_promotion_r ||
+       mt == capture_promotion_b ||
+       mt == capture_promotion_n) && color_on(t) != them) return false;
   if (mt == ep && t != ifo.eps) return false;
   
   if (!is_legal(m)) return false;
