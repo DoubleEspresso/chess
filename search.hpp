@@ -327,10 +327,11 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     }
 
     stack->curr_move = move;
+
+    int16 newdepth = depth + in_check;
     
-    
-    Score score = Score(depth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
-			-search<non_pv>(p, -beta, -alpha, depth-1, stack+1));
+    Score score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
+			-search<non_pv>(p, -beta, -alpha, newdepth-1, stack+1));
     
     //std::unique_lock<std::mutex> lock(mtx);        
     ++moves_searched;
@@ -389,9 +390,9 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     p.do_move(stack->deferred_moves[i]);
 
     stack->curr_move = stack->deferred_moves[i];
-    
-    Score score = Score(depth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
-			-search<non_pv>(p, -beta, -alpha, depth-1, stack+1));
+    int16 newdepth = depth + in_check;
+    Score score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
+			-search<non_pv>(p, -beta, -alpha, newdepth-1, stack+1));
 
     ++moves_searched;
     
