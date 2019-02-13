@@ -14,6 +14,7 @@ namespace Search {
   
   std::atomic_bool is_searching;  
   std::mutex mtx;
+  Move bestmoves[2];
   
   struct node {
     U16 ply;

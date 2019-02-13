@@ -32,18 +32,19 @@ Threadpool search_threads(4);
 volatile bool slaves_start;
 std::condition_variable cv;
 search_bounds sb;
-unsigned thread_depth = 3;
+unsigned thread_depth = 13;
 
 
 
 void Search::start(position& p, U16 depth) {
   
   std::vector<std::unique_ptr<position>> pv;
-  
+
+  depth = 10;
   util::clock c;
   c.start();
   slaves_start = false;
-  bool parallel = true;
+  bool parallel = false;
   
   for (unsigned i = 0; i < search_threads.size(); ++i) {
     if (i == 0) { sb.init(); }
@@ -83,6 +84,8 @@ void Search::start(position& p, U16 depth) {
   std::cout << "nodes: " << nodes << std::endl;
   std::cout << "qnodes: " << qnodes << std::endl;
   std::cout << "knps: " << (nodes / c.ms()) << std::endl;
+  std::cout << "bestmove " << (SanSquares[bestmoves[0].f] + SanSquares[bestmoves[0].t]) <<
+    " ponder " << (SanSquares[bestmoves[1].f] + SanSquares[bestmoves[1].t]) << std::endl;
 }
 
 
@@ -96,29 +99,30 @@ void Search::search_timer() {
 void Search::iterative_deepening(position& p, U16 depth) {
   int16 alpha = ninf;
   int16 beta = inf;
+  
   Score eval = ninf;
   
   const unsigned stack_size = 64 + 4;
   node stack[stack_size];
   std::memset(stack, 0, sizeof(node) * stack_size);
-
+  
   
   for (unsigned id = 1 + p.id(); id <= depth; ++id) {
     
     stack->ply = (stack+1)->ply = 0;
-
+    
     eval = search<root>(p, alpha, beta, id, stack + 2);
     
     if (p.is_master()) {
       readout_pv(p, eval, id);
-
+      
       if (id >= thread_depth && !slaves_start) {
 	slaves_start = true;
 	cv.notify_all();	
       }
-    }    
+    }
   }
-
+  
   if (p.is_master()) { sb.search_finished = true; }
 }
 
@@ -178,6 +182,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   const bool forward_prune = (!in_check &&
 			      !pv_type &&
 			      !stack->null_search);
+
   
   // 1. null move pruning
   if (forward_prune &&
@@ -203,7 +208,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   }
 
 
-  // 2. -- internal iterative deepening
+  // 2. internal iterative deepening
   if (ttm.type == Movetype::no_type &&
       depth >= (pv_type ? 6 : 4) &&
       (pv_type || static_eval + 50 >= beta)) {
@@ -295,9 +300,6 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 
     if (sb.search_finished) { return Score::draw; }
 
-    //std::cout << " .. .. search mv = " <<
-    //(SanSquares[move.f] + SanSquares[move.t]) << std::endl;
-
     // thread update (todo)
     
     // edge case: if we deferred a move causing a beta cut - recheck the hashtable and return early
@@ -312,7 +314,6 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     
     
     if (move.type == Movetype::no_type || !p.is_legal(move)) {
-      //std::cout << " .. .. .. skipping illegal mv" << std::endl;
       continue;
     }    
     
@@ -336,7 +337,6 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     Score score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
 			-search<non_pv>(p, -beta, -alpha, newdepth-1, stack+1));
     
-    //std::unique_lock<std::mutex> lock(mtx);        
     ++moves_searched;
 
     if (move.type == Movetype::quiet) quiets.emplace_back(move);
@@ -619,7 +619,9 @@ void Search::readout_pv(position& p, const Score& eval, const U16& depth) {
       
       res += SanSquares[e.move.f] + SanSquares[e.move.t] + " ";
       p.do_move(e.move);
-      moves.push_back(e.move);      
+      moves.push_back(e.move);
+      
+      if (j <= 1) bestmoves[j] = e.move;
     }
     
     while(!moves.empty()) {

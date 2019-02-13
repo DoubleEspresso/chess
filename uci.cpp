@@ -3,6 +3,7 @@
 #include "bench.h"
 #include "search.h"
 #include "threads.h"
+#include "hashtable.h"
 
 position p;
 Move dbgmove;
@@ -25,8 +26,24 @@ bool uci::parse_command(const std::string& input) {
     std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::tolower);
   
     if (cmd == "position" && instream >> cmd) {
-      std::istringstream fen(START_FEN);
-      p.setup(cmd == "startpos" ? fen : instream);
+
+      std::string tmp;
+      if (cmd == "startpos") {
+	getline(instream, tmp);
+	std::istringstream fen(START_FEN);
+	p.setup(fen);
+	load_position(tmp);
+      }
+      else {
+	std::string sfen = "";
+	while((instream >> cmd) && cmd != "moves") sfen += cmd + " ";
+	getline(instream, tmp);
+	tmp = "moves " + tmp;
+	std::istringstream fen(sfen);
+	p.setup(fen);
+	load_position(tmp);
+      }
+
       p.print();
       std::cout << "position hash key: " << p.key() << std::endl;
     }
@@ -89,11 +106,27 @@ bool uci::parse_command(const std::string& input) {
       Perft perft;
       perft.divide(p, atoi(cmd.c_str()));
     }
-    else if (!Search::is_searching && cmd == "go" && instream >> cmd) {     
-      
-      int depth = atoi(cmd.c_str());
+
+    // game specific uci commands (refactor?)
+    else if (cmd == "isready") {	
+      ttable.clear();
+      std::cout << "readyok" << std::endl;
+    }
+    else if (!Search::is_searching && cmd == "go" && instream >> cmd) {           
+      //int depth = atoi(cmd.c_str());
+      U16 depth = 10;
       worker.enqueue(Search::start, p, depth);
     }
+    
+    else if (cmd == "ucinewgame") {      
+      ttable.clear();      
+    }
+    else if (cmd == "uci") {
+      ttable.clear();
+      std::cout << "id name sandbox chess" << std::endl;
+      std::cout << "uciok" << std::endl;
+    }
+    
     else if (cmd == "exit" || cmd == "quit") {
       running = false;
       break;
@@ -103,3 +136,44 @@ bool uci::parse_command(const std::string& input) {
   }
   return running;
 }
+
+
+void uci::load_position(const std::string& pos) {
+  std::string token;
+  std::istringstream ss(pos);
+
+  ss >> token; // eat the moves token
+  while (ss >> token) {
+    Movegen mvs(p);
+    mvs.generate<pseudo_legal, pieces>();
+    for (int j=0; j<mvs.size(); ++j) {
+      if (!p.is_legal(mvs[j])) continue;
+
+      if (move_to_string(mvs[j]) == token) {
+	p.do_move(mvs[j]);
+	break;
+      }
+
+    }
+  }
+  
+}
+
+std::string uci::move_to_string(const Move& m) {
+  std::string fromto = SanSquares[m.f] + SanSquares[m.t];
+  Movetype t = Movetype(m.type);
+  
+  std::string ps = "";
+  ps = (t == capture_promotion_q ? "q" :
+	t == capture_promotion_r ? "r" :
+	t == capture_promotion_b ? "b" :
+	t == capture_promotion_n ? "n" : "");
+  
+  ps = (t == promotion_q ? "q" :
+	t == promotion_r ? "r" :
+	t == promotion_b ? "b" :
+	t == promotion_n ? "n" : "");
+  
+  return fromto + ps;
+}
+
