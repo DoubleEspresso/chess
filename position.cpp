@@ -12,6 +12,7 @@ position::position(const position& p) {
   hidx = p.hidx;
   thread_id = p.thread_id;
   nodes_searched = p.nodes_searched;
+  qnodes_searched = p.qnodes_searched;
 }
 
 
@@ -23,6 +24,7 @@ position& position::operator=(const position& p) {
   hidx = p.hidx;
   thread_id = p.thread_id;
   nodes_searched = p.nodes_searched;
+  qnodes_searched = p.qnodes_searched;
   return *(this);
 }
 
@@ -529,6 +531,7 @@ void position::clear() {
   hidx = 0;
   thread_id = 0;
   nodes_searched = 0;
+  qnodes_searched = 0;
   ifo = {};  
 }
 

@@ -95,6 +95,7 @@ class position {
   piece_data pcs;
   U64 hidx;
   U64 nodes_searched;
+  U64 qnodes_searched;
   
  public:
   position() {}
@@ -163,7 +164,9 @@ class position {
   inline bool is_master() { return thread_id == 0; }
 
   inline U64 nodes() const { return nodes_searched; }
+  inline U64 qnodes() const { return qnodes_searched; }
   inline void adjust_nodes(const U64& dn) { nodes_searched += dn; }
+  inline void adjust_qnodes(const U64& dn) { qnodes_searched += dn; }
   
   template<Color c, Piece p>
   inline U64 get_pieces() const { return pcs.bitmap[c][p]; }

@@ -73,12 +73,15 @@ void Search::start(position& p, U16 depth) {
   
   
   U64 nodes = 0ULL;
+  U64 qnodes = 0ULL;
   for(auto& t : pv) {
-    std::cout << "id: " << t->id() << " " << t->nodes() << std::endl;
+    std::cout << "id: " << t->id() << " " << t->nodes() << " " << t->qnodes() << std::endl;
     nodes += t->nodes();
+    qnodes += t->qnodes();
   }
   std::cout << "time : " << c.ms() << "ms" << std::endl; 
   std::cout << "nodes: " << nodes << std::endl;
+  std::cout << "qnodes: " << qnodes << std::endl;
   std::cout << "knps: " << (nodes / c.ms()) << std::endl;
 }
 
@@ -572,7 +575,8 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
     }
 
     p.do_move(move);
-
+    p.adjust_qnodes(1);
+    
     Score score = Score(-qsearch<type>(p, -beta, -alpha, (depth - 1 <= 0 ? 0 : depth - 1), stack + 1));
 
     ++moves_searched;
@@ -596,15 +600,6 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
     return Score(Score::mated + root_dist);
   }
 
-
-  
-  {
-    //std::unique_lock<std::mutex> lock(mtx);
-    Bound bound = (best_score >= beta ? bound_low :
-		   best_score <= alpha ? bound_high : bound_exact);
-    ttable.save(p.key(), depth, U8(bound), best_move, best_score);
-  }
-  
   return best_score;  
 }
 
