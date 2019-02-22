@@ -344,9 +344,33 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     stack->curr_move = move;
 
     int16 newdepth = depth + in_check;
+
+    // pvs try
+    /*
+    Score score = Score::ninf;
+    if (moves_searched < 1) {
+      score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
+			 -search<non_pv>(p, -beta, -alpha, newdepth-1, stack+1));
+    }
+    
+    else {	
+      score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -alpha-1, -alpha, 0, stack+1) :
+		    -search<non_pv>(p, -alpha-1, -alpha, newdepth-1, stack+1));
+      
+      if (score > alpha && score < beta) {
+	score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
+		      -search<non_pv>(p, -beta, -alpha, newdepth-1, stack+1));
+	
+	//if (score > alpha) alpha = score;
+      }
+      
+    }
+    */
+    
     
     Score score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
 			-search<non_pv>(p, -beta, -alpha, newdepth-1, stack+1));
+
     
     ++moves_searched;
 
@@ -407,9 +431,35 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 
     stack->curr_move = stack->deferred_moves[i];
     int16 newdepth = depth + in_check;
+
+    /*
+    Score score = Score::ninf;
+    if (moves_searched < 1) {
+      score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
+			 -search<non_pv>(p, -beta, -alpha, newdepth-1, stack+1));
+    }
+    
+    else {	
+      score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -alpha-1, -alpha, 0, stack+1) :
+		    -search<non_pv>(p, -alpha-1, -alpha, newdepth-1, stack+1));
+      
+      if (score > alpha && score < beta) {
+	score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
+		      -search<non_pv>(p, -beta, -alpha, newdepth-1, stack+1));
+	
+	//if (score > alpha) alpha = score;
+      }
+      
+    }
+    */
+
+
+
+
+    
     Score score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
 			-search<non_pv>(p, -beta, -alpha, newdepth-1, stack+1));
-
+    
     ++moves_searched;
     
     if (stack->deferred_moves[i].type == Movetype::quiet) quiets.emplace_back(stack->deferred_moves[i]);
@@ -614,6 +664,12 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
     return Score(Score::mated + root_dist);
   }
 
+  /*
+  Bound bound = (best_score >= beta ? bound_low :
+		 best_score <= alpha ? bound_high : bound_exact);
+  ttable.save(p.key(), depth, U8(bound), best_move, best_score);
+  */
+  
   return best_score;  
 }
 
