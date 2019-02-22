@@ -196,22 +196,19 @@ bool move_order::next_move<main>(position& pos, Move& m) {
 
   case killer1 : {
     if (pos.is_legal_hashmove(killers[0])) {
-      if (killers[0].f != hashmove->f || killers[0].t != hashmove->t)
+      if (killers[0] != *hashmove)
 	m = killers[0];
     }
-    ++phase;
-    break;
+    ++phase; break;
   }
     
 
   case killer2 : {
     if (pos.is_legal_hashmove(killers[1])) {
-      if ((killers[1].f != hashmove->f || killers[1].t != hashmove->t) &&
-	  (killers[1].f != killers[0].f || killers[1].t != killers[0].t))
+      if ((killers[1] != *hashmove) && killers[1] != killers[0])
 	m = killers[1];
     }
-    ++phase;
-    break;
+    ++phase; break;
   }
     
     
@@ -288,23 +285,20 @@ bool move_order::next_move<qsearch>(position& pos, Move& m) {
   }
 
   case mate_killer1 : {
-    if (pos.is_legal_hashmove(killers[2])) {
-      if (killers[2].f != hashmove->f || killers[2].t != hashmove->t)
-	m = killers[2];
+    if (pos.is_legal_hashmove(killers[2]) &&
+	killers[2] != *hashmove) {
+      m = killers[2];
     }
-    ++phase;
-    break;
+    ++phase; break;
   }
     
 
   case mate_killer2 : {
     if (pos.is_legal_hashmove(killers[3])) {
-      if ((killers[3].f != hashmove->f || killers[3].t != hashmove->t) &&
-	  (killers[3].f != killers[2].f || killers[3].t != killers[2].t))	
+      if (killers[3] != *hashmove && killers[3] != killers[2])
 	m = killers[3];
     }
-    ++phase;
-    break;
+    ++phase; break;
   }
     
   case good_captures : {
