@@ -40,7 +40,6 @@ void Search::start(position& p, U16 depth) {
   
   std::vector<std::unique_ptr<position>> pv;
 
-  depth = 10;
   util::clock c;
   c.start();
   slaves_start = false;
@@ -213,7 +212,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       (pv_type || static_eval + 50 >= beta)) {
     
     int R = (depth >= 6 ? depth / 2 : 2);
-    int iid = depth - R; 
+    int iid = depth - R;
     
     stack->null_search = true;
     
@@ -229,9 +228,10 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   }
 
 
+
+  // todo : recheck promotions in move ordering (multiple moves)
+  // are being added to the list - but shouldn't be
   /*
-    // todo : recheck promotions in move ordering (multiple moves)
-    // are being added to the list - but shouldn't be
   {
     // dbg move ordering
     std::vector<Move> newmvs;
@@ -255,6 +255,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       oldmvs.push_back(mvs[j]);
     }
 
+    
 
     if (newmvs.size() != oldmvs.size()) {
       p.print();
@@ -273,6 +274,17 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       std::cout << "killer1 legal = " << p.is_legal_hashmove(stack->killers[1]) << std::endl;
       std::cout << "killer1 frm p = " << p.piece_on(Square(stack->killers[1].f)) << std::endl;
       std::cout << "killer1 frm type = " << (int)(stack->killers[1].type) << std::endl;
+
+      std::cout << "mate-killer0 = " <<
+	(SanSquares[stack->killers[2].f] + SanSquares[stack->killers[2].t]) << std::endl;
+      std::cout << "mate-killer0 legal = " << p.is_legal_hashmove(stack->killers[2]) << std::endl;
+      std::cout << "mate-killer0 frm p = " << p.piece_on(Square(stack->killers[2].f)) << std::endl;
+      std::cout << "mate-killer0 frm type = " << (int)(stack->killers[2].type) << std::endl;
+      std::cout << "mate-killer1 = " <<
+	(SanSquares[stack->killers[3].f] + SanSquares[stack->killers[3].t]) << std::endl;
+      std::cout << "mate-killer1 legal = " << p.is_legal_hashmove(stack->killers[3]) << std::endl;
+      std::cout << "mate-killer1 frm p = " << p.piece_on(Square(stack->killers[3].f)) << std::endl;
+      std::cout << "mate-killer1 frm type = " << (int)(stack->killers[3].type) << std::endl;
       
       std::cout << "=== old mvs == = " << std::endl;
       for (auto& om : oldmvs) { 
@@ -287,7 +299,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       std::cout << "" << std::endl;      
     }
   }
-  */
+  */  
   
   
   // main search
@@ -357,7 +369,9 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       if (score >= beta) {
 	
 	if (best_move.type == Movetype::quiet) {
-	  p.stats_update(best_move, (stack-1)->curr_move, depth, quiets, stack->killers);
+	  p.stats_update(best_move,
+			 (stack-1)->curr_move,
+			 depth, score, quiets, stack->killers);
 	}
 							      
 	break;
@@ -413,7 +427,8 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       if (score >= beta) {
 
 	if (best_move.type == Movetype::quiet) {
-	  p.stats_update(best_move, (stack-1)->curr_move, depth, quiets, stack->killers);
+	  p.stats_update(best_move, (stack-1)->curr_move,
+			 depth, score, quiets, stack->killers);
 	}
 	
 	break;

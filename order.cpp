@@ -12,6 +12,7 @@ void move_history::update(const position& p,
 			  const Move& m,
 			  const Move& previous,
 			  const int16& depth,
+			  const Score& eval,
 			  const std::vector<Move>& quiets,
 			  Move * killers) {
   
@@ -20,11 +21,22 @@ void move_history::update(const position& p,
   
   if (m.type == Movetype::quiet) {
     history[c][m.f][m.t] += score;
-    
-    if (m.f != killers[0].f) {
+
+    if (eval >= Score::mate_max_ply &&
+	m != killers[0] &&
+	m != killers[1] &&
+	m != killers[2]) {
+      killers[3] = killers[2];
+      killers[2] = m;
+    }    
+    else if ( eval < Score::mate_max_ply &&
+	      m != killers[2] &&
+	      m != killers[3] &&
+	      m != killers[0]) {
       killers[1] = killers[0];
       killers[0] = m;
     }
+    
   }
 
   if (previous.type == Movetype::quiet) {
@@ -32,9 +44,10 @@ void move_history::update(const position& p,
   }  
   
   for (auto& q : quiets) {
+    if (m.f == q.f) continue;
     history[c][q.f][q.t] -= score;
   }
-
+  
 }
 
 
@@ -81,14 +94,14 @@ move_order::~move_order() {
 bool move_order::skip(const Move& m) {
   if (m.type == Movetype::no_type) return true;
   
-  if (hashmove->type == m.type &&
-      m.f == hashmove->f && m.t == hashmove->t) return true;
+  if (m == *hashmove) return true;
 
-  if (m.type == Movetype::quiet &&
-      ((m.f == killers[0].f && m.t == killers[0].t) ||
-       (m.f == killers[1].f && m.t == killers[1].t))) return true;
+  
+  if ((m == killers[0] || m == killers[1] ||
+       m == killers[2] || m == killers[3]))
+    return true;
+  
 
-  // mate killers
   return false;
 }
 
@@ -129,10 +142,22 @@ bool move_order::next_move<main>(position& pos, Move& m) {
   }
 
     
-  case mate_killer1 : { ++phase; break; }
+  case mate_killer1 : {
+    if (pos.is_legal_hashmove(killers[2]) &&
+	killers[2] != *hashmove) {
+      m = killers[2];
+    }
+    ++phase; break;
+  }
 
     
-  case mate_killer2 : { ++phase; break; }
+  case mate_killer2 : {
+    if (pos.is_legal_hashmove(killers[3])) {
+      if (killers[3] != *hashmove && killers[3] != killers[2])
+	m = killers[3];
+    }
+    ++phase; break;
+  }
 
     
   case good_captures : {
@@ -181,7 +206,8 @@ bool move_order::next_move<main>(position& pos, Move& m) {
 
   case killer2 : {
     if (pos.is_legal_hashmove(killers[1])) {
-      if (killers[1].f != hashmove->f || killers[1].t != hashmove->t)
+      if ((killers[1].f != hashmove->f || killers[1].t != hashmove->t) &&
+	  (killers[1].f != killers[0].f || killers[1].t != killers[0].t))
 	m = killers[1];
     }
     ++phase;
@@ -261,12 +287,25 @@ bool move_order::next_move<qsearch>(position& pos, Move& m) {
     break;
   }
 
+  case mate_killer1 : {
+    if (pos.is_legal_hashmove(killers[2])) {
+      if (killers[2].f != hashmove->f || killers[2].t != hashmove->t)
+	m = killers[2];
+    }
+    ++phase;
+    break;
+  }
     
-  case mate_killer1 : { ++phase; break; }
-    
-    
-  case mate_killer2 : { ++phase; break; }
 
+  case mate_killer2 : {
+    if (pos.is_legal_hashmove(killers[3])) {
+      if ((killers[3].f != hashmove->f || killers[3].t != hashmove->t) &&
+	  (killers[3].f != killers[2].f || killers[3].t != killers[2].t))	
+	m = killers[3];
+    }
+    ++phase;
+    break;
+  }
     
   case good_captures : {
     if (list.size() <= 0) {
@@ -317,7 +356,8 @@ bool move_order::next_move<qsearch>(position& pos, Move& m) {
     
   case killer2 : {
     if (incheck && pos.is_legal_hashmove(killers[1])) {
-      if (killers[1].f != hashmove->f || killers[1].t != hashmove->t)
+      if ((killers[1].f != hashmove->f || killers[1].t != hashmove->t) &&
+	  (killers[1].f != killers[0].f || killers[1].t != killers[0].t))
 	m = killers[1];
     }
     ++phase;

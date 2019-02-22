@@ -26,6 +26,7 @@ struct move_history {
 	      const Move& m,
 	      const Move& previous,
 	      const int16& depth,
+	      const Score& eval,
 	      const std::vector<Move>& quiets,
 	      Move * killers);
   

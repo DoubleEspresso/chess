@@ -41,6 +41,12 @@ struct Move {
   inline void set(const U8& frm, const U8& to, const Movetype& mt) {
     f = frm; t = to; type = mt;
   }
+  inline bool operator==(const Move& m) const {
+    return (f == m.f && t == m.t && type == m.type);    
+  }
+  inline bool operator!=(const Move& m) const {
+    return (f != m.f || t != m.t || type != m.type);
+  }
 };
 
 class Movegen {

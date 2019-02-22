@@ -21,7 +21,7 @@ namespace Search {
     bool in_check, null_search, gen_checks;
     Move curr_move, best_move, threat_move;
     Move deferred_moves[218];
-    Move killers[2];
+    Move killers[4];
   };
 
   void search_timer();

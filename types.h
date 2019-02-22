@@ -51,7 +51,7 @@ enum Square {
 };
 enum Row { r1, r2, r3, r4, r5, r6, r7, r8, rows, no_row };
 enum Col { A, B, C, D, E, F, G, H, cols, no_col };
-enum Score { inf = 10000, ninf = -10000, mate = inf - 1, mated = ninf + 1, draw = 0 };
+enum Score { inf = 10000, ninf = -10000, mate = inf - 1, mated = ninf + 1, mate_max_ply = mate - 64, mated_max_ply = mated + 64, draw = 0 };
 enum Nodetype { root, pv, non_pv, searching = 128 };
 enum OrderPhase { hash_move, mate_killer1, mate_killer2, good_captures,
 		  killer1, killer2, bad_captures, quiets, end };
