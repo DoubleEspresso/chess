@@ -167,10 +167,10 @@ bool move_order::next_move<main>(position& pos, Move& m) {
       for (int i = 0; i < moves->size(); ++i) {
 
 	if (skip((*moves)[i])) continue;
-	
+	       
 	Piece pt = pos.piece_on(Square((*moves)[i].t));
 	Piece pf = pos.piece_on(Square((*moves)[i].f));	
-	
+
 	Score sc = ((*moves)[i].type == Movetype::ep) ? Score(0) :
 	  Score(mvals[pt] - mvals[pf]);
 	
@@ -235,7 +235,7 @@ bool move_order::next_move<main>(position& pos, Move& m) {
 	if (skip((*moves)[i])) { continue; }
 	
 	Score sc = Score(ss((*moves)[i]));
-	
+		
 	list.emplace_back(scored_move((*moves)[i], sc));
 
       }
@@ -311,7 +311,7 @@ bool move_order::next_move<qsearch>(position& pos, Move& m) {
 	
 	Piece pt = pos.piece_on(Square((*moves)[i].t));
 	Piece pf = pos.piece_on(Square((*moves)[i].f));
-	
+		
 	Score sc = ((*moves)[i].type == Movetype::ep) ? Score(0) :
 	  Score(mvals[pt] - mvals[pf]);
 	

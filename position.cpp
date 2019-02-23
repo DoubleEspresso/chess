@@ -279,6 +279,168 @@ void position::undo_null_move() {
   ifo = history[--hidx]; 
 }
 
+
+int position::see(const Move& m) {
+
+  std::vector<int> mvals { 100, 300, 315, 480, 910, 2000 };
+  if (m.type == Movetype::ep) return 0;
+  
+  else if (m.type == Movetype::capture &&
+	   (mvals[piece_on(Square(m.f))] <= mvals[piece_on(Square(m.t))])) {
+    return (mvals[piece_on(Square(m.t))] - mvals[piece_on(Square(m.f))]);
+  }
+
+  else if (m.type == Movetype::capture_promotion_q ||
+	   m.type == Movetype::capture_promotion_r ||
+	   m.type == Movetype::capture_promotion_b ||
+	   m.type == Movetype::capture_promotion_n) {
+    int fval = (m.type == Movetype::capture_promotion_q ? mvals[queen] :
+		m.type == Movetype::capture_promotion_r ? mvals[rook] :
+		m.type == Movetype::capture_promotion_b ? mvals[bishop] :
+		mvals[knight]) - mvals[0];
+    int tval = mvals[piece_on(Square(m.t))];
+
+    if (fval <= tval) return fval - tval;
+  }
+
+  
+  return see_move(m);
+}
+
+int position::see_move(const Move& m) {
+  
+  std::vector<int> mvals { 100, 300, 315, 480, 910, 2000 };
+  
+  struct SeePiece {
+    SeePiece(const Piece& pc, const int16& v) : p(pc), val(v) { }
+    Piece p;
+    int16 val;
+    inline bool operator<(const SeePiece& o) { return val < o.val; }
+    inline bool operator>(const SeePiece& o) { return val > o.val; }
+  };
+  
+  Square to = Square(m.t);
+  Square from = Square(m.f);
+  U64 pieces = all_pieces();
+  U64 attackers = 0ULL;
+
+  U64 white_bb = get_pieces<white>();
+  U64 black_bb = get_pieces<black>();
+
+  std::vector<SeePiece> black_list;
+  std::vector<SeePiece> white_list;
+  Piece atkr = Piece::no_piece;
+
+  while (true) { // while loop for pieces behind currently attacking pieces
+    U64 a = attackers_of(to, pieces) & pieces;
+    if (a) {
+      pieces ^= a;
+      attackers |= a;
+    }
+    else break;
+
+    U64 white_attackers = a & white_bb;
+    if (white_attackers) {
+      while (white_attackers) {
+	Square s = Square(pop_lsb(white_attackers));
+	if (s == from) {
+	  atkr = piece_on(Square(s));
+	  continue; // first attacker is handled below
+	}
+	white_list.emplace_back(SeePiece(piece_on(s), mvals[piece_on(s)]));
+      }
+    }
+
+    U64 black_attackers = a & black_bb;
+    if (black_attackers) {
+      while (black_attackers) {
+	Square s = Square(pop_lsb(black_attackers));
+	if (s == from) {
+	  atkr = piece_on(s);
+	  continue;
+	}
+	black_list.emplace_back(SeePiece(piece_on(s), mvals[piece_on(s)]));
+      }
+    }
+
+    if (white_list.size() == 0 && black_list.size() == 0 && atkr == Piece::no_piece) return 0;
+  }
+
+  std::sort(white_list.begin(), white_list.end());
+  std::sort(black_list.begin(), black_list.end());
+
+  
+  int i = 0;
+  unsigned w = 0;
+  unsigned b = 0;
+  Color color = to_move();
+
+    
+  if (color == black) { black_list.insert(black_list.begin(), SeePiece(atkr, 0)); }
+  else { white_list.insert(white_list.begin(), SeePiece(atkr, 0)); }
+
+  int score = 0;
+  int prev = score;
+
+  while(true) {
+
+    Piece victim = Piece::no_piece;
+    if (i == 0) {
+      Piece v = piece_on(to);
+      if (v == Piece::king) return 0; // illegal
+      score += (v == Piece::no_piece ? 0 : mvals[v]);
+      color = Color(color ^ 1);
+      prev = score;
+      ++i;
+      continue;
+    }
+
+    if ((w >= white_list.size() || b >= black_list.size())) break;
+
+    victim = (color == white ? black_list[b++].p : white_list[w++].p);
+
+    int av = -1;
+    Piece attacker = Piece::no_piece;
+    if (color == white && w < white_list.size()) {
+      attacker = white_list[w].p;
+      av = mvals[attacker];
+    }
+    else if (color == black && b < black_list.size()) {
+      attacker = black_list[b].p;
+      av = mvals[attacker];
+    }
+
+    if (attacker == Piece::no_piece) break;
+
+    
+    color = Color(color ^ 1);
+    int vv = mvals[victim];
+
+
+    if (vv < av || victim == king) {
+      if (attacker == king) {
+	if ((color == black && b < black_list.size()) ||
+	    (color == white && w < white_list.size())) {
+	  return score; // illegal
+	}
+      }			     
+      
+      
+      if ( (victim == king && ((color == black && w < white_list.size()) || (color == white && b < black_list.size()))) ||
+	   (victim != king && ((color == black && (black_list.size() > white_list.size())) ||
+			       (color == white && (white_list.size() > black_list.size())))) ) {
+	score = prev;
+	return score;
+      }    
+    }    
+    score += ((i&1) == 1 ? -vv : vv);
+    ++i;
+    prev = score;
+  }
+  
+  return score;
+}
+
 bool position::is_legal_hashmove(const Move& m) {
 
   Square f = Square(m.f);
@@ -497,6 +659,21 @@ bool position::is_attacked(const Square& s, const Color& us, const Color& them, 
 
   return ((magics::attacks<bishop>(m, s) & (p[queen] | p[bishop]) ||
 	   (magics::attacks<rook>(m, s) & (p[queen] | p[rook]))));
+}
+
+U64 position::attackers_of(const Square& s, const U64& m) {
+  auto p = [this](const Color& c, const Piece& p) { return pcs.bitmap[c][p]; };
+  U64 battck = magics::attacks<bishop>(m, s);
+  U64 rattck = magics::attacks<rook>(m, s);
+  U64 qattck = battck | rattck;
+  
+  return ((bitboards::pattks[black][s] & p(white, pawn)) |
+	  (bitboards::pattks[white][s] & p(black, pawn)) |
+          (bitboards::nmask[s] & (p(black, knight) | p(white, knight))) |
+          (bitboards::kmask[s] & (p(black, king) | p(white, king))) |
+	  (battck & (p(white, bishop) | p(black, bishop))) |
+	  (rattck & (p(white, rook) | p(black, rook))) |
+	  (qattck & (p(white, queen) | p(black, queen))));
 }
 
 U64 position::attackers_of(const Square& s, const Color& c) {

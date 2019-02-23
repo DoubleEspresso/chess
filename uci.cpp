@@ -59,6 +59,31 @@ bool uci::parse_command(const std::string& input) {
     else if (cmd == "undo") {
       p.undo_move(dbgmove);
     }
+    
+    else if (cmd == "see" && instream >> cmd) {
+      Movegen mvs(p);
+      mvs.generate<pseudo_legal, pieces>();
+      Move move;
+
+      
+      for (int i=0; i<mvs.size(); ++i) {
+
+	if (!p.is_legal(mvs[i])) continue;
+	
+	if (move_to_string(mvs[i]) == cmd) {
+	  move = mvs[i];
+	  break;
+	}
+	
+      }
+      
+      if (move.type != Movetype::no_type) {
+	int val = p.see_move(move);
+	std::cout << "See score:  " << val << std::endl;
+      }
+      else std::cout << " (dbg) See : error, illegal move." << std::endl;
+    }
+    
     else if (cmd == "domove" && instream >> cmd) {
       Movegen mvs(p);
       bool isok = false;
