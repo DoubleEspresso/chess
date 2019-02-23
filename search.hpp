@@ -98,7 +98,7 @@ void Search::search_timer() {
 void Search::iterative_deepening(position& p, U16 depth) {
   int16 alpha = ninf;
   int16 beta = inf;
-  //int16 delta = 25;
+  int16 delta = 15;
   Score eval = ninf;
   
   const unsigned stack_size = 64 + 4;
@@ -109,17 +109,19 @@ void Search::iterative_deepening(position& p, U16 depth) {
   for (unsigned id = 1 + p.id(); id <= depth; ++id) {
     
     stack->ply = (stack+1)->ply = 0;
-
-    /*
-    while (true) {
-      
-      if (id >= 2) {
-	alpha = std::max(int16(eval - delta), int16(ninf));
-	beta = std::min(int16(eval + delta), int16(inf));
-      }
-    */
-      eval = search<root>(p, alpha, beta, id, stack + 2);
+    bool fail_low = false;
+    bool fail_high = false;
     
+    while (true) {      
+      if (id >= 4) {
+	if (fail_low || alpha <= ninf) alpha = std::max(int16(eval - delta), int16(ninf));
+	if (fail_high || beta >= inf) beta = std::min(int16(eval + delta), int16(inf));	
+      }
+      fail_low = fail_high = false;
+      
+      
+      eval = search<root>(p, alpha, beta, id, stack + 2);
+      
       if (p.is_master()) {
 	readout_pv(p, eval, id);
 	
@@ -128,19 +130,18 @@ void Search::iterative_deepening(position& p, U16 depth) {
 	  cv.notify_all();	
 	}
       }
-
-      /*
+      
+      
       if (eval <= alpha) {
-	alpha -= delta;
-	delta += delta / 2;
+	fail_low = true;
+	delta += delta;
       }
-      else if ( eval >= beta) {
-	beta += delta;
-	delta += delta / 2;
+      else if (eval >= beta) {
+	fail_high = true;
+	delta += delta;
       }
       else break;
-    }
-      */
+    }      
   }
   
 }
@@ -367,32 +368,37 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 
     int16 newdepth = depth + in_check;
 
-    // pvs try
-    /*
+    // pvs  
     Score score = Score::ninf;
-    if (moves_searched < 1) {
+    if (moves_searched < 5) {
       score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
-			 -search<non_pv>(p, -beta, -alpha, newdepth-1, stack+1));
+		    -search<non_pv>(p, -beta, -alpha, newdepth-1, stack+1));
     }
-    
-    else {	
-      score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -alpha-1, -alpha, 0, stack+1) :
-		    -search<non_pv>(p, -alpha-1, -alpha, newdepth-1, stack+1));
+    else {
       
-      if (score > alpha && score < beta) {
+      if (move.type == quiet &&
+	  !in_check &&
+	  best_score <= alpha &&
+	  newdepth > 5) {
+	newdepth -= 1;
+      }      
+      
+      score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -alpha-1, -alpha, 0, stack+1) :
+		    -search<non_pv>(p, -alpha-1, -alpha, newdepth - 1, stack+1));
+      
+      if (score > alpha) { // && score < beta) {
 	score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
 		      -search<non_pv>(p, -beta, -alpha, newdepth-1, stack+1));
 	
-	if (score > alpha) alpha = score;
+	//if (score > alpha) alpha = score;
       }
       
     }
-    */
-    
-    
+        
+    /*
     Score score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
 			-search<non_pv>(p, -beta, -alpha, newdepth-1, stack+1));
-    
+    */
     
     ++moves_searched;
 
@@ -447,38 +453,42 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   // re-try deferred moves (already passed legality check)
   
   for (size_t i = 0; i < deferred; ++i) {
-
-
+    
     p.do_move(stack->deferred_moves[i]);
 
     stack->curr_move = stack->deferred_moves[i];
     int16 newdepth = depth + in_check;
 
-    /*
+
+    // pvs
     Score score = Score::ninf;
-    if (moves_searched < 1) {
+    if (moves_searched < 5) {
       score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
-			 -search<non_pv>(p, -beta, -alpha, newdepth-1, stack+1));
-    }
-    
-    else {	
+		    -search<non_pv>(p, -beta, -alpha, newdepth-1, stack+1));
+    }    
+    else {            
+      if (move.type == quiet &&
+	  !in_check &&
+	  best_score <= alpha &&
+	  newdepth > 5) {
+	newdepth -= 1;
+      }
+      
       score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -alpha-1, -alpha, 0, stack+1) :
 		    -search<non_pv>(p, -alpha-1, -alpha, newdepth-1, stack+1));
       
-      if (score > alpha && score < beta) {
+      if (score > alpha) { // && score < beta) {
 	score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
 		      -search<non_pv>(p, -beta, -alpha, newdepth-1, stack+1));
 	
-	if (score > alpha) alpha = score;
-      }
-      
-    }
-    */
+	//if (score > alpha) alpha = score;
+      }      
+    }    
 
-    
+    /*
     Score score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
 			-search<non_pv>(p, -beta, -alpha, newdepth-1, stack+1));
-    
+    */
 
     
     ++moves_searched;
@@ -532,7 +542,8 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   Bound bound = (best_score >= beta ? bound_low :
 		 best_score <= alpha ? bound_high : bound_exact);
   ttable.save(p.key(), depth, U8(bound), best_move, best_score);
-    
+  
+  
   return best_score;
 }
 
