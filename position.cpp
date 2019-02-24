@@ -315,8 +315,8 @@ int position::see_move(const Move& m) {
     SeePiece(const Piece& pc, const int16& v) : p(pc), val(v) { }
     Piece p;
     int16 val;
-    inline bool operator<(const SeePiece& o) { return val < o.val; }
-    inline bool operator>(const SeePiece& o) { return val > o.val; }
+    inline bool operator<(const SeePiece& o) const { return val < o.val; }
+    inline bool operator>(const SeePiece& o) const { return val > o.val; }
   };
   
   Square to = Square(m.t);
