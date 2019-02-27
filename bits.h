@@ -1,6 +1,22 @@
 #ifndef BITS_H
 #define BITS_H
 
+#ifdef _MSC_VER
+#ifdef _64BIT
+#include <smmintrin.h>
+#include <intrin.h>
+#  define builtin_popcount _mm_popcnt_u64 
+#  define builtin_lsb _BitScanForward64
+#else 
+#  include <intrin.h>
+#  define builtin_popcount __popcnt
+#  define builtin_lsb _BitScanForward
+#endif
+#else
+#  define builtin_popcount __builtin_popcountll
+#endif
+
+
 #include <iostream>
 
 #include "types.h"
@@ -21,7 +37,7 @@ namespace bits {
     std::cout << "  a   b   c   d   e   f   g   h" << std::endl;
   }
 
-  inline int count(const U64& b) { return __builtin_popcountll(b); }  
+  inline int count(const U64& b) { return builtin_popcount(b); }
 
   
   inline int lsb(U64& b) {

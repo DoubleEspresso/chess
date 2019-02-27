@@ -196,7 +196,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   
   // static evaluation
   Score static_eval = (ttvalue != Score::ninf ?
-		       ttvalue : Score(eval::evaluate(p)));
+		       ttvalue : Score(std::lround(eval::evaluate(p))));
 
   // forward pruning
   const bool forward_prune = (!in_check &&
@@ -587,9 +587,8 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
   
   // stand pat
   if (!in_check) {
-    best_score = Score(eval::evaluate(p));
-  
-    if (best_score >= beta) return Score(best_score);
+	best_score = (Score)std::lround(eval::evaluate(p));
+	if (best_score >= beta) return best_score;
     if (alpha < best_score) alpha = best_score;
   }
 

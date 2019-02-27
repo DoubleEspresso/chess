@@ -19,7 +19,7 @@ namespace {
   
   std::vector<float> sq_score_scaling { 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 };
 
-  std::vector<float> pawn_scaling { 0.86, 0.90, 0.95, 1.00, 1.00, 0.95, 0.90, 0.86 };
+  std::vector<float> pawn_scaling { 0.86f, 0.90f, 0.95f, 1.00f, 1.00f, 0.95f, 0.90f, 0.86f };
 
   std::vector<float> material_vals { 100.0, 300.0 , 315.0, 480.0, 910.0 };
 
