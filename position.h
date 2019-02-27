@@ -151,6 +151,7 @@ class position {
   inline Square eps() const { return ifo.eps; }
   inline Color to_move() const { return ifo.stm; }
   inline U64 key() { return ifo.key; }
+  inline U64 pawnkey() const { return ifo.pawnkey; }
   // piece access wrappers
   inline U64 all_pieces() const { return pcs.bycolor[white] | pcs.bycolor[black]; }
 
@@ -220,6 +221,8 @@ inline void piece_data::do_quiet(const Color& c, const Piece& p,
   piece_on[f] = no_piece;
   
   ifo.key ^= (zobrist::piece(f, c, p) | zobrist::piece(t, c, p));
+
+  if (p == Piece::pawn) ifo.pawnkey ^= (zobrist::piece(f, c, p) | zobrist::piece(t, c, p));
 }
 
 inline void piece_data::do_cap(const Color& c, const Piece& p,
@@ -286,6 +289,8 @@ inline void piece_data::remove_piece(const Color& c, const Piece& p, const Squar
   color_on[s] = no_color;
   piece_on[s] = no_piece;
   ifo.key ^= zobrist::piece(s, c, p);
+
+  if (p == Piece::pawn) ifo.pawnkey ^= zobrist::piece(s, c, p);
 }
 
 inline void piece_data::add_piece(const Color& c, const Piece& p, const Square& s, info& ifo) {  
@@ -299,6 +304,8 @@ inline void piece_data::add_piece(const Color& c, const Piece& p, const Square& 
   piece_idx[c][p][s] = number_of[c][p];
   color_on[s] = c;
   ifo.key |= zobrist::piece(s, c, p);
+
+  if (p == Piece::pawn) ifo.pawnkey |= zobrist::piece(s, c, p);
 }
 
 inline void piece_data::set(const Color& c, const Piece& p, const Square& s, info& ifo) {
@@ -312,6 +319,8 @@ inline void piece_data::set(const Color& c, const Piece& p, const Square& s, inf
   if (p == Piece::king) king_sq[c] = s;
 
   ifo.key |= zobrist::piece(s, c, p);
+  
+  if (p == Piece::pawn) ifo.pawnkey |= zobrist::piece(s, c, p);
 }
 
 #endif
