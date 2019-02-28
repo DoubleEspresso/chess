@@ -32,23 +32,32 @@ namespace util {
       (on_diagonal(s1, s3) && on_diagonal(s1, s2) && on_diagonal(s2, s3));
   }
 
+  
+  inline U64 squares_behind(U64& colbb, const Color& c, const int& s) {
+    return (c == white ? colbb >> 8 * row(s) : colbb << 8 * row(s));
+  }
+  
+  inline U64 squares_infront(const U64& colbb, const Color& c, const int& s) {
+    return (c == white ? colbb << 8 * ( row(s) + 1 ) : colbb >> 8* ( 8 - row(s)) );
+  }
+  
   template<typename T>
-  class rand {
+    class rand {
     std::mt19937 gen;
     std::uniform_int_distribution<T> dis;
-    public:
-    rand() : gen(0), dis(0, UINT_MAX) { }
+  public:
+  rand() : gen(0), dis(0, UINT_MAX) { }
     
     T next() { return dis(gen); }
   };     
-
-
+  
+  
   class clock {
     std::chrono::time_point<std::chrono::system_clock> _start;
     std::chrono::time_point<std::chrono::system_clock> _end;
   public:
     clock() { }
-
+    
     void start() { _start = std::chrono::system_clock::now(); }
     void stop() { _end = std::chrono::system_clock::now(); }
     double ms() {

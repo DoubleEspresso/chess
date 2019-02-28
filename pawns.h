@@ -42,14 +42,13 @@ class pawn_table {
   pawn_table(const pawn_table&& o) = delete;
   pawn_table& operator=(const pawn_table& o) = delete;
   pawn_table& operator=(const pawn_table&& o) = delete;
-  ~pawn_table();
+  ~pawn_table() {}
 
   void clear();
   pawn_entry * fetch(const position& p);
 };
 
 
-
-
+extern pawn_table ptable; // global pawn hash table
 
 #endif

@@ -2,7 +2,7 @@
 #include "evaluate.h"
 #include "squares.h"
 #include "magics.h"
-
+#include "pawns.h"
 
 
 namespace {
@@ -29,7 +29,7 @@ namespace {
     
     float score = 0;
     info ei = {};
-
+    
     score += (eval_pawns<white>(p, ei) - eval_pawns<black>(p, ei));
     score += (eval_knights<white>(p, ei) - eval_knights<black>(p, ei));
     score += (eval_bishops<white>(p, ei) - eval_bishops<black>(p, ei));

@@ -18,6 +18,9 @@ namespace bitboards {
   U64 squares[64];
   U64 diagonals[64];
   U64 between[64][64];
+  U64 passpawn_mask[2][64];
+  U64 neighbor_cols[8];
+  U64 colored_sqs[2];
   U64 edges;
   U64 corners;
 }
@@ -63,9 +66,15 @@ void bitboards::load() {
     }
   }
 
+
   
   for (Square s = A1; s <= H8; ++s) {
-
+    
+    if ((util::row(s) % 2 == 0) && (s % 2 == 0)) colored_sqs[black] |= squares[s];
+    else if ((util::row(s) % 2) != 0 && (s % 2 != 0)) colored_sqs[black] |= squares[s];
+    else colored_sqs[white] |= squares[s];
+    
+    
     // knight step attacks
     U64 bm = 0ULL;
     for (auto& step : steps[Piece::knight]) {
@@ -127,6 +136,30 @@ void bitboards::load() {
 	between[s][s2] = btwn;
       }    
     }
+
+    
+    // passed pawn masks
+    U64 roi = ~(row[0] | row[7]);    
+    if (squares[s] & roi) {
+
+      neighbor_cols[s] = 0ULL;      
+      
+      for (Color c = white; c <= black; ++c) {	
+	passpawn_mask[c][s] = 0ULL;
+	
+	U64 neighbors =
+	  (kmask[s] & row[util::row(s)]) | squares[s];
+	
+	while (neighbors) {
+	  int sq = bits::pop_lsb(neighbors);
+	  passpawn_mask[c][s] |=
+	    util::squares_infront(col[util::col(sq)], c, sq);
+	  if (s != sq)
+	    neighbor_cols[util::col(s)] |= col[util::col(sq)];
+	}
+      }
+    }
+
     
     // bishop diagonal masks (outer bits trimmed)
     bm = 0ULL;
@@ -138,11 +171,12 @@ void bitboards::load() {
         if (util::on_board(to) && util::on_diagonal(s, to)) bm |= squares[to];
         else break;
       }
-    }
+    }    
     trim = squares[s] | (bm & edges);
     battks[s] = bm;
     bm ^= trim;
     bmask[s] = bm;
+
     // rook masks (outer-bits trimmed)
     bm = (row[util::row(s)] | col[util::col(s)]);
     rattks[s] = bm;

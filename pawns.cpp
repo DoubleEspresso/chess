@@ -6,6 +6,8 @@
 #include "bitboards.h"
 
 
+pawn_table ptable;
+
 template<Color c>
 int16 evaluate(const position& p, pawn_entry& e);
 
@@ -59,11 +61,14 @@ int16 evaluate(const position& p, pawn_entry& e) {
   // sq score scale factors by column
   std::vector<float> pawn_scaling { 0.86, 0.90, 0.95, 1.00, 1.00, 0.95, 0.90, 0.86 };
 
-  /*
+  
   Color them = Color(c ^ 1);
 
   U64 pawns = p.get_pieces<c, pawn>(); 
-
+  U64 epawns = them == white ?
+    p.get_pieces<white, pawn>() :
+    p.get_pieces<black, pawn>();
+  
   Square * sqs = p.squares_of<c, pawn>();
 
   Square ksq = p.king_square(c);
@@ -82,7 +87,40 @@ int16 evaluate(const position& p, pawn_entry& e) {
       e.king[c] |= fbb;
     }
     
+    // passed pawns
+    U64 mask = bitboards::passpawn_mask[c][s] & epawns;  
+    if (mask == 0ULL) { e.passed[c] |= fbb; }
+
+    // isolated pawns
+    U64 neighbors_bb = bitboards::neighbor_cols[util::col(s)] & pawns;
+    if (neighbors_bb == 0ULL) {
+      e.isolated[c] |= fbb;
+    }
+
+    // backward
+
+    // pawns by square color
+    U64 wsq = bitboards::colored_sqs[white] & fbb;
+    if (wsq) e.light[c] |= fbb;
+    U64 bsq = bitboards::colored_sqs[black] & fbb;
+    if (bsq) e.dark[c] |= fbb;
+
+    // doubled pawns
+    U64 doubled = bitboards::col[util::col(s)] & pawns;
+    if (bits::more_than_one(doubled)) {
+      e.doubled[c] |= doubled;
+
+      // isolated and doubled
+      //doubled = bitboards::neighbor_cols[util::col(s)] & pawns;
+      // doubled == 0ULL // ...
+    }
+
+    // semi-open file pawns
+    // pawn islands
+    // pawn chain tips
+    // pawn chain bases
+
   }
-  */
+  
   return 0;  
 }
