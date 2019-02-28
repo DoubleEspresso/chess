@@ -4,7 +4,7 @@
 #include "types.h"
 #include "utils.h"
 #include "bitboards.h"
-
+#include "squares.h"
 
 pawn_table ptable;
 
@@ -60,7 +60,7 @@ int16 evaluate(const position& p, pawn_entry& e) {
 
   // sq score scale factors by column
   std::vector<float> pawn_scaling { 0.86, 0.90, 0.95, 1.00, 1.00, 0.95, 0.90, 0.86 };
-
+  std::vector<float> material_vals { 100.0, 300.0 , 315.0, 480.0, 910.0 };
   
   Color them = Color(c ^ 1);
 
@@ -73,12 +73,16 @@ int16 evaluate(const position& p, pawn_entry& e) {
 
   Square ksq = p.king_square(c);
 
-
+  int16 score = 0;
   
   for (Square s = *sqs; s != no_square; s = *++sqs) {
 
     U64 fbb = bitboards::squares[s];
 
+    score += square_score<c>(pawn, Square(s));
+    score += pawn_scaling[util::col(s)] * material_vals[pawn];
+
+    
     // pawn attacks
     e.attacks[c] |= bitboards::pattks[c][s];
 
@@ -122,5 +126,5 @@ int16 evaluate(const position& p, pawn_entry& e) {
 
   }
   
-  return 0;  
+  return score;  
 }

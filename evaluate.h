@@ -6,12 +6,9 @@
 #include "types.h"
 #include "utils.h"
 #include "position.h"
+#include "pawns.h"
 
 namespace eval {
-
-  struct info {
-    // todo..
-  };
 
   float evaluate(const position& p);
 }
