@@ -59,8 +59,8 @@ template<Color c>
 int16 evaluate(const position& p, pawn_entry& e) {
 
   // sq score scale factors by column
-  std::vector<float> pawn_scaling { 0.86, 0.90, 0.95, 1.00, 1.00, 0.95, 0.90, 0.86 };
-  std::vector<float> material_vals { 100.0, 300.0 , 315.0, 480.0, 910.0 };
+  std::vector<float> pawn_scaling { 0.86f, 0.90f, 0.95f, 1.00f, 1.00f, 0.95f, 0.90f, 0.86f };
+  std::vector<float> material_vals { 100.0f, 300.0f, 315.0f, 480.0f, 910.0f };
   
   Color them = Color(c ^ 1);
 

@@ -62,13 +62,14 @@ bool magics::load() {
   
   std::vector<U64> occupancy, atks, used;
   occupancy.reserve(4096); atks.reserve(4096); used.reserve(4096);
+  occupancy.resize(4096); atks.resize(4096); used.resize(4096);
   util::rand<unsigned int> r;
 
   // 4096 is computed from counting the number of possible blockers for a rook/bishop at a given square.
   // E.g. the rook@A1 has 12 squares which can be blocked (A8,H1 have been removed)
   // in mathematica : sum[12!/(n!*(12-n)!),{n,1,12}] = 4095 .. similar computation for bishop@E4.
-  detail::battks.reserve(1428);
-  detail::rattks.reserve(4900);
+  detail::battks.reserve(1428); detail::battks.resize(1428);
+  detail::rattks.reserve(4900); detail::rattks.resize(4900);
 
   // structs to provide shorthand indexing
   struct _attks {

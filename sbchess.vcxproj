@@ -157,6 +157,7 @@
     <ClInclude Include="move.hpp" />
     <ClInclude Include="options.h" />
     <ClInclude Include="order.h" />
+    <ClInclude Include="pawns.h" />
     <ClInclude Include="position.h" />
     <ClInclude Include="search.h" />
     <ClInclude Include="search.hpp" />
@@ -174,6 +175,7 @@
     <ClCompile Include="magics.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="order.cpp" />
+    <ClCompile Include="pawns.cpp" />
     <ClCompile Include="position.cpp" />
     <ClCompile Include="uci.cpp" />
     <ClCompile Include="zobrist.cpp" />
