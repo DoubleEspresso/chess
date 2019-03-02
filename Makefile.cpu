@@ -15,7 +15,7 @@ endif
 SRC_DIR = .
 OBJ_DIR = .
 INC_DIR = .
-CC_SRCS = main.cpp magics.cpp bitboards.cpp position.cpp evaluate.cpp hashtable.cpp uci.cpp zobrist.cpp order.cpp pawns.cpp
+CC_SRCS = main.cpp magics.cpp bitboards.cpp position.cpp evaluate.cpp hashtable.cpp uci.cpp zobrist.cpp order.cpp pawns.cpp material.cpp
 
 
 EXE = chess.exe

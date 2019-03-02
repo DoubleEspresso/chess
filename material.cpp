@@ -4,7 +4,6 @@
 #include "types.h"
 #include "utils.h"
 #include "bitboards.h"
-#include "squares.h"
 
 
 material_table mtable;
