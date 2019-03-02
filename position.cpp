@@ -312,11 +312,11 @@ int position::see_move(const Move& m) {
   std::vector<int> mvals { 100, 300, 315, 480, 910, 2000 };
   
   struct SeePiece {
-    SeePiece(const Piece& pc, const int16& v) : p(pc), val(v) { }
+    SeePiece(const Piece& pc, const int16& v) : p(pc), score(v) { }
     Piece p;
-    int16 val;
-    inline bool operator<(const SeePiece& o) const { return val < o.val; }
-    inline bool operator>(const SeePiece& o) const { return val > o.val; }
+    int16 score;
+    inline bool operator<(const SeePiece& o) const { return score < o.score; }
+    inline bool operator>(const SeePiece& o) const { return score > o.score; }
   };
   
   Square to = Square(m.t);

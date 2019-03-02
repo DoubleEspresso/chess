@@ -7,10 +7,10 @@
 
 
 struct pawn_entry {
-  pawn_entry() : key(0ULL), val(0) { }
+  pawn_entry() : key(0ULL), score(0) { }
 
   U64 key;
-  int16 val;
+  int16 score;
 
   U64 doubled[2];
   U64 isolated[2];

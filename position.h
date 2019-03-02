@@ -156,6 +156,8 @@ class position {
   // piece access wrappers
   inline U64 all_pieces() const { return pcs.bycolor[white] | pcs.bycolor[black]; }
 
+  inline unsigned number_of(const Color& c, const Piece& p) const { return pcs.number_of[c][p]; }
+
   inline Piece piece_on(const Square& s) const { return pcs.piece_on[s]; }
   
   inline Square king_square(const Color& c) const { return ifo.ks[c]; }

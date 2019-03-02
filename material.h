@@ -11,7 +11,7 @@ struct material_entry {
   U64 key;
   int16 score;
   bool endgame;
-  U8 number[5]; // pawn, knight, bishop, rook, queen
+  U8 number[4]; // knight, bishop, rook, queen
 };
 
 

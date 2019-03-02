@@ -78,8 +78,8 @@ bool uci::parse_command(const std::string& input) {
       }
       
       if (move.type != Movetype::no_type) {
-	int val = p.see_move(move);
-	std::cout << "See score:  " << val << std::endl;
+	int score = p.see_move(move);
+	std::cout << "See score:  " << score << std::endl;
       }
       else std::cout << " (dbg) See : error, illegal move." << std::endl;
     }

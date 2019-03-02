@@ -47,7 +47,7 @@ pawn_entry * pawn_table::fetch(const position& p) {
   else {
     entries[idx] = {};
     entries[idx].key = k;
-    entries[idx].val = evaluate<white>(p, entries[idx]) - evaluate<black>(p, entries[idx]);
+    entries[idx].score = evaluate<white>(p, entries[idx]) - evaluate<black>(p, entries[idx]);
     return &entries[idx];
   }
 }

@@ -2,12 +2,13 @@
 #include "evaluate.h"
 #include "squares.h"
 #include "magics.h"
-
+#include "material.h"
 
 namespace {
 
   struct info {
     pawn_entry * pe;
+    material_entry * me;
   };
     
   float do_eval(const position& p);
@@ -22,11 +23,7 @@ namespace {
   
   std::vector<float> sq_score_scaling { 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 };
 
-  std::vector<float> pawn_scaling { 0.86f, 0.90f, 0.95f, 1.00f, 1.00f, 0.95f, 0.90f, 0.86f };
-
   std::vector<float> material_vals { 100.0, 300.0 , 315.0, 480.0, 910.0 };
-
-
 
   float do_eval(const position& p) {
     
@@ -34,9 +31,11 @@ namespace {
     info ei = {};
 
 
-    // pawn hash table
+    // hash table data
     ei.pe = ptable.fetch(p);
-    score += ei.pe->val;
+    ei.me = mtable.fetch(p);
+    score += ei.pe->score;
+    score += ei.me->score;    
 
     score += (eval_knights<white>(p, ei) - eval_knights<black>(p, ei));
     score += (eval_bishops<white>(p, ei) - eval_bishops<black>(p, ei));
@@ -54,7 +53,6 @@ namespace {
     U64 pawns = p.get_pieces<c, pawn>();
     while (pawns) {
       int f = bits::pop_lsb(pawns);
-      score += sq_score_scaling[pawn] * square_score<c>(pawn, Square(f));
       score += pawn_scaling[util::col(f)] * material_vals[pawn];
     }
     return score;
@@ -66,7 +64,6 @@ namespace {
     Square * knights = p.squares_of<c, knight>();
     
     for (Square s = *knights; s != no_square; s = *++knights) {
-      score += material_vals[knight];
       score += sq_score_scaling[knight] * square_score<c>(knight, s);      
     }
     
@@ -79,7 +76,6 @@ namespace {
     Square * bishops = p.squares_of<c, bishop>();
     
     for (Square s = *bishops; s != no_square; s = *++bishops) {
-      score += material_vals[bishop];
       score += sq_score_scaling[bishop] * square_score<c>(bishop, s);      
     }
     
@@ -92,7 +88,6 @@ namespace {
     Square * rooks = p.squares_of<c, rook>();
     
     for (Square s = *rooks; s != no_square; s = *++rooks) {
-      score += material_vals[rook];
       score += sq_score_scaling[rook] * square_score<c>(rook, s);      
     }
     
@@ -106,7 +101,6 @@ namespace {
     Square * queens = p.squares_of<c, queen>();
     
     for (Square s = *queens; s != no_square; s = *++queens) {
-      score += material_vals[queen];
       score += sq_score_scaling[queen] * square_score<c>(queen, s);      
     }
     
