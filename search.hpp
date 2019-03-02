@@ -141,7 +141,8 @@ void Search::iterative_deepening(position& p, U16 depth) {
 	delta += delta;
       }
       else break;
-    }      
+    }   
+	
   }
   
 }
@@ -369,6 +370,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     int16 newdepth = depth + in_check;
 
     // pvs  
+	
     Score score = Score::ninf;
     if (moves_searched < 5) {
       score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
@@ -394,6 +396,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       }
       
     }
+	
         
     /*
     Score score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
@@ -438,7 +441,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 	    alpha >= sb.alpha && alpha < beta &&
 	    beta <= sb.beta) {
 	  sb.alpha = alpha;
-	  sb.beta = beta;
+	  sb.beta = beta;paw
 	  sb.best_score = best_score;
 	  sb.depth = depth;
 	}
@@ -461,6 +464,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 
 
     // pvs
+	
     Score score = Score::ninf;
     if (moves_searched < 5) {
       score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
@@ -484,7 +488,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 	//if (score > alpha) alpha = score;
       }      
     }    
-
+	
     /*
     Score score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
 			-search<non_pv>(p, -beta, -alpha, newdepth-1, stack+1));
@@ -709,11 +713,11 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
     return Score(Score::mated + root_dist);
   }
 
-  /*
+  
   Bound bound = (best_score >= beta ? bound_low :
 		 best_score <= alpha ? bound_high : bound_exact);
   ttable.save(p.key(), depth, U8(bound), best_move, best_score);
-  */
+  
   
   return best_score;  
 }

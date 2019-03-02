@@ -30,7 +30,7 @@ struct pawn_entry {
 
 class pawn_table {
  private:
-  size_t sz_kb;
+  size_t sz_mb;
   size_t count;
   std::unique_ptr<pawn_entry[]> entries;
 

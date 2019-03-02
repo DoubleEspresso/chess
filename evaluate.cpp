@@ -37,8 +37,7 @@ namespace {
     // pawn hash table
     ei.pe = ptable.fetch(p);
     score += ei.pe->val;
-    
-    //score += (eval_pawns<white>(p, ei) - eval_pawns<black>(p, ei));
+
     score += (eval_knights<white>(p, ei) - eval_knights<black>(p, ei));
     score += (eval_bishops<white>(p, ei) - eval_bishops<black>(p, ei));
     score += (eval_rooks<white>(p, ei) - eval_rooks<black>(p, ei));

@@ -153,6 +153,7 @@
     <ClInclude Include="hashtable.h" />
     <ClInclude Include="info.h" />
     <ClInclude Include="magics.h" />
+    <ClInclude Include="material.h" />
     <ClInclude Include="move.h" />
     <ClInclude Include="move.hpp" />
     <ClInclude Include="options.h" />
@@ -174,6 +175,7 @@
     <ClCompile Include="hashtable.cpp" />
     <ClCompile Include="magics.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="material.cpp" />
     <ClCompile Include="order.cpp" />
     <ClCompile Include="pawns.cpp" />
     <ClCompile Include="position.cpp" />

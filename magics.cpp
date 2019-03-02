@@ -176,7 +176,7 @@ bool magics::load() {
 	}
 	indices[p][s][idx] = k;
 	
-        int o = indices[p][s][idx] + offset; // total offset
+    int o = indices[p][s][idx] + offset; // total offset
 	attack_arr[p][o] = atks[i];
 	
 	detail::table * tab = (p == Piece::bishop ? detail::btable : detail::rtable);

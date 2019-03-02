@@ -23,7 +23,7 @@ void move_history::update(const position& p,
     history[c][m.f][m.t] += score;
 
     if (eval >= Score::mate_max_ply &&
-	m != killers[0] &&
+  m != killers[0] &&
 	m != killers[1] &&
 	m != killers[2]) {
       killers[3] = killers[2];

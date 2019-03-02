@@ -77,7 +77,7 @@ struct hash_cluster {
 
 class hash_table {
  private:
-  size_t sz_kb;
+  size_t sz_mb;
   size_t cluster_count;
   std::unique_ptr<hash_cluster[]> entries;
 

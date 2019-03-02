@@ -15,15 +15,15 @@ inline size_t pow2(size_t x) {
   return x <= 2 ? x : pow2(x >> 1) << 1;
 }
 
-pawn_table::pawn_table() : sz_kb(0), count(0) {
+pawn_table::pawn_table() : sz_mb(0), count(0) {
   init();
 }
 
 
 
 void pawn_table::init() {
-  sz_kb = 10 * 1024; // todo : input mb parameter
-  count = 1024 * sz_kb / sizeof(pawn_entry);
+  sz_mb = 10 * 1024; // todo : input mb parameter
+  count = 1024 * sz_mb / sizeof(pawn_entry);
   count = pow2(count);
   count = (count < 1024 ? 1024 : count);
   entries = std::unique_ptr<pawn_entry[]>(new pawn_entry[count]());
