@@ -142,7 +142,7 @@ void bitboards::load() {
     U64 roi = ~(row[0] | row[7]);    
     if (squares[s] & roi) {
 
-      neighbor_cols[s] = 0ULL;      
+      neighbor_cols[util::col(s)] = 0ULL;      
       
       for (Color c = white; c <= black; ++c) {	
 	passpawn_mask[c][s] = 0ULL;
