@@ -4,8 +4,6 @@
 #include "bitboards.h"
 #include "position.h"
 
-using namespace bitboards;
-using namespace bits;
 
 // utilities
 namespace {
@@ -23,20 +21,20 @@ namespace {
 
 template<Movetype mt>
 inline void Movegen::encode(U64& b, const int& f) {  
-  while (b) list[last++].set(f, pop_lsb(b), mt);
+  while (b) list[last++].set(f, bits::pop_lsb(b), mt);
 }
 
 template<Movetype mt>
 inline void Movegen::encode_pawn_pushes(U64& b, const int& dir) {
   while (b) {
-    int to = pop_lsb(b);
+    int to = bits::pop_lsb(b);
     list[last++].set(to+dir, to, mt);
   }
 }
 
 inline void Movegen::encode_promotions(U64& b, const int& dir) {
   while (b) {
-    Square to = Square(pop_lsb(b));
+    Square to = Square(bits::pop_lsb(b));
     Square f = Square(to + dir);
     list[last++].set(f, to, promotion_q);
     list[last++].set(f, to, promotion_r);
@@ -47,7 +45,7 @@ inline void Movegen::encode_promotions(U64& b, const int& dir) {
 
 inline void Movegen::encode_capture_promotions(U64& b, const int& dir) {
   while (b) {
-    Square to = Square(pop_lsb(b));
+    Square to = Square(bits::pop_lsb(b));
     Square f = Square(to + dir);
     list[last++].set(f, to, capture_promotion_q);
     list[last++].set(f, to, capture_promotion_r);
@@ -90,7 +88,7 @@ inline void Movegen::initialize(const position& p) {
   
   if (check_target != 0ULL && !bits::more_than_one(check_target)) { // only 1 checker
     U64 tmp = check_target;
-    Square frm = Square(pop_lsb(tmp));
+    Square frm = Square(bits::pop_lsb(tmp));
     Piece checker = p.piece_on(frm);
     if (checker == bishop || checker == rook || checker == queen) {      
       evasion_target = bitboards::between[frm][p.king_square()] & empty;
@@ -132,8 +130,8 @@ inline void Movegen::initialize(const position& p) {
 inline void Movegen::pawn_quiets(U64& single, U64& dbl) {
 
   if (pawns == 0ULL) return;
-  
-  single = pawns & pawnmask[us]; // filter the promotion candidates  
+
+  single = pawns & bitboards::pawnmask[us]; // filter the promotion candidates  
   dbl = pawns & rank2;
 
   auto s = (us == white ? shift<N> : shift<S>);
@@ -154,8 +152,8 @@ inline void Movegen::pawn_caps(U64& left, U64& right, U64& ep_left, U64& ep_righ
   if (pawns == 0ULL) return;
   
   // normal captures - non promotions
-  left = pawns & pawnmaskleft[us];
-  right = pawns & pawnmaskright[us];   
+  left = pawns & bitboards::pawnmaskleft[us];
+  right = pawns & bitboards::pawnmaskright[us];   
   
   auto sw = (us == white ? shift<NW> : shift<SE>);
   auto se = (us == white ? shift<NE> : shift<SW>);
@@ -173,8 +171,8 @@ inline void Movegen::pawn_caps(U64& left, U64& right, U64& ep_left, U64& ep_righ
   // ep captures - evasions are checked individually
   if (eps == Square::no_square) return;
   auto r = (us == white ? Row::r5 : Row::r4);
-  ep_left = pawns & pawnmaskleft[us] & row[r]; 
-  ep_right = pawns & pawnmaskright[us] & row[r];
+  ep_left = pawns & bitboards::pawnmaskleft[us] & bitboards::row[r]; 
+  ep_right = pawns & bitboards::pawnmaskright[us] & bitboards::row[r];
   
   if (ep_left != 0ULL) {
     se(ep_left);
@@ -201,8 +199,8 @@ inline void Movegen::quiet_promotions(U64& quiets) {
 inline void Movegen::capture_promotions(U64& right_caps, U64& left_caps) {
   if (pawns7 == 0ULL) return;
   
-  right_caps = pawns7 & pawnmaskright[us^1];
-  left_caps = pawns7 & pawnmaskleft[us^1];
+  right_caps = pawns7 & bitboards::pawnmaskright[us^1];
+  left_caps = pawns7 & bitboards::pawnmaskleft[us ^ 1];
 
   auto sw = (us == white ? shift<NW> : shift<SE>);
   auto se = (us == white ? shift<NE> : shift<SW>);
@@ -489,7 +487,7 @@ inline void Movegen::generate<quiet, pieces>() {
     generate<quiet, king>();
   }
   else if (check_target != 0ULL && evasion_target != 0ULL) {
-    if (!more_than_one(check_target)) {
+    if (!bits::more_than_one(check_target)) {
       generate<quiet, knight>();
       generate<quiet, bishop>();
       generate<quiet, rook>();
@@ -519,7 +517,7 @@ inline void Movegen::generate<capture, pieces>() {
     generate<capture, king>();
   }
   else if (check_target != 0ULL && evasion_target == 0ULL) {
-    if (!more_than_one(check_target)) {
+    if (!bits::more_than_one(check_target)) {
       generate<capture_promotion, pawn>();
       generate<capture, king>();
       generate<capture, pawn>();
@@ -533,7 +531,7 @@ inline void Movegen::generate<capture, pieces>() {
     }
   }
   else if (check_target != 0ULL && evasion_target != 0ULL) {
-    if (!more_than_one(check_target)) {
+    if (!bits::more_than_one(check_target)) {
       generate<capture_promotion, pawn>();
       generate<capture, pawn>();
       generate<capture, king>();
@@ -570,7 +568,7 @@ inline void Movegen::generate<pseudo_legal, pieces>() {
     generate<capture, king>();
   }
   else if (check_target != 0ULL && evasion_target == 0ULL) {
-    if (!more_than_one(check_target)) {
+    if (!bits::more_than_one(check_target)) {
       generate<capture_promotion, pawn>();
       generate<capture, king>();
       generate<capture, pawn>();
@@ -586,7 +584,7 @@ inline void Movegen::generate<pseudo_legal, pieces>() {
     }
   }
   else if (check_target != 0ULL && evasion_target != 0ULL) {
-    if (!more_than_one(check_target)) {
+    if (!bits::more_than_one(check_target)) {
       // capture moves
       generate<capture_promotion, pawn>();
       generate<capture, king>();

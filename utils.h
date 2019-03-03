@@ -31,16 +31,16 @@ namespace util {
       (same_row(s1, s2) && same_row(s1, s3)) ||
       (on_diagonal(s1, s3) && on_diagonal(s1, s2) && on_diagonal(s2, s3));
   }
-
-  
-  inline U64 squares_behind(U64& colbb, const Color& c, const int& s) {
-    return (c == white ? colbb >> 8 * row(s) : colbb << 8 * row(s));
-  }
   
   inline U64 squares_infront(const U64& colbb, const Color& c, const int& s) {
-    return (c == white ? colbb << 8 * ( row(s) + 1 ) : colbb >> 8* ( 8 - row(s)) );
+    return (c == white ? colbb << 8 * (row(s) + 1) : colbb >> 8 * (8 - row(s)));
   }
-  
+
+
+  inline U64 squares_behind(U64& colbb, const Color& c, const int& s) {
+    return ~squares_infront(colbb, c, s) & colbb;
+  }
+    
   template<typename T>
     class rand {
     std::mt19937 gen;

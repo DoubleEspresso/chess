@@ -49,6 +49,7 @@ enum Square {
   A8, B8, C8, D8, E8, F8, G8, H8,
   squares, no_square
 };
+
 enum Row { r1, r2, r3, r4, r5, r6, r7, r8, rows, no_row };
 enum Col { A, B, C, D, E, F, G, H, cols, no_col };
 enum Score { inf = 10000, ninf = -10000, mate = inf - 1, mated = ninf + 1, mate_max_ply = mate - 64, mated_max_ply = mated + 64, draw = 0 };
@@ -67,6 +68,48 @@ const std::string SanSquares[64] =
     "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7",
     "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8"
   };
+
+/*
+endgame material encoding reference : kxxk where xx is given by the following encodings
+NBRQ  nbrq
+0000  0000 (kk)  0
+1000  1000 (nn)  136
+1000  0100 (nb)  132
+1000  0010 (nr)  130
+1000  0001 (nq)  129
+0100  1000 (bn)  72
+0100  0100 (bb)  68
+0100  0010 (br)  66
+0100  0001 (bq)  65
+0010  1000 (rn)  40
+0010  0100 (rb)  36
+0010  0010 (rr)  34
+0010  0001 (rq)  33
+0001  0001 (qq)  17
+0001  1000 (qn)  24
+0001  0100 (qb)  20
+0001  0010 (qr)  18
+*/
+enum EndgameType {
+  none = -1,
+  KpK = 0,
+  KnnK = 136,
+  KnbK = 132,
+  KnrK = 130,
+  KnqK = 129,
+  KbnK = 72,
+  KbbK = 68,
+  KbrK = 66,
+  KbqK = 65,
+  KrnK = 40,
+  KrbK = 36,
+  KrrK = 34,
+  KrqK = 33,
+  KqqK = 17,
+  KqnK = 24,
+  KqbK = 20,
+  KqrK = 18
+};
 
 // enum type enabled iterators
 template<typename T> struct is_enum : std::false_type {};

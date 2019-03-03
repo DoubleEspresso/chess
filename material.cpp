@@ -58,6 +58,7 @@ int16 evaluate(const position& p, material_entry& e) {
 
   int16 score = 0;
   unsigned total = 0;
+  e.endgame = EndgameType::none;
 
   for (Color c = white; c <= black; ++c) {
     for (const auto& piece : pieces) {
@@ -68,7 +69,24 @@ int16 evaluate(const position& p, material_entry& e) {
     }
   }
 
-  e.endgame = (total <= 2);
+  // encoding endgame type if applicable
+  // see types.h for enumeration of different endgame types
+  if (total <= 2) {
+    U8 endgame_encoding = U8(0);
+
+    for (const auto& piece : pieces) {
+      int i = int(piece - 1);
+      if (e.number[piece] == 2) {
+        // two pieces of the same type
+        endgame_encoding |= (U8(1) << i);
+        endgame_encoding |= (U8(1) << (4 + i));
+      }
+      else if (e.number[piece] == 1) {
+        endgame_encoding |= (U8(1) << i);
+      }
+    }
+    e.endgame = EndgameType(endgame_encoding);
+  }
 
   return score;
 }

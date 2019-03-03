@@ -388,7 +388,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -alpha-1, -alpha, 0, stack+1) :
 		    -search<non_pv>(p, -alpha-1, -alpha, newdepth - 1, stack+1));
       
-      if (score > alpha) { // && score < beta) {
+      if (score > alpha && score < beta) {
 	score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
 		      -search<non_pv>(p, -beta, -alpha, newdepth-1, stack+1));
 	
@@ -481,7 +481,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -alpha-1, -alpha, 0, stack+1) :
 		    -search<non_pv>(p, -alpha-1, -alpha, newdepth-1, stack+1));
       
-      if (score > alpha) { // && score < beta) {
+      if (score > alpha && score < beta) {
 	score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
 		      -search<non_pv>(p, -beta, -alpha, newdepth-1, stack+1));
 	
@@ -675,7 +675,7 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
 
 
     // see pruning
-    if (move != ttm && 0 &&
+    if (move != ttm && //0 &&
 	move != stack->killers[0] &&
 	move != stack->killers[1] &&
 	move != stack->killers[2] &&
@@ -713,11 +713,11 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
     return Score(Score::mated + root_dist);
   }
 
-  
+  /*
   Bound bound = (best_score >= beta ? bound_low :
 		 best_score <= alpha ? bound_high : bound_exact);
   ttable.save(p.key(), depth, U8(bound), best_move, best_score);
-  
+  */
   
   return best_score;  
 }

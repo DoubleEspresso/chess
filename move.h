@@ -11,7 +11,7 @@
 
 class position;
 
-enum Dir { N, S, NN, SS, NW, NE, SW, SE, none };
+enum Dir { N, S, NN, SS, NW, NE, SW, SE, no_dir };
 
 enum Movetype {
   promotion_q,

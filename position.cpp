@@ -342,7 +342,7 @@ int position::see_move(const Move& m) {
     U64 white_attackers = a & white_bb;
     if (white_attackers) {
       while (white_attackers) {
-	Square s = Square(pop_lsb(white_attackers));
+	Square s = Square(bits::pop_lsb(white_attackers));
 	if (s == from) {
 	  atkr = piece_on(Square(s));
 	  continue; // first attacker is handled below
@@ -354,7 +354,7 @@ int position::see_move(const Move& m) {
     U64 black_attackers = a & black_bb;
     if (black_attackers) {
       while (black_attackers) {
-	Square s = Square(pop_lsb(black_attackers));
+	Square s = Square(bits::pop_lsb(black_attackers));
 	if (s == from) {
 	  atkr = piece_on(s);
 	  continue;
@@ -528,7 +528,7 @@ bool position::is_legal_hashmove(const Move& m) {
     U64 checks = checkers();
     if (bits::more_than_one(checks)) return false;
 
-    Square check_f = Square(pop_lsb(checks));
+    Square check_f = Square(bits::pop_lsb(checks));
     if (mt == capture && t != check_f) return false;
 
     Piece checker = piece_on(check_f);
@@ -628,14 +628,14 @@ U64 position::pinned() {
 
   if (sliders == 0ULL) return pinned;
   do {
-    int sq = pop_lsb(sliders);
+    int sq = bits::pop_lsb(sliders);
 
     if (!util::aligned(sq, ks)) continue;
     
     U64 tmp = (bitboards::between[sq][ks] & all_pieces()) ^
       (bitboards::squares[ks] | bitboards::squares[sq]);
     
-    if (!more_than_one(tmp)) pinned |= tmp;
+    if (!bits::more_than_one(tmp)) pinned |= tmp;
     
   } while (sliders);
   

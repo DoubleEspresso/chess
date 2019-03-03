@@ -6,12 +6,14 @@
 #include <memory>
 
 #include "position.h"
+#include "types.h"
 
 struct material_entry {
   U64 key;
   int16 score;
-  bool endgame;
-  U8 number[4]; // knight, bishop, rook, queen
+  EndgameType endgame;
+  U8 number[5]; // knight, bishop, rook, queen
+  inline bool is_endgame() { return endgame != EndgameType::none;  }
 };
 
 

@@ -142,7 +142,15 @@ bool uci::parse_command(const std::string& input) {
       //U16 depth = 10;
       worker.enqueue(Search::start, p, depth);
     }
-    
+    else if (cmd == "moves") {
+      Movegen mvs(p);
+      mvs.generate<pseudo_legal, pieces>();
+      for (int i = 0; i < mvs.size(); ++i) {
+        //if (!p.is_legal(mvs[i])) continue;
+        std::cout << (SanSquares[mvs[i].f] + SanSquares[mvs[i].t]) << " ";
+      }
+      std::cout << std::endl;
+    }
     else if (cmd == "ucinewgame") {      
       ttable.clear();      
     }

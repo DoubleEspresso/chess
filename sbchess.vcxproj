@@ -149,6 +149,7 @@
     <ClInclude Include="bench.h" />
     <ClInclude Include="bitboards.h" />
     <ClInclude Include="bits.h" />
+    <ClInclude Include="endgame.h" />
     <ClInclude Include="evaluate.h" />
     <ClInclude Include="hashtable.h" />
     <ClInclude Include="info.h" />

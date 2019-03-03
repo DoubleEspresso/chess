@@ -120,6 +120,15 @@ int16 evaluate(const position& p, pawn_entry& e) {
     }
 
     // semi-open file pawns
+    U64 column = bitboards::col[util::col(s)];
+    if ((column & epawns) == 0ULL) {
+      e.semiopen[c] |= bitboards::squares[s];
+    }
+
+    // track king/queen side pawn configurations
+    if (util::col(s) <= Col::D) e.qsidepawns[c] |= bitboards::squares[s];
+    else e.ksidepawns[c] |= bitboards::squares[s];
+
     // pawn islands
     // pawn chain tips
     // pawn chain bases

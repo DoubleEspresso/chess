@@ -24,6 +24,9 @@ struct pawn_entry {
   U64 chainbases[2];
   U64 queenside[2];
   U64 kingside[2];  
+  U64 semiopen[2];
+  U64 qsidepawns[2];
+  U64 ksidepawns[2];
 };
 
 
