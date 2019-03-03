@@ -50,11 +50,10 @@ namespace {
   
   template<Color c> float eval_pawns(const position& p, info& ei) {
     float score = 0;
-    U64 pawns = p.get_pieces<c, pawn>();
-    while (pawns) {
-      int f = bits::pop_lsb(pawns);
-      score += pawn_scaling[util::col(f)] * material_vals[pawn];
-    }
+    //U64 pawns = p.get_pieces<c, pawn>();
+    //while (pawns) {
+    //int f = bits::pop_lsb(pawns);
+    //}
     return score;
   }
 
