@@ -137,7 +137,7 @@ bool uci::parse_command(const std::string& input) {
       ttable.clear();
       std::cout << "readyok" << std::endl;
     }
-    else if (!Search::is_searching && cmd == "go" && instream >> cmd) {           
+    else if (!Search::searching && cmd == "go" && instream >> cmd) {           
       int depth = atoi(cmd.c_str());
       //U16 depth = 10;
       worker.enqueue(Search::start, p, depth);

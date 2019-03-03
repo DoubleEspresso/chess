@@ -12,7 +12,7 @@
 
 namespace Search {
   
-  std::atomic_bool is_searching;  
+  std::atomic_bool searching;  
   std::mutex mtx;
   Move bestmoves[2];
   
