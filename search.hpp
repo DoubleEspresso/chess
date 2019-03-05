@@ -29,7 +29,8 @@ struct search_bounds {
 };
 
 
-Threadpool search_threads(4+1); // +1 for  timer thread
+Threadpool search_threads(4);
+Threadpool timer_thread(1);
 volatile bool slaves_start;
 std::condition_variable cv;
 search_bounds sb;
@@ -89,7 +90,7 @@ void Search::start(position& p, limits& lims) {
   // launch master
   U16 depth = (lims.depth > 0 ? lims.depth : 64); // maxdepth
   searching = true;
-  search_threads.enqueue(search_timer, p, lims);
+  timer_thread.enqueue(search_timer, p, lims);
   search_threads.enqueue(iterative_deepening, *pv[0], depth);
 
   if (parallel) {
@@ -126,7 +127,7 @@ void Search::search_timer(position& p, limits& lims) {
   util::clock c;
   c.start();
   bool fixed_time = lims.movetime > 0;
-  int delay = 50; // ms
+  int delay = 1; // ms
   double time_limit = estimate_max_time(p, lims);
   auto sleep = [delay]() { std::this_thread::sleep_for(std::chrono::milliseconds(delay)); };
 
@@ -157,7 +158,7 @@ void Search::search_timer(position& p, limits& lims) {
 
 double Search::estimate_max_time(position& p, limits& lims) {
   double time_per_move_ms = 0;
-  if (lims.infinite || lims.ponder) return -1;
+  if (lims.infinite || lims.ponder || lims.depth > 0) return -1;
   else {
     bool sudden_death = lims.movestogo == 0; // no moves until next time control
     bool exact_time = lims.movetime != 0; // searching for an exact number of ms?
