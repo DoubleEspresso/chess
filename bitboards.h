@@ -28,6 +28,7 @@ namespace bitboards {
   extern U64 passpawn_mask[2][64];
   extern U64 neighbor_cols[8];
   extern U64 colored_sqs[2];
+  extern unsigned reductions[2][2][64][64]; // max-depth = 64
 
   void load();
 

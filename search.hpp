@@ -64,6 +64,10 @@ inline void unset_searching(position& p, const Move& m) {
   //searching_moves[idx].m = {};
 }
 
+unsigned reduction(bool pv_node, bool improving, int d, int mc) {
+  return bitboards::reductions[(int)pv_node][(int)improving]
+    [std::max(0, std::min(d, 64 - 1))][std::max(0, std::min(mc, 64 - 1))];
+}
 
 
 void Search::start(position& p, U16 depth) {
@@ -115,6 +119,8 @@ void Search::start(position& p, U16 depth) {
   std::cout << "knps: " << (nodes / c.ms()) << std::endl;
   std::cout << "bestmove " << (SanSquares[bestmoves[0].f] + SanSquares[bestmoves[0].t]) <<
     " ponder " << (SanSquares[bestmoves[1].f] + SanSquares[bestmoves[1].t]) << std::endl;
+
+  searching = false;
 }
 
 
@@ -140,18 +146,12 @@ void Search::iterative_deepening(position& p, U16 depth) {
   for (unsigned id = 1; id <= depth; ++id) {
     
     stack->ply = (stack+1)->ply = 0;
-    bool fail_low = false;
-    bool fail_high = false;
     
     while (true) {
       if (id >= 2) {
-        //if (fail_low || alpha <= ninf)
         alpha = std::max(int16(eval - delta), int16(ninf));
-        //if (fail_high || beta >= inf)
         beta = std::min(int16(eval + delta), int16(inf));
       }
-      fail_low = fail_high = false;
-      
       
       eval = search<root>(p, alpha, beta, id, stack + 2);
       
@@ -164,13 +164,10 @@ void Search::iterative_deepening(position& p, U16 depth) {
         }
       }
       
-      
       if (eval <= alpha) {
-        fail_low = true;
         delta += delta;
       }
       else if (eval >= beta) {
-        fail_high = true;
         delta += delta;
       }
       else break;
@@ -230,11 +227,13 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   // static evaluation
   Score static_eval = (ttvalue != Score::ninf ?
     ttvalue : Score(std::lround(eval::evaluate(p))));
+  stack->static_eval = static_eval;
 
   // forward pruning
   const bool forward_prune = (!in_check &&
-			      !pv_type &&
-			      !stack->null_search);
+    !pv_type &&
+    !stack->null_search &&
+    static_eval != ninf);
 
   
   // 1. null move pruning
@@ -361,6 +360,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   U16 moves_searched = 0;
   move_order mvs(p, ttm, stack->killers);
   Move move;
+  bool improving = stack->static_eval - (stack - 2)->static_eval >= 0;
 
   while (mvs.next_move<search_type::main>(p, move)) {
 
@@ -404,12 +404,12 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     }
     else {
       
-      // basic LMR 
+      // LMR
       if (move.type == quiet &&
         !in_check &&
-        best_score <= alpha &&
-        newdepth > 5) {
-        newdepth -= 1;
+        best_score <= alpha) {
+        unsigned R = reduction(pv_type, improving, depth, moves_searched);
+        newdepth -= R;
       }      
       
       score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -alpha - 1, -alpha, 0, stack + 1) :
@@ -488,9 +488,9 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     else {
       if (move.type == quiet &&
         !in_check &&
-        best_score <= alpha &&
-        newdepth > 5) {
-        newdepth -= 1;
+        best_score <= alpha) {
+        unsigned R = reduction(pv_type, improving, depth, moves_searched);
+        newdepth -= R;
       }
       
       score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -alpha - 1, -alpha, 0, stack + 1) :

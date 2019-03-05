@@ -21,6 +21,7 @@ namespace bitboards {
   U64 passpawn_mask[2][64];
   U64 neighbor_cols[8];
   U64 colored_sqs[2];
+  unsigned reductions[2][2][64][64]; // max-depth = 64
   U64 edges;
   U64 corners;
 }
@@ -74,89 +75,107 @@ void bitboards::load() {
     else if ((util::row(s) % 2) != 0 && (s % 2 != 0)) colored_sqs[black] |= squares[s];
     else colored_sqs[white] |= squares[s];
     
+
+    // search reduction array
+    // index assignment [pv_node][improving][depth][move count]
+    for (int sd = 0; sd < 64; ++sd) {
+      for (int mc = 0; mc < 64; ++mc) {
+        // pv nodes
+        double small_r = log(double(sd + 1)) * log(double(mc + 1)) / 4.0;
+        double big_r = 0.25 + log(double(sd + 1)) * log(double(mc + 1)) / 3.0;
+
+        // pv-nodes
+        reductions[1][0][sd][mc] = int(big_r >= 1.0 ? big_r + 0.5 : 0);
+        reductions[1][1][sd][mc] = int(small_r >= 1.0 ? small_r + 0.5 : 0);
+
+        // non-pv nodes
+        reductions[0][0][sd][mc] = reductions[1][0][sd][mc] + 1;
+        reductions[0][1][sd][mc] = reductions[1][1][sd][mc] + 1;
+      }
+    }
     
     // knight step attacks
     U64 bm = 0ULL;
     for (auto& step : steps[Piece::knight]) {
       int to = s + step;
       if (util::on_board(to) &&
-	  util::col_dist(s, to) <= 2 &&
-	  util::row_dist(s, to) <= 2) bm |= squares[to];
+        util::col_dist(s, to) <= 2 &&
+        util::row_dist(s, to) <= 2) bm |= squares[to];
     }
     nmask[s] = bm;
-
+    
     // king step attacks
     bm = 0ULL;
     for (auto& step : steps[Piece::king]) {
       int to = s + step;
       if (util::on_board(to) &&
-	  util::col_dist(s, to) <= 1 &&
-	  util::row_dist(s, to) <= 1) bm |= squares[to];
+        util::col_dist(s, to) <= 1 &&
+        util::row_dist(s, to) <= 1) bm |= squares[to];
     }
     kmask[s] = bm;
 
     // pawn attack masks for each color
-    int pawn_steps[2][2] = {{9, 7}, {-7, -9}};
+    int pawn_steps[2][2] = { {9, 7}, {-7, -9} };
     for (Color c = white; c <= black; ++c) {
       pattks[c][s] = 0ULL;
       for (auto& step : pawn_steps[c]) {
-	int to = s + step;
-	if (util::on_board(to) &&
-	    util::row_dist(s, to) < 2 &&
-	    util::col_dist(s, to) < 2) {
-	  pattks[c][s] |= squares[to];
-	}
+        int to = s + step;
+        if (util::on_board(to) &&
+          util::row_dist(s, to) < 2 &&
+          util::col_dist(s, to) < 2) {
+          pattks[c][s] |= squares[to];
+        }
       }
     }
 
     // between bitboard
     for (Square s2 = A1; s2 <= H8; ++s2) {
       if (s != s2) {
-	U64 btwn = 0ULL;	
-	int delta = 0;
+        U64 btwn = 0ULL;
+        int delta = 0;
 	
-	if (util::col_dist(s, s2) == 0) delta = (s < s2 ? 8 : -8);
-	else if (util::row_dist(s, s2) == 0) delta = (s < s2 ? 1 : -1);
-	else if (util::on_diagonal(s, s2)) {
-	  if (s < s2 && util::col(s) < util::col(s2)) delta = 9;
-	  else if (s < s2 && util::col(s) > util::col(s2)) delta = 7;
-	  else if (s > s2 && util::col(s) < util::col(s2)) delta = -7;
-	  else delta = -9;
-	}
+        if (util::col_dist(s, s2) == 0) delta = (s < s2 ? 8 : -8);
+        else if (util::row_dist(s, s2) == 0) delta = (s < s2 ? 1 : -1);
+        else if (util::on_diagonal(s, s2)) {
+          if (s < s2 && util::col(s) < util::col(s2)) delta = 9;
+          else if (s < s2 && util::col(s) > util::col(s2)) delta = 7;
+          else if (s > s2 && util::col(s) < util::col(s2)) delta = -7;
+          else delta = -9;
+        }
 	
-	if (delta != 0) {
-	  int iter = 0;
-	  int sq = 0;
-	    do {
-	      sq = s + iter * delta;
-	      btwn |= squares[sq];
-	      iter++;
-	    } while (sq != s2);
-	}
-	between[s][s2] = btwn;
-      }    
+        if (delta != 0) {
+          int iter = 0;
+          int sq = 0;
+          do {
+            sq = s + iter * delta;
+            btwn |= squares[sq];
+            iter++;
+          } while (sq != s2);
+        }
+        between[s][s2] = btwn;
+      }
     }
 
     
     // passed pawn masks
-    U64 roi = ~(row[0] | row[7]);    
+    U64 roi = ~(row[0] | row[7]);
     if (squares[s] & roi) {
-
-      neighbor_cols[util::col(s)] = 0ULL;      
       
-      for (Color c = white; c <= black; ++c) {	
-	passpawn_mask[c][s] = 0ULL;
-	
-	U64 neighbors =
-	  (kmask[s] & row[util::row(s)]) | squares[s];
-	
-	while (neighbors) {
-	  int sq = bits::pop_lsb(neighbors);
-	  passpawn_mask[c][s] |=
-	    util::squares_infront(col[util::col(sq)], c, sq);
-	  if (s != sq)
-	    neighbor_cols[util::col(s)] |= col[util::col(sq)];
-	}
+      neighbor_cols[util::col(s)] = 0ULL;
+      
+      for (Color c = white; c <= black; ++c) {
+        passpawn_mask[c][s] = 0ULL;
+        
+        U64 neighbors =
+          (kmask[s] & row[util::row(s)]) | squares[s];
+        
+        while (neighbors) {
+          int sq = bits::pop_lsb(neighbors);
+          passpawn_mask[c][s] |=
+            util::squares_infront(col[util::col(sq)], c, sq);
+          if (s != sq)
+            neighbor_cols[util::col(s)] |= col[util::col(sq)];
+        }
       }
     }
 

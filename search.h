@@ -22,6 +22,7 @@ namespace Search {
     Move curr_move, best_move, threat_move;
     Move deferred_moves[218];
     Move killers[4];
+    Score static_eval;
   };
 
   void search_timer();
