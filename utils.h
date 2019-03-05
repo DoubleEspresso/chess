@@ -60,10 +60,12 @@ namespace util {
     
     void start() { _start = std::chrono::system_clock::now(); }
     void stop() { _end = std::chrono::system_clock::now(); }
+    double elapsed_ms() { stop(); double msecs = ms(); start(); return msecs; }
     double ms() {
       std::chrono::duration<double> sec = _end - _start;
       return sec.count() * 1000.0;
     }
+
   };
 }
 

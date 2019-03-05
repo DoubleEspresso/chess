@@ -6,7 +6,7 @@
 #include "types.h"
 #include "threads.h"
 #include "move.h"
-
+#include "uci.h"
 
 
 
@@ -25,11 +25,12 @@ namespace Search {
     Score static_eval;
   };
 
-  void search_timer();
-  void start(position& p, U16 depth);
+  void search_timer(position& p, limits& lims);
+  void start(position& p, limits& lims);
   void iterative_deepening(position& p, U16 depth);
   void readout_pv(position& p, const Score& eval, const U16& depth);
-  
+  double estimate_max_time(position& p, limits& lims);
+
   template<Nodetype type>
   Score search(position& p, int16 alpha, int16 beta, U16 depth, node * stack);
 

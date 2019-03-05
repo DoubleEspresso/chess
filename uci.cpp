@@ -8,6 +8,7 @@
 position p;
 Move dbgmove;
 Threadpool worker(1);
+signals UCI_SIGNALS;
 
 void uci::loop() {
   std::string input = "";
@@ -137,10 +138,27 @@ bool uci::parse_command(const std::string& input) {
       ttable.clear();
       std::cout << "readyok" << std::endl;
     }
-    else if (!Search::searching && cmd == "go" && instream >> cmd) {           
-      int depth = atoi(cmd.c_str());
-      //U16 depth = 10;
-      worker.enqueue(Search::start, p, depth);
+    else if (!Search::searching && cmd == "go") {           
+      limits lims;
+      memset(&lims, 0, sizeof(limits));
+      while (instream >> cmd)
+      {
+        if (cmd == "wtime" && instream >> cmd) lims.wtime = atoi(cmd.c_str());
+        else if (cmd == "btime" && instream >> cmd) lims.btime = atoi(cmd.c_str());
+        else if (cmd == "winc" && instream >> cmd) lims.winc = atoi(cmd.c_str());
+        else if (cmd == "binc" && instream >> cmd) lims.binc = atoi(cmd.c_str());
+        else if (cmd == "movestogo" && instream >> cmd) lims.movestogo = atoi(cmd.c_str());
+        else if (cmd == "nodes" && instream >> cmd) lims.nodes = atoi(cmd.c_str());
+        else if (cmd == "movetime" && instream >> cmd) lims.movetime = atoi(cmd.c_str());
+        else if (cmd == "mate" && instream >> cmd) lims.mate = atoi(cmd.c_str());
+        else if (cmd == "depth" && instream >> cmd) lims.depth = atoi(cmd.c_str());
+        else if (cmd == "infinite") lims.infinite = (cmd == "infinite" ? true : false);
+        else if (cmd == "ponder") lims.ponder = atoi(cmd.c_str());
+      }
+      worker.enqueue(Search::start, p, lims);
+    }
+    else if (cmd == "stop") {
+      UCI_SIGNALS.stop = true;
     }
     else if (cmd == "moves") {
       Movegen mvs(p);

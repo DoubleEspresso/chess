@@ -7,6 +7,7 @@
 #include "utils.h"
 #include "evaluate.h"
 #include "order.h"
+#include "material.h"
 
 struct search_bounds {
   int16 alpha;
@@ -14,26 +15,26 @@ struct search_bounds {
   int16 best_score;
   U16 depth;
   Move best_move;  
-  volatile bool search_finished;
+  double elapsed_ms;
   
   
   void init() {
+    elapsed_ms = 0;
     alpha = ninf;
     beta = inf;
     best_score = ninf;
     best_move = {};
     depth = 1;
-    search_finished = false;
   }
 };
 
 
-Threadpool search_threads(4);
+Threadpool search_threads(4+1); // +1 for  timer thread
 volatile bool slaves_start;
 std::condition_variable cv;
 search_bounds sb;
 unsigned thread_depth = 3;
-
+volatile double elapsed = 0;
 
 struct move_entry {
   //size_t keyj
@@ -70,15 +71,15 @@ unsigned reduction(bool pv_node, bool improving, int d, int mc) {
 }
 
 
-void Search::start(position& p, U16 depth) {
+void Search::start(position& p, limits& lims) {
   
   std::vector<std::unique_ptr<position>> pv;
 
-  util::clock c;
-  c.start();
   slaves_start = false;
   bool parallel = true;
-  
+  elapsed = 0;
+  UCI_SIGNALS.stop = false;
+
   for (unsigned i = 0; i < search_threads.size(); ++i) {
     if (i == 0) { sb.init(); }
     pv.emplace_back(make_unique<position>(p));
@@ -86,24 +87,21 @@ void Search::start(position& p, U16 depth) {
   }
 
   // launch master
+  U16 depth = (lims.depth > 0 ? lims.depth : 64); // maxdepth
+  searching = true;
+  search_threads.enqueue(search_timer, p, lims);
   search_threads.enqueue(iterative_deepening, *pv[0], depth);
 
-  if (parallel)
-  { // launch slaves
+  if (parallel) {
     std::unique_lock<std::mutex> lock(mtx);
     while(!slaves_start) cv.wait(lock);    
     for (unsigned i = 1; i<search_threads.size(); ++i) {
       search_threads.enqueue(iterative_deepening, *pv[i], depth);
     }
   }
-  
-  search_threads.wait_finished();
-  c.stop();
 
-  
-  if (p.is_master()) {
-    readout_pv(*pv[0], Score(0), depth);
-  }
+  search_threads.wait_finished();
+  UCI_SIGNALS.stop = true;
   
   
   U64 nodes = 0ULL;
@@ -113,10 +111,10 @@ void Search::start(position& p, U16 depth) {
     nodes += t->nodes();
     qnodes += t->qnodes();
   }
-  std::cout << "time : " << c.ms() << "ms" << std::endl; 
+  std::cout << "time : " << elapsed << "ms" << std::endl; 
   std::cout << "nodes: " << nodes << std::endl;
   std::cout << "qnodes: " << qnodes << std::endl;
-  std::cout << "knps: " << (nodes / c.ms()) << std::endl;
+  std::cout << "knps: " << (nodes / (elapsed)) << std::endl;
   std::cout << "bestmove " << (SanSquares[bestmoves[0].f] + SanSquares[bestmoves[0].t]) <<
     " ponder " << (SanSquares[bestmoves[1].f] + SanSquares[bestmoves[1].t]) << std::endl;
 
@@ -124,12 +122,59 @@ void Search::start(position& p, U16 depth) {
 }
 
 
-void Search::search_timer() {
-  //std::cout << "timer starts" << std::endl;
-  //std::cout << "timer stops" << std::endl;
+void Search::search_timer(position& p, limits& lims) {
+  util::clock c;
+  c.start();
+  bool fixed_time = lims.movetime > 0;
+  int delay = 50; // ms
+  double time_limit = estimate_max_time(p, lims);
+  auto sleep = [delay]() { std::this_thread::sleep_for(std::chrono::milliseconds(delay)); };
+
+  if (fixed_time) {
+    do {
+      elapsed += c.elapsed_ms();
+      sleep();
+    } while (!UCI_SIGNALS.stop && searching && elapsed <= lims.movetime);
+  }
+  else if (time_limit > -1) {
+    // dynamic time estimate in a real game
+    do {
+      elapsed += c.elapsed_ms();
+      sleep();
+    } while (!UCI_SIGNALS.stop && searching && elapsed <= time_limit);
+  }
+  else {
+    do {
+      // analysis mode (infinite time)
+      elapsed += c.elapsed_ms();
+      sleep();
+    } while (!UCI_SIGNALS.stop && searching);
+  }
   return;
 }
 
+
+double Search::estimate_max_time(position& p, limits& lims) {
+  double time_per_move_ms = 0;
+  if (lims.infinite || lims.ponder) return -1;
+  else {
+    bool sudden_death = lims.movestogo == 0; // no moves until next time control
+    bool exact_time = lims.movetime != 0; // searching for an exact number of ms?
+    double remainder_ms = (p.to_move() == white ? lims.wtime + lims.winc : lims.btime + lims.binc);
+    material_entry * me = mtable.fetch(p);
+    bool endgame = me->endgame;
+    double moves_to_go = 45.0 - (!endgame ? 22.5 : 30.0);
+
+    if (sudden_death && !exact_time) {
+      time_per_move_ms = 1.5 * remainder_ms / moves_to_go * (!endgame ? 0.6 : 0.17);
+    }
+    else if (exact_time) return (double)lims.movetime;
+    else if (!sudden_death) {
+      time_per_move_ms = remainder_ms / lims.movestogo * (!endgame ? 0.6 : 0.17);
+    }
+  }
+  return 1.5 * time_per_move_ms;
+}
 
 void Search::iterative_deepening(position& p, U16 depth) {
   int16 alpha = ninf;
@@ -141,10 +186,11 @@ void Search::iterative_deepening(position& p, U16 depth) {
   node stack[stack_size];
   std::memset(stack, 0, sizeof(node) * stack_size);
   
-  
   //for (unsigned id = 1 + p.id(); id <= depth; ++id) {
   for (unsigned id = 1; id <= depth; ++id) {
     
+    if (UCI_SIGNALS.stop) break;
+
     stack->ply = (stack+1)->ply = 0;
     
     while (true) {
@@ -155,7 +201,7 @@ void Search::iterative_deepening(position& p, U16 depth) {
       
       eval = search<root>(p, alpha, beta, id, stack + 2);
       
-      if (p.is_master()) {
+      if (p.is_master() && !UCI_SIGNALS.stop) {
         readout_pv(p, eval, id);
         
         if (id >= thread_depth && !slaves_start) {
@@ -164,6 +210,8 @@ void Search::iterative_deepening(position& p, U16 depth) {
         }
       }
       
+      if (UCI_SIGNALS.stop) break;
+
       if (eval <= alpha) {
         delta += delta;
       }
@@ -179,7 +227,7 @@ void Search::iterative_deepening(position& p, U16 depth) {
 template<Nodetype type>
 Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * stack) {
 
-  if (sb.search_finished) { return Score::draw; }
+  if (UCI_SIGNALS.stop) { return Score::draw; }
   
   Score best_score = Score::ninf;
   Move best_move = {};
@@ -364,7 +412,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 
   while (mvs.next_move<search_type::main>(p, move)) {
 
-    if (sb.search_finished) { return Score::draw; }
+    if (UCI_SIGNALS.stop) { return Score::draw; }
 
     // thread update (todo)
     
@@ -561,7 +609,7 @@ std::unique_lock<std::mutex> lock(mtx);
 template<Nodetype type>
 Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * stack) {
 
-  if (sb.search_finished) { return Score::draw; }
+  if (UCI_SIGNALS.stop) { return Score::draw; }
   
   Score best_score = Score::ninf;
   Move best_move = {};
@@ -672,7 +720,7 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
   while (mvs.next_move<search_type::qsearch>(p, move)) {
     
 
-    if (sb.search_finished) { return Score::draw; }
+    if (UCI_SIGNALS.stop) { return Score::draw; }
 
     
     if (move.type == Movetype::no_type || !p.is_legal(move)) {
