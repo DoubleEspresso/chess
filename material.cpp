@@ -88,5 +88,12 @@ int16 evaluate(const position& p, material_entry& e) {
     e.endgame = EndgameType(endgame_encoding);
   }
 
+  // endgame linear interpolation coefficient
+  // computed from piece count - excludes pawns
+  // endgame_coeff of 0 --> piece count = 14
+  // endgame_coeff of 1 --> piece count = 2
+  // coeff = -1/12*total + 7/6
+  e.endgame_coeff = std::min(-0.083333f * total + 1.16667f, 1.0f);
+
   return score;
 }

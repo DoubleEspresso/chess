@@ -11,6 +11,7 @@
 struct material_entry {
   U64 key;
   int16 score;
+  double endgame_coeff; // interpolation between middle and endgame
   EndgameType endgame;
   U8 number[5]; // knight, bishop, rook, queen
   inline bool is_endgame() { return endgame != EndgameType::none;  }
