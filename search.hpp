@@ -150,6 +150,7 @@ void Search::search_timer(position& p, limits& lims) {
       sleep();
     } while (!UCI_SIGNALS.stop && searching);
   }
+  UCI_SIGNALS.stop = true;
   return;
 }
 
