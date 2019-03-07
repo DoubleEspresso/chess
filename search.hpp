@@ -116,8 +116,8 @@ void Search::start(position& p, limits& lims) {
   std::cout << "nodes: " << nodes << std::endl;
   std::cout << "qnodes: " << qnodes << std::endl;
   std::cout << "knps: " << (nodes / (elapsed)) << std::endl;
-  std::cout << "bestmove " << (SanSquares[bestmoves[0].f] + SanSquares[bestmoves[0].t]) <<
-    " ponder " << (SanSquares[bestmoves[1].f] + SanSquares[bestmoves[1].t]) << std::endl;
+  std::cout << "bestmove " << uci::move_to_string(bestmoves[0]) <<
+    " ponder " << uci::move_to_string(bestmoves[1]) << std::endl;
 
   searching = false;
 }
@@ -196,7 +196,7 @@ void Search::iterative_deepening(position& p, U16 depth) {
     stack->ply = (stack+1)->ply = 0;
     
     while (true) {
-      if (id >= 2) {
+      if (id >= 4) {
         alpha = std::max(int16(eval - delta), int16(ninf));
         beta = std::min(int16(eval + delta), int16(inf));
       }
@@ -246,8 +246,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 
   stack->ply = (stack-1)->ply + 1;
   U16 root_dist = stack->ply;
-  
-  
+
   { // mate distance pruning
     Score mating_score = Score(Score::mate - root_dist);
     beta = std::min(mating_score, Score(beta));
@@ -258,7 +257,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     if (beta <= mated_score) return mated_score;
   }
 
-  
+
   {  // hashtable lookup
     hash_data e;
     if (ttable.fetch(p.key(), e)) {
@@ -457,6 +456,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       // LMR
       if (move.type == quiet &&
         !in_check &&
+        //newdepth >= 6 &&
         best_score <= alpha) {
         unsigned R = reduction(pv_type, improving, depth, moves_searched);
         newdepth -= R;
@@ -538,6 +538,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     else {
       if (move.type == quiet &&
         !in_check &&
+        //newdepth >= 6 &&
         best_score <= alpha) {
         unsigned R = reduction(pv_type, improving, depth, moves_searched);
         newdepth -= R;
@@ -575,21 +576,22 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 	
         break;
       }
-      /*
-else if (depth >= sb.depth) {
-std::unique_lock<std::mutex> lock(mtx);
 
-	if (best_score >= alpha && best_score < beta &&
-	    alpha >= sb.alpha && alpha < beta &&
-	    beta <= sb.beta) {
-	  sb.alpha = alpha;
-	  sb.beta = beta;
-	  sb.best_score = best_score;
-	  sb.depth = depth;
-	}
-	//if (beta < sb.beta && beta > sb.alpha) sb.beta = beta;	
-      }
-      */
+      
+//else if (depth >= sb.depth) {
+//std::unique_lock<std::mutex> lock(mtx);
+//
+//	if (best_score >= alpha && best_score < beta &&
+//	    alpha >= sb.alpha && alpha < beta &&
+//	    beta <= sb.beta) {
+//	  sb.alpha = alpha;
+//	  sb.beta = beta;
+//	  sb.best_score = best_score;
+//	  sb.depth = depth;
+//	}
+//	//if (beta < sb.beta && beta > sb.alpha) sb.beta = beta;	
+//      }
+//      
     }
   }
   
@@ -627,7 +629,8 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
   bool in_check = p.in_check();
   stack->in_check = in_check;
 
-  
+ 
+  if (p.is_draw()) return Score::draw;
   
   {  // hashtable lookup
     hash_data e;
@@ -731,7 +734,7 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
 
 
     // see pruning
-    if (move != ttm && 
+    if (move != ttm &&
       move != stack->killers[0] &&
       move != stack->killers[1] &&
       move != stack->killers[2] &&
@@ -791,7 +794,7 @@ void Search::readout_pv(position& p, const Score& eval, const U16& depth) {
 	   p.is_legal(e.move) &&
 	   j < depth; ++j) {
       
-      res += SanSquares[e.move.f] + SanSquares[e.move.t] + " ";
+      res += uci::move_to_string(e.move) + " ";
       p.do_move(e.move);
       moves.push_back(e.move);
       

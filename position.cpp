@@ -78,14 +78,22 @@ void position::setup(std::istringstream& fen) {
     if (c == '3' || c == '6') row = Row(c - '1');
   }
   ifo.eps = Square(8 * row + col);
-  if (ifo.eps != Square::no_square) ifo.key ^= zobrist::ep(util::col(ifo.eps));
+
+  if (!util::on_board(ifo.eps)) ifo.eps = Square::no_square;
   
+  if (ifo.eps != Square::no_square) ifo.key ^= zobrist::ep(util::col(ifo.eps));
+  ifo.repkey = ifo.key;
+
   // half-moves since last pawn move/capture
-  fen >> ifo.move50;
+  fen >> token;
+  
+  ifo.move50 = (token != "-" ? U8(std::stoi(token)) : 0);
+
   ifo.key ^= zobrist::mv50(ifo.move50);
   
   // move counter
-  fen >> ifo.hmvs;
+  fen >> token;
+  ifo.hmvs = (token != "-" ? U16(std::stoi(token)) : 0);
   ifo.key ^= zobrist::hmvs(ifo.hmvs);
 
   // check info
@@ -95,6 +103,22 @@ void position::setup(std::istringstream& fen) {
   
   ifo.checkers = (in_check() ? attackers_of(ifo.ks[stm], Color(stm^1)) : 0ULL);
   ifo.pinned = pinned();
+}
+
+bool position::is_draw() {
+
+  if (ifo.move50 >= 50) return true;  
+
+  // 3-fold repetition
+  U64 kcurrent = ifo.repkey;
+  unsigned same_count = 0;
+  int idx = hidx - 2;
+  while (same_count < 2 && idx >= 0) {
+    same_count += (kcurrent == history[idx].repkey);
+    idx -= 2;
+  }
+
+  return same_count >= 2;
 }
 
 void position::do_move(const Move& m) {
@@ -115,22 +139,22 @@ void position::do_move(const Move& m) {
   else if (p == rook) {
     if (us == white) {
       if (from == A1) {
-	ifo.cmask &= clearwqs;
-	ifo.key ^= zobrist::castle(white, clearwqs);
+        ifo.cmask &= clearwqs;
+        ifo.key ^= zobrist::castle(white, clearwqs);
       }
       else if (from == H1) {
-	ifo.cmask &= clearwks;	
-	ifo.key ^= zobrist::castle(white, clearwks);
+        ifo.cmask &= clearwks;
+        ifo.key ^= zobrist::castle(white, clearwks);
       }
     }
     else {
       if (from == A8) {
-	ifo.cmask &= clearbqs;
-	ifo.key ^= zobrist::castle(white, clearbqs);
+        ifo.cmask &= clearbqs;
+        ifo.key ^= zobrist::castle(white, clearbqs);
       }
       else if (from == H8) {
-	ifo.cmask &= clearbks;
-	ifo.key ^= zobrist::castle(white, clearbks);
+        ifo.cmask &= clearbks;
+        ifo.key ^= zobrist::castle(white, clearbks);
       }
     }
   }
@@ -179,6 +203,7 @@ void position::do_move(const Move& m) {
   if (p == pawn && abs(from-to) == 16) {    
     ifo.eps = Square(from + (us == white ? 8 : -8));
     ifo.key ^= zobrist::ep(util::col(to));
+    ifo.repkey ^= zobrist::ep(util::col(to));
   }
 
   // move50
@@ -193,7 +218,7 @@ void position::do_move(const Move& m) {
   // side to move
   ifo.stm = Color(ifo.stm ^ 1);
   ifo.key ^= zobrist::stm(ifo.stm);
-
+  ifo.repkey ^= zobrist::stm(ifo.stm);
   
   ifo.incheck = is_attacked(king_square(), ifo.stm, us);
   ifo.checkers = (ifo.incheck ? attackers_of(king_square(), Color(ifo.stm^1)) : 0ULL);
@@ -258,12 +283,14 @@ void position::do_null_move() {
   // eps square
   if (ifo.eps != Square::no_square) {
     ifo.key ^= zobrist::ep(util::col(ifo.eps));
+    ifo.repkey ^= zobrist::ep(util::col(ifo.eps));
     ifo.eps = Square::no_square;    
   }
 
   // side to move
   ifo.stm = them;
   ifo.key ^= zobrist::stm(ifo.stm);
+  ifo.repkey ^= zobrist::stm(ifo.stm);
 
   // move50
   ifo.move50++;
@@ -291,15 +318,15 @@ int position::see(const Move& m) {
   }
 
   else if (m.type == Movetype::capture_promotion_q ||
-	   m.type == Movetype::capture_promotion_r ||
-	   m.type == Movetype::capture_promotion_b ||
-	   m.type == Movetype::capture_promotion_n) {
+    m.type == Movetype::capture_promotion_r ||
+    m.type == Movetype::capture_promotion_b ||
+    m.type == Movetype::capture_promotion_n) {
     int fval = (m.type == Movetype::capture_promotion_q ? mvals[queen] :
-		m.type == Movetype::capture_promotion_r ? mvals[rook] :
-		m.type == Movetype::capture_promotion_b ? mvals[bishop] :
-		mvals[knight]) - mvals[0];
+      m.type == Movetype::capture_promotion_r ? mvals[rook] :
+      m.type == Movetype::capture_promotion_b ? mvals[bishop] :
+      mvals[knight]) - mvals[0];
     int tval = mvals[piece_on(Square(m.t))];
-
+    
     if (fval <= tval) return fval - tval;
   }
 
@@ -342,33 +369,33 @@ int position::see_move(const Move& m) {
     U64 white_attackers = a & white_bb;
     if (white_attackers) {
       while (white_attackers) {
-	Square s = Square(bits::pop_lsb(white_attackers));
-	if (s == from) {
-	  atkr = piece_on(Square(s));
-	  continue; // first attacker is handled below
-	}
-	white_list.emplace_back(SeePiece(piece_on(s), mvals[piece_on(s)]));
+        Square s = Square(bits::pop_lsb(white_attackers));
+        if (s == from) {
+          atkr = piece_on(Square(s));
+          continue; // first attacker is handled below
+        }
+        white_list.emplace_back(SeePiece(piece_on(s), mvals[piece_on(s)]));
       }
     }
-
+    
     U64 black_attackers = a & black_bb;
     if (black_attackers) {
       while (black_attackers) {
-	Square s = Square(bits::pop_lsb(black_attackers));
-	if (s == from) {
-	  atkr = piece_on(s);
-	  continue;
-	}
-	black_list.emplace_back(SeePiece(piece_on(s), mvals[piece_on(s)]));
+        Square s = Square(bits::pop_lsb(black_attackers));
+        if (s == from) {
+          atkr = piece_on(s);
+          continue;
+        }
+        black_list.emplace_back(SeePiece(piece_on(s), mvals[piece_on(s)]));
       }
     }
-
+    
     if (white_list.size() == 0 && black_list.size() == 0 && atkr == Piece::no_piece) return 0;
   }
-
+  
   std::sort(white_list.begin(), white_list.end());
   std::sort(black_list.begin(), black_list.end());
-
+  
   
   int i = 0;
   unsigned w = 0;
@@ -419,21 +446,21 @@ int position::see_move(const Move& m) {
 
     if (vv < av || victim == king) {
       if (attacker == king) {
-	if ((color == black && b < black_list.size()) ||
-	    (color == white && w < white_list.size())) {
-	  return score; // illegal
-	}
-      }			     
+        if ((color == black && b < black_list.size()) ||
+          (color == white && w < white_list.size())) {
+          return score; // illegal
+        }
+      }
       
       
-      if ( (victim == king && ((color == black && w < white_list.size()) || (color == white && b < black_list.size()))) ||
-	   (victim != king && ((color == black && (black_list.size() > white_list.size())) ||
-			       (color == white && (white_list.size() > black_list.size())))) ) {
-	score = prev;
-	return score;
-      }    
-    }    
-    score += ((i&1) == 1 ? -vv : vv);
+      if ((victim == king && ((color == black && w < white_list.size()) || (color == white && b < black_list.size()))) ||
+        (victim != king && ((color == black && (black_list.size() > white_list.size())) ||
+          (color == white && (white_list.size() > black_list.size()))))) {
+        score = prev;
+        return score;
+      }
+    }
+    score += ((i & 1) == 1 ? -vv : vv);
     ++i;
     prev = score;
   }

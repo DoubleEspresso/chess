@@ -28,6 +28,7 @@ struct info {
   U64 key;
   U64 mkey;
   U64 pawnkey;
+  U64 repkey;
   U16 hmvs;
   U16 cmask;
   U8 move50;
@@ -139,6 +140,8 @@ class position {
   bool is_legal(const Move& m);
   bool is_legal_hashmove(const Move& m);
   U64 pinned();
+  bool is_draw();
+
   inline bool can_castle_ks() const {
     return (ifo.cmask & (ifo.stm == white ? wks : bks)) == (ifo.stm == white ? wks : bks);
   }
@@ -224,6 +227,7 @@ inline void piece_data::do_quiet(const Color& c, const Piece& p,
   piece_on[f] = no_piece;
   
   ifo.key ^= (zobrist::piece(f, c, p) | zobrist::piece(t, c, p));
+  ifo.repkey ^= (zobrist::piece(f, c, p) | zobrist::piece(t, c, p));
 
   if (p == Piece::pawn) ifo.pawnkey ^= (zobrist::piece(f, c, p) | zobrist::piece(t, c, p));
 }
@@ -293,7 +297,7 @@ inline void piece_data::remove_piece(const Color& c, const Piece& p, const Squar
   piece_on[s] = no_piece;
   ifo.key ^= zobrist::piece(s, c, p);
   ifo.mkey ^= zobrist::piece(s, c, p);
-
+  ifo.repkey ^= zobrist::piece(s, c, p);
   if (p == Piece::pawn) ifo.pawnkey ^= zobrist::piece(s, c, p);
 }
 
@@ -309,7 +313,7 @@ inline void piece_data::add_piece(const Color& c, const Piece& p, const Square& 
   color_on[s] = c;
   ifo.key |= zobrist::piece(s, c, p);
   ifo.mkey |= zobrist::piece(s, c, p);
-
+  ifo.repkey |= zobrist::piece(s, c, p);
   if (p == Piece::pawn) ifo.pawnkey |= zobrist::piece(s, c, p);
 }
 
@@ -325,7 +329,7 @@ inline void piece_data::set(const Color& c, const Piece& p, const Square& s, inf
 
   ifo.key |= zobrist::piece(s, c, p);
   ifo.mkey |= zobrist::piece(s, c, p);
-
+  ifo.repkey |= zobrist::piece(s, c, p);
   if (p == Piece::pawn) ifo.pawnkey |= zobrist::piece(s, c, p);
 }
 
