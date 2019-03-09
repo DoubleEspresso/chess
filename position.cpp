@@ -135,26 +135,31 @@ void position::do_move(const Move& m) {
     ifo.ks[us] = to;
     ifo.cmask &= (us == white ? clearw : clearb);
     ifo.key ^= (us == white ? zobrist::castle(white, clearw) : zobrist::castle(black, clearb));
+    ifo.repkey ^= (us == white ? zobrist::castle(white, clearw) : zobrist::castle(black, clearb));
   }
   else if (p == rook) {
     if (us == white) {
       if (from == A1) {
         ifo.cmask &= clearwqs;
         ifo.key ^= zobrist::castle(white, clearwqs);
+        ifo.repkey ^= zobrist::castle(white, clearwqs);
       }
       else if (from == H1) {
         ifo.cmask &= clearwks;
         ifo.key ^= zobrist::castle(white, clearwks);
+        ifo.repkey ^= zobrist::castle(white, clearwks);
       }
     }
     else {
       if (from == A8) {
         ifo.cmask &= clearbqs;
         ifo.key ^= zobrist::castle(white, clearbqs);
+        ifo.repkey ^= zobrist::castle(white, clearbqs);
       }
       else if (from == H8) {
         ifo.cmask &= clearbks;
         ifo.key ^= zobrist::castle(white, clearbks);
+        ifo.repkey ^= zobrist::castle(white, clearbks);
       }
     }
   }

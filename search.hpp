@@ -46,6 +46,7 @@ struct move_entry {
 const size_t mv_hash_sz = 1048576; // to start (some power of 2)
 move_entry searching_moves[mv_hash_sz]; 
 
+
 inline size_t get_idx(position& p, const Move& m) {
   return ((p.key() * (m.f | (m.t << 8) | (m.type << 8))) & (mv_hash_sz - 1));
 }
@@ -66,11 +67,14 @@ inline void unset_searching(position& p, const Move& m) {
   //searching_moves[idx].m = {};
 }
 
-unsigned reduction(bool pv_node, bool improving, int d, int mc) {
+inline unsigned reduction(bool pv_node, bool improving, int d, int mc) {
   return bitboards::reductions[(int)pv_node][(int)improving]
     [std::max(0, std::min(d, 64 - 1))][std::max(0, std::min(mc, 64 - 1))];
 }
 
+inline float razor_margin(int depth) {
+  return 1810-(530 + 20 * depth);
+}
 
 void Search::start(position& p, limits& lims) {
   
@@ -122,7 +126,6 @@ void Search::start(position& p, limits& lims) {
   searching = false;
 }
 
-
 void Search::search_timer(position& p, limits& lims) {
   util::clock c;
   c.start();
@@ -154,7 +157,6 @@ void Search::search_timer(position& p, limits& lims) {
   UCI_SIGNALS.stop = true;
   return;
 }
-
 
 double Search::estimate_max_time(position& p, limits& lims) {
   double time_per_move_ms = 0;
@@ -226,6 +228,7 @@ void Search::iterative_deepening(position& p, U16 depth) {
   
 }
 
+
 template<Nodetype type>
 Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * stack) {
 
@@ -284,6 +287,24 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     !stack->null_search &&
     static_eval != ninf);
 
+  // 0. razoring
+  float rm = razor_margin(depth);
+  if (//depth <= 4 &&
+    forward_prune &&
+    ttm.type == no_type &&
+    static_eval + rm <= alpha) {
+    //!b.pawn_on_7(b.whos_move())) {    
+    
+    if (depth <= 1) {
+      Score v = qsearch<non_pv>(p, alpha, beta, 0, stack);
+      if (v <= alpha) return v;
+    }
+    else {
+      int16 ralpha = alpha - rm;
+      Score v = qsearch<non_pv>(p, ralpha, ralpha + 1, 0, stack);
+      if (v <= ralpha) return v;
+    }
+  }
   
   // 1. null move pruning
   if (forward_prune &&
@@ -314,7 +335,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       depth >= (pv_type ? 6 : 4) &&
       (pv_type || static_eval + 50 >= beta)) {
     
-    int R = (depth >= 6 ? depth / 2 : 2);
+    int R = 2 + depth / 6; // (depth >= 6 ? depth / 2 : 2);
     int iid = depth - R;
     
     stack->null_search = true;
@@ -432,6 +453,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       continue;
     }
 
+
     // continue if another thread is already searching this position
     if (depth > thread_depth && moves_searched > 0 && is_searching(p, move)) {
       stack->deferred_moves[deferred++] = move;
@@ -443,27 +465,30 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     
     stack->curr_move = move;
 
-    int16 newdepth = depth + in_check;
+    bool gives_check = p.in_check();
+    int16 newdepth = depth + gives_check; // p.in_check();
 
     // pvs  	
     Score score = Score::ninf;
-    if (moves_searched < 5) {
+    if (moves_searched < 3) {
       score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
 		    -search<non_pv>(p, -beta, -alpha, newdepth-1, stack+1));
     }
     else {
       
       // LMR
+      int16 LMR = newdepth;
       if (move.type == quiet &&
         !in_check &&
+        !gives_check &&
         //newdepth >= 6 &&
         best_score <= alpha) {
         unsigned R = reduction(pv_type, improving, depth, moves_searched);
-        newdepth -= R;
+        LMR -= R;
       }      
       
-      score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -alpha - 1, -alpha, 0, stack + 1) :
-        -search<non_pv>(p, -alpha - 1, -alpha, newdepth - 1, stack + 1));
+      score = Score(LMR <= 1 ? -qsearch<non_pv>(p, -alpha - 1, -alpha, 0, stack + 1) :
+        -search<non_pv>(p, -alpha - 1, -alpha, LMR - 1, stack + 1));
       
       if (score > alpha && score < beta) {
         score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack + 1) :
@@ -521,31 +546,33 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     
     
   // re-try deferred moves (already passed legality check)
-  
   for (size_t i = 0; i < deferred; ++i) {
     
     p.do_move(stack->deferred_moves[i]);
 
     stack->curr_move = stack->deferred_moves[i];
-    int16 newdepth = depth + in_check;
+    bool gives_check = p.in_check();
+    int16 newdepth = depth + gives_check; // p.in_check();
 
     // pvs
     Score score = Score::ninf;
-    if (moves_searched < 5) {
+    if (moves_searched < 3) {
       score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack + 1) :
         -search<non_pv>(p, -beta, -alpha, newdepth - 1, stack + 1));
     }
     else {
+      int16 LMR = newdepth;
       if (move.type == quiet &&
         !in_check &&
+        !gives_check &&
         //newdepth >= 6 &&
         best_score <= alpha) {
         unsigned R = reduction(pv_type, improving, depth, moves_searched);
-        newdepth -= R;
+        LMR -= R;
       }
       
-      score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -alpha - 1, -alpha, 0, stack + 1) :
-        -search<non_pv>(p, -alpha - 1, -alpha, newdepth - 1, stack + 1));
+      score = Score(LMR <= 1 ? -qsearch<non_pv>(p, -alpha - 1, -alpha, 0, stack + 1) :
+        -search<non_pv>(p, -alpha - 1, -alpha, LMR - 1, stack + 1));
       
       if (score > alpha && score < beta) {
         score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack + 1) :
@@ -743,7 +770,7 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
       !in_check &&
       best_score < alpha &&
       //moves_searched > 1 &&
-      p.see(move) < 0) continue;
+      p.see(move) <= 0) continue;
     
     
     p.do_move(move);
