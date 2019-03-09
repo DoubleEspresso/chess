@@ -94,9 +94,13 @@ namespace {
   template<Color c> float eval_knights(const position& p, einfo& ei) {
     float score = 0;    
     Square * knights = p.squares_of<c, knight>();
-    
+    Color them = Color(c ^ 1);
+
     for (Square s = *knights; s != no_square; s = *++knights) {
-      score += sq_score_scaling[knight] * square_score<c>(knight, s);      
+      score += sq_score_scaling[knight] * square_score<c>(knight, s);
+      
+      // tempo adjustments
+      if (bitboards::squares[s] & ei.pe->attacks[them]) score -= params.tempo;
     }
     
     return score;
@@ -106,9 +110,13 @@ namespace {
   template<Color c> float eval_bishops(const position& p, einfo& ei) {
     float score = 0;    
     Square * bishops = p.squares_of<c, bishop>();
+    Color them = Color(c ^ 1);
     
     for (Square s = *bishops; s != no_square; s = *++bishops) {
-      score += sq_score_scaling[bishop] * square_score<c>(bishop, s);      
+      score += sq_score_scaling[bishop] * square_score<c>(bishop, s);
+
+      // tempo adjustments
+      if (bitboards::squares[s] & ei.pe->attacks[them]) score -= params.tempo;
     }
     
     return score;
@@ -118,9 +126,13 @@ namespace {
   template<Color c> float eval_rooks(const position& p, einfo& ei) {
     float score = 0;    
     Square * rooks = p.squares_of<c, rook>();
+    Color them = Color(c ^ 1);
     
     for (Square s = *rooks; s != no_square; s = *++rooks) {
       score += sq_score_scaling[rook] * square_score<c>(rook, s);      
+
+      // tempo adjustments
+      if (bitboards::squares[s] & ei.pe->attacks[them]) score -= params.tempo;
     }
     
     return score;
@@ -131,9 +143,13 @@ namespace {
   template<Color c> float eval_queens(const position& p, einfo& ei) {
     float score = 0;    
     Square * queens = p.squares_of<c, queen>();
+    Color them = Color(c ^ 1);
     
     for (Square s = *queens; s != no_square; s = *++queens) {
-      score += sq_score_scaling[queen] * square_score<c>(queen, s);      
+      score += sq_score_scaling[queen] * square_score<c>(queen, s);
+
+      // tempo adjustments
+      if (bitboards::squares[s] & ei.pe->attacks[them]) score -= params.tempo;
     }
     
     return score;
@@ -144,9 +160,13 @@ namespace {
   template<Color c> float eval_king(const position& p, einfo& ei) {
     float score = 0;    
     Square * kings = p.squares_of<c, king>();
+    Color them = Color(c ^ 1);
     
     for (Square s = *kings; s != no_square; s = *++kings) {      
-      score += sq_score_scaling[king] * square_score<c>(king, s);      
+      score += sq_score_scaling[king] * square_score<c>(king, s);
+
+      // tempo adjustments
+      if (bitboards::squares[s] & ei.pe->attacks[them]) score -= params.tempo;
     }
     
     return score;

@@ -136,7 +136,7 @@ class position {
   U64 attackers_of(const Square& s, const Color& c);
   U64 attackers_of(const Square& s, const U64& bb);
   U64 checkers() const { return ifo.checkers; }
-  bool in_check();
+  bool in_check() const;
   bool is_legal(const Move& m);
   bool is_legal_hashmove(const Move& m);
   U64 pinned();

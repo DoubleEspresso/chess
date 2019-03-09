@@ -674,7 +674,7 @@ U64 position::pinned() {
   return pinned & pcs.bycolor[us];
 }
 
-bool position::in_check() {
+bool position::in_check() const {
   return ifo.incheck;
 }
 

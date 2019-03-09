@@ -278,7 +278,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   
   // static evaluation
   Score static_eval = (ttvalue != Score::ninf ?
-    ttvalue : Score(std::lround(eval::evaluate(p))));
+    ttvalue : !in_check ? Score(std::lround(eval::evaluate(p))) : Score::ninf);
   stack->static_eval = static_eval;
 
   // forward pruning
