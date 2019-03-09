@@ -37,6 +37,8 @@ namespace {
 
   std::vector<float> material_vals { 100.0, 300.0 , 315.0, 480.0, 910.0 };
 
+  eval::parameters params;
+
   float do_eval(const position& p) {
     
     float score = 0;

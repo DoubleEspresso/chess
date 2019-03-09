@@ -24,6 +24,10 @@ struct einfo {
 
 namespace eval {
 
+  struct parameters {
+    const float tempo = 33;
+
+  };
   float evaluate(const position& p);
 
 }
