@@ -39,18 +39,35 @@ namespace {
 
   eval::parameters params;
 
+  inline float knight_mobility(const unsigned& n) {
+    return -2.0f + 8.33f * log(n + 1); // 7.143f * log(n + 1); // max of ~20
+  }
+
+  inline float bishop_mobility(const unsigned& n) {
+    return -2.0f + 8.33f * log(n + 1); //6.25f * log(n + 1); // max of ~20
+  }
+
+  inline float rook_mobility(const unsigned& n) {
+    return 0.0f + 1.11f * log(n + 1); // max of ~20
+  }
+
+  inline float queen_mobility(const unsigned& n) {
+    return 0.0f + 2.22f * log(n + 1); // max of ~20
+  }
+
   float do_eval(const position& p) {
     
     float score = 0;
     einfo ei = {};
-
+    ei.all_pieces = p.all_pieces();
+    ei.empty = ~p.all_pieces();
 
     // hash table data
     ei.pe = ptable.fetch(p);
     ei.me = mtable.fetch(p);
     score += ei.pe->score;
     score += ei.me->score;    
-
+    score += (p.to_move() == white ? params.tempo : -params.tempo);
     // pure endgame evaluation
     
     if (ei.me->is_endgame()) {
@@ -101,8 +118,11 @@ namespace {
     for (Square s = *knights; s != no_square; s = *++knights) {
       score += sq_score_scaling[knight] * square_score<c>(knight, s);
       
-      // tempo adjustments
-      if (bitboards::squares[s] & ei.pe->attacks[them]) score -= params.tempo;
+      // mobility
+      U64 mvs = bitboards::nmask[s];
+      U64 mobility = mvs ^ ei.pe->attacks[them];
+      score += params.mobility_scaling[knight] * knight_mobility(bits::count(mobility));
+
     }
     
     return score;
@@ -117,8 +137,10 @@ namespace {
     for (Square s = *bishops; s != no_square; s = *++bishops) {
       score += sq_score_scaling[bishop] * square_score<c>(bishop, s);
 
-      // tempo adjustments
-      if (bitboards::squares[s] & ei.pe->attacks[them]) score -= params.tempo;
+      // mobility
+      U64 mvs = magics::attacks<bishop>(ei.all_pieces, s) & ei.empty;
+      U64 mobility = mvs & (~ei.pe->attacks[them]);
+      score += params.mobility_scaling[bishop] * bishop_mobility(bits::count(mobility));
     }
     
     return score;
@@ -133,8 +155,10 @@ namespace {
     for (Square s = *rooks; s != no_square; s = *++rooks) {
       score += sq_score_scaling[rook] * square_score<c>(rook, s);      
 
-      // tempo adjustments
-      if (bitboards::squares[s] & ei.pe->attacks[them]) score -= params.tempo;
+      // mobility
+      U64 mvs = magics::attacks<rook>(ei.all_pieces, s) & ei.empty;
+      U64 mobility = mvs & (~ei.pe->attacks[them]);
+      score += params.mobility_scaling[rook] * rook_mobility(bits::count(mobility));
     }
     
     return score;
@@ -150,8 +174,12 @@ namespace {
     for (Square s = *queens; s != no_square; s = *++queens) {
       score += sq_score_scaling[queen] * square_score<c>(queen, s);
 
-      // tempo adjustments
-      if (bitboards::squares[s] & ei.pe->attacks[them]) score -= params.tempo;
+      // mobility
+      U64 mvs = (magics::attacks<bishop>(ei.all_pieces, s) |
+        magics::attacks<rook>(ei.all_pieces, s)) & ei.empty;
+      U64 mobility = mvs & (~ei.pe->attacks[them]);
+      score += params.mobility_scaling[queen] * queen_mobility(bits::count(mobility));
+
     }
     
     return score;
