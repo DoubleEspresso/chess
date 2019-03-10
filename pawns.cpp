@@ -45,7 +45,7 @@ pawn_entry * pawn_table::fetch(const position& p) {
     return &entries[idx];
   }
   else {
-    entries[idx] = {};
+    std::memset(&entries[idx], 0, sizeof(pawn_entry));
     entries[idx].key = k;
     entries[idx].score = evaluate<white>(p, entries[idx]) - evaluate<black>(p, entries[idx]);
     return &entries[idx];
