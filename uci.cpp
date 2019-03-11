@@ -27,24 +27,24 @@ bool uci::parse_command(const std::string& input) {
     std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::tolower);
   
     if (cmd == "position" && instream >> cmd) {
-
+      
       std::string tmp;
       if (cmd == "startpos") {
-	getline(instream, tmp);
-	std::istringstream fen(START_FEN);
-	p.setup(fen);
-	load_position(tmp);
+        getline(instream, tmp);
+        std::istringstream fen(START_FEN);
+        p.setup(fen);
+        load_position(tmp);
       }
       else {
-	std::string sfen = "";
-	while((instream >> cmd) && cmd != "moves") sfen += cmd + " ";
-	getline(instream, tmp);
-	tmp = "moves " + tmp;
-	std::istringstream fen(sfen);
-	p.setup(fen);
-	load_position(tmp);
+        std::string sfen = "";
+        while ((instream >> cmd) && cmd != "moves") sfen += cmd + " ";
+        getline(instream, tmp);
+        tmp = "moves " + tmp;
+        std::istringstream fen(sfen);
+        p.setup(fen);
+        load_position(tmp);
       }
-
+      
       p.print();
       std::cout << "position hash key: " << p.key() << std::endl;
     }
@@ -197,12 +197,12 @@ void uci::load_position(const std::string& pos) {
   while (ss >> token) {
     Movegen mvs(p);
     mvs.generate<pseudo_legal, pieces>();
-    for (int j=0; j<mvs.size(); ++j) {
+    for (int j = 0; j < mvs.size(); ++j) {
       if (!p.is_legal(mvs[j])) continue;
-
+      
       if (move_to_string(mvs[j]) == token) {
-	p.do_move(mvs[j]);
-	break;
+        p.do_move(mvs[j]);
+        break;
       }
 
     }

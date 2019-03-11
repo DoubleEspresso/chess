@@ -170,14 +170,14 @@ double Search::estimate_max_time(position& p, limits& lims) {
     double moves_to_go = 45.0 - (!endgame ? 22.5 : 30.0);
 
     if (sudden_death && !exact_time) {
-      time_per_move_ms = 1.5 * remainder_ms / moves_to_go * (!endgame ? 0.6 : 0.17);
+      time_per_move_ms = 2.5 * remainder_ms / moves_to_go;
     }
     else if (exact_time) return (double)lims.movetime;
     else if (!sudden_death) {
-      time_per_move_ms = remainder_ms / lims.movestogo * (!endgame ? 0.6 : 0.17);
+      time_per_move_ms = remainder_ms / lims.movestogo;
     }
   }
-  return 1.5 * time_per_move_ms;
+  return time_per_move_ms;
 }
 
 void Search::iterative_deepening(position& p, U16 depth) {
@@ -214,7 +214,7 @@ void Search::iterative_deepening(position& p, U16 depth) {
         }
       }
       
-      if (UCI_SIGNALS.stop) break;
+      //if (UCI_SIGNALS.stop) break;
 
       if (eval <= alpha) {
         delta += delta;
@@ -289,7 +289,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 
   // 0. razoring
   float rm = razor_margin(depth);
-  if (//depth <= 4 &&
+  if (depth <= 2 &&
     forward_prune &&
     ttm.type == no_type &&
     static_eval + rm <= alpha) {
@@ -770,7 +770,7 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
       !in_check &&
       best_score < alpha &&
       //moves_searched > 1 &&
-      p.see(move) <= 0) continue;
+      p.see(move) < 0) continue;
     
     
     p.do_move(move);

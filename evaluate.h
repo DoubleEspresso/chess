@@ -29,7 +29,7 @@ struct einfo {
 namespace eval {
 
   struct parameters {
-    const float tempo = 4;
+    const float tempo = 8;
     const float mobility_scaling[5] = { 0.0f, 1.0f, 1.0f, 1.0f, 1.0f };
 
     const float knight_attks[5] = { 3.0f, 9.0f, 9.45f, 14.4f, 27.3f };
