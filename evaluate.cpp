@@ -132,7 +132,7 @@ namespace {
       
       // mobility
       U64 mvs = bitboards::nmask[s];
-      U64 mobility = (mvs & ei.empty) ^ ei.pe->attacks[them];
+      U64 mobility = (mvs & ei.empty) & (~ei.pe->attacks[them]);
       score += params.mobility_scaling[knight] * knight_mobility(bits::count(mobility));
 
       // attacks

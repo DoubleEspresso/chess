@@ -89,33 +89,33 @@ bool uci::parse_command(const std::string& input) {
       Movegen mvs(p);
       bool isok = false;
       mvs.generate<pseudo_legal, pieces>();
-      for (int i=0; i<mvs.size(); ++i) {
-	if (!p.is_legal(mvs[i])) continue;
-	std::string tmp = SanSquares[mvs[i].f] + SanSquares[mvs[i].t];
-	std::string ps = "";	
-	Movetype t = Movetype(mvs[i].type);
+      for (int i = 0; i < mvs.size(); ++i) {
+        if (!p.is_legal(mvs[i])) continue;
+        std::string tmp = SanSquares[mvs[i].f] + SanSquares[mvs[i].t];
+        std::string ps = "";
+        Movetype t = Movetype(mvs[i].type);
+        
+        if (t >= 0 && t < capture_promotion_q) {
+          ps = (t == 0 ? "q" :
+            t == 1 ? "r" :
+            t == 2 ? "b" : "n");
+        }
+        else if (t >= capture_promotion_q && t < castle_ks) {
+          ps = (t == 4 ? "q" :
+            t == 5 ? "r" :
+            t == 6 ? "b" : "n");
+        }
+        tmp += ps;
 	
-	if (t >= 0 && t < capture_promotion_q) {
-	  ps = (t == 0 ? "q" :
-		t == 1 ? "r" :
-		t == 2 ? "b" : "n");	  
-	}
-	else if (t >= capture_promotion_q && t < castle_ks) {
-	  ps = (t == 4 ? "q" :
-		t == 5 ? "r" :
-		t == 6 ? "b" : "n");
-	}
-	tmp += ps;
-	
-	if (tmp == cmd) {
-	  dbgmove.set(mvs[i].f, mvs[i].t, Movetype(mvs[i].type));
-	  isok = true;
-	  break;
-	}	
+        if (tmp == cmd) {
+          dbgmove.set(mvs[i].f, mvs[i].t, Movetype(mvs[i].type));
+          isok = true;
+          break;
+        }
       }
       if (isok) {
-	std::cout << "doing mv " << std::endl;
-	p.do_move(dbgmove);
+        std::cout << "doing mv " << std::endl;
+        p.do_move(dbgmove);
       }
       else std::cout << cmd << " is not a legal move" << std::endl;
     }
@@ -132,6 +132,12 @@ bool uci::parse_command(const std::string& input) {
       Perft perft;
       perft.divide(p, atoi(cmd.c_str()));
     }
+    else if (cmd == "bench" && instream >> cmd) {
+      int depth = atoi(cmd.c_str());
+      Perft perft;
+      perft.bench(depth);
+    }
+
 
     // game specific uci commands (refactor?)
     else if (cmd == "isready") {	

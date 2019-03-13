@@ -123,6 +123,13 @@ void Search::start(position& p, limits& lims) {
   std::cout << "bestmove " << uci::move_to_string(bestmoves[0]) <<
     " ponder " << uci::move_to_string(bestmoves[1]) << std::endl;
 
+  { // record some stats for benching..
+    p.bestmove = uci::move_to_string(bestmoves[0]);
+    p.set_nodes_searched(nodes);
+    p.set_qnodes_searched(qnodes);
+    p.elapsed_ms = elapsed;
+  }
+
   searching = false;
 }
 

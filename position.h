@@ -97,6 +97,7 @@ class position {
   U64 hidx;
   U64 nodes_searched;
   U64 qnodes_searched;
+
   
  public:
   position() {}
@@ -108,6 +109,10 @@ class position {
   position& operator=(const position& p);
   position& operator=(const position&&);
   ~position() { } 
+
+  double elapsed_ms;
+  std::string bestmove;
+
 
   // setup/clear a position
   void setup(std::istringstream& fen);
@@ -172,6 +177,9 @@ class position {
   inline U16 id() { return thread_id; }
 
   inline void set_id(U16 id) { thread_id = id; }
+  inline void set_nodes_searched(U64 n) { nodes_searched = n;  }
+  
+  inline void set_qnodes_searched(U64 qn) { qnodes_searched = qn; }
 
   inline bool is_master() { return thread_id == 0; }
 
