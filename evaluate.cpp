@@ -71,7 +71,9 @@ namespace {
     ei.pieces[black] = p.get_pieces<black>();
     ei.weak_pawns[white] = ei.pe->doubled[white] | ei.pe->isolated[white];
     ei.weak_pawns[black] = ei.pe->doubled[black] | ei.pe->isolated[black];
-
+    ei.kmask[white] = bitboards::kmask[p.king_square(white)];
+    ei.kmask[black] = bitboards::kmask[p.king_square(black)];
+    
     // init score
     score += ei.pe->score;
     score += ei.me->score;    
@@ -130,7 +132,7 @@ namespace {
       
       // mobility
       U64 mvs = bitboards::nmask[s];
-      U64 mobility = mvs ^ ei.pe->attacks[them];
+      U64 mobility = (mvs & ei.empty) ^ ei.pe->attacks[them];
       score += params.mobility_scaling[knight] * knight_mobility(bits::count(mobility));
 
       // attacks
@@ -144,6 +146,19 @@ namespace {
       if (pattks) {
         score += params.knight_attks[pawn] * bits::count(pattks);
       }
+
+      // king harassment
+     // std::cout << c << " knight" << std::endl;
+     // bits::print(ei.kmask[them]);
+
+      //U64 kattks = mvs & ei.kmask[them];
+      //if (kattks) {
+
+      //  //bits::print(kattks);
+      //  ei.kattackers[c][knight]++; // kattackers of "other" king
+      //  ei.kattk_points[c] |= kattks; // attack points of "other" king
+      //  score += params.knight_king[bits::count(kattks)];
+      //}
 
 
     }
@@ -178,6 +193,17 @@ namespace {
       if (pattks) {
         score += params.bishop_attks[pawn] * bits::count(pattks);
       }
+
+      // king harassment
+      //U64 kattks = mvs & ei.kmask[them];
+      //if (kattks) {
+      //  //std::cout << "bishop" << std::endl;
+      //  //bits::print(kattks);
+      //  ei.kattackers[c][bishop]++;
+      //  ei.kattk_points[c] |= kattks;
+      //  score += params.bishop_king[bits::count(kattks)];
+      //}
+
     }
     
     return score;
@@ -211,6 +237,16 @@ namespace {
         score += params.rook_attks[pawn] * bits::count(pattks);
       }
       
+      // king harassment
+      //U64 kattks = mvs & ei.kmask[them];
+      //if (kattks) {
+      //  //std::cout << "rook" << std::endl;
+      //  //bits::print(kattks);
+      //  ei.kattackers[c][rook]++;
+      //  ei.kattk_points[c] |= kattks;
+      //  score += params.rook_king[bits::count(kattks)];
+      //}
+
     }
     
     return score;
@@ -247,6 +283,16 @@ namespace {
         score += params.queen_attks[pawn] * bits::count(pattks);
       }
 
+      // king harassment
+      //U64 kattks = mvs & ei.kmask[them];
+      //if (kattks) {
+      //  //std::cout << "queen" << std::endl;
+      //  //bits::print(kattks);
+      //  ei.kattackers[c][queen]++;
+      //  ei.kattk_points[c] |= kattks;
+      //  score += params.queen_king[bits::count(kattks)];
+      //}
+
       
     }
     
@@ -259,14 +305,56 @@ namespace {
     float score = 0;    
     Square * kings = p.squares_of<c, king>();
     Color them = Color(c ^ 1);
-    
+    float attacker_score = 0.0f;
+
     for (Square s = *kings; s != no_square; s = *++kings) {      
       score += sq_score_scaling[king] * square_score<c>(king, s);
 
       // tempo adjustments
       if (bitboards::squares[s] & ei.pe->attacks[them]) score -= params.tempo;
+
+      // mobility
+      //U64 mvs = ei.kmask[c] & ei.empty;
+
+      //// harassment score
+      //U64 unsafe_bb = ei.kattk_points[them];  // their attack points to our king
+      //if (unsafe_bb) {
+      //  mvs &= (~unsafe_bb);
+      //  unsigned num_attackers = 0;
+      //  for (int j = 1; j < 5; ++j) {
+      //    num_attackers += ei.kattackers[them][j];
+      //  }
+      //  attacker_score += params.attacker_weight[std::min((int)num_attackers, 4)];
+
+      //  //ei.kattackers[them][j] * params.attacker_weight[j];
+      //  /*
+      //  if (c == black) {
+      //    std::cout << "king" << std::endl;
+      //    bits::print(unsafe_bb);
+      //    bits::print(mvs);
+      //    std::cout << "num_attackers = " << num_attackers << " attacker score = " << attacker_score << std::endl;
+      //    std::cout << "num_safe = " << (int)(bits::count(mvs)) << std::endl;
+      //  }
+      //  */
+      //  score -= attacker_score;
+
+      //  int num_safe = bits::count(mvs);
+      //  if (num_safe <= 0) score -= attacker_score;// num_attackers;
+      //}
+
+      //// reward having "good" pawns around the king
+      //U64 pawn_shelter = ei.pe->king[c] & ei.kmask[c];
+      //if (pawn_shelter) {
+      //  int n = std::min(3, bits::count(pawn_shelter)) - 1;
+      //  //if (c == black) std::cout << "n = " << n << std::endl;
+      //  score += params.king_shelter[n];
+      //}
+
+      // reward having "friends" near the king
+      
     }
     
+    //std::cout << "c = " << c << " score = " << score << std::endl;
     return score;
   }
 
