@@ -59,6 +59,7 @@ namespace {
 
     float score = 0;
     einfo ei = {};
+    memset(&ei, 0, sizeof(einfo));
 
     // hash table data
     ei.pe = ptable.fetch(p);
