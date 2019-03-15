@@ -13,10 +13,15 @@ class parameter {
 protected:
   std::string tag;
   std::bitset<sizeof(T) * CHAR_BIT> bits;
-  T * value;
+  std::unique_ptr<T> value;
 
 public:
 
+  parameter<T>(T&& in, std::string& s) : tag(s) 
+  { 
+    value = util::make_unique<T>(in);
+    bits = *reinterpret_cast<unsigned long*>(value.get());
+  }
   parameter<T>(T& in, std::string& s) : tag(s) { set(in); }
   parameter<T>(T& in) : tag("") { set(in); }
   parameter<T>(const parameter<T>& o) { tag = o.tag;  set(*o.value); }
@@ -25,10 +30,9 @@ public:
   parameter<T>& operator=(const parameter<T>& o) { tag = o.tag; set(*o.value); }
   T& operator()() { return *value; }
 
-
   inline void set(T& in) {
-    value = &in;
-    bits = *reinterpret_cast<unsigned long*>(value);
+    value(std::move(&in)); // = &in;
+    bits = *reinterpret_cast<unsigned long*>(value.get());
   }
 
   inline T get() { return *value; }

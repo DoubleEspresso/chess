@@ -125,7 +125,7 @@ void move_order::sort() {
 
 
 template<>
-bool move_order::next_move<main>(position& pos, Move& m) {
+bool move_order::next_move<main0>(position& pos, Move& m) {
 
   m = {};
   m.type = Movetype::no_type;

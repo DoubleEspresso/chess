@@ -8,7 +8,8 @@
 #include "position.h"
 #include "pawns.h"
 #include "material.h"
-
+#include "parameter.h"
+#include "utils.h"
 
 struct endgame_info {
   bool evaluated_fence;
@@ -32,12 +33,26 @@ struct einfo {
 namespace eval {
 
   struct parameters {
+    using pbil_fp = std::unique_ptr<parameter<float>>;
+
     const float tempo = 8;
 
     // mobility tables
-    const float mobility_scaling[5] = { 0.0f, 1.0f, 1.0f, 1.0f, 1.0f };
+    pbil_fp pm = util::make_unique<parameter<float>>(1.0f, std::string("pawn mobility"));
+    pbil_fp nm = util::make_unique<parameter<float>>(1.0f, std::string("knight mobility"));
+    pbil_fp bm = util::make_unique<parameter<float>>(1.0f, std::string("bishop mobility"));
+    pbil_fp rm = util::make_unique<parameter<float>>(1.0f, std::string("rook mobility"));
+    pbil_fp qm = util::make_unique<parameter<float>>(1.0f, std::string("queen mobility"));
+    const float mobility_scaling[5] = { pm->get(), nm->get(), bm->get(), rm->get(), qm->get() };
 
     // piece attack tables
+    pbil_fp pa = util::make_unique<parameter<float>>(1.0f, std::string("pawn attack"));
+    pbil_fp na = util::make_unique<parameter<float>>(1.0f, std::string("knight attack"));
+    pbil_fp ba = util::make_unique<parameter<float>>(1.0f, std::string("bishop attack"));
+    pbil_fp ra = util::make_unique<parameter<float>>(1.0f, std::string("rook attack"));
+    pbil_fp qa = util::make_unique<parameter<float>>(1.0f, std::string("queen attack"));
+    const float attack_scaling[5] = { pa->get(), na->get(), ba->get(), ra->get(), qa->get() };
+
     const float knight_attks[5] = { 3.0f, 9.0f, 9.45f, 14.4f, 27.3f };
     const float bishop_attks[5] = { 3.0f, 9.0f, 9.45f, 14.4f, 27.3f };
     const float rook_attks[5] = { 1.5f, 4.5f, 4.725f, 7.2f, 13.65f };
@@ -55,6 +70,10 @@ namespace eval {
 
   float evaluate(const position& p);
 
+}
+
+namespace eval {
+  extern parameters Parameters;
 }
 
 #endif

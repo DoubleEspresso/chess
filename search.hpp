@@ -87,7 +87,7 @@ void Search::start(position& p, limits& lims) {
 
   for (unsigned i = 0; i < search_threads.size(); ++i) {
     if (i == 0) { sb.init(); }
-    pv.emplace_back(make_unique<position>(p));
+    pv.emplace_back(util::make_unique<position>(p));
     pv[i]->set_id(i);
   }
 
@@ -439,7 +439,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   Move move;
   bool improving = stack->static_eval - (stack - 2)->static_eval >= 0;
 
-  while (mvs.next_move<search_type::main>(p, move)) {
+  while (mvs.next_move<search_type::main0>(p, move)) {
 
     if (UCI_SIGNALS.stop) { return Score::draw; }
 

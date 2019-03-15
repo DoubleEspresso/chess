@@ -8,13 +8,14 @@
 #include <chrono>
 #include <ctime>
 
-// std::make_unique is part of c++14
-template<typename T, typename... Args>
-  std::unique_ptr<T> make_unique(Args&&... args) {
-  return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
-}
 
 namespace util {  
+  // std::make_unique is part of c++14
+  template<typename T, typename... Args>
+  std::unique_ptr<T> make_unique(Args&&... args) {
+    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+  }
+
   inline int row(const int& r) { return (r >> 3); }
   inline int col(const int& c) { return c & 7; }
   inline int row_dist(const int& s1, const int& s2) { return abs(row(s1) - row(s2)); }

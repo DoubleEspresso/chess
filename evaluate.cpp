@@ -4,6 +4,10 @@
 #include "magics.h"
 #include "endgame.h"
 
+namespace eval {
+  parameters Parameters;
+}
+
 namespace {
   
     

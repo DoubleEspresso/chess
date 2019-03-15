@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef ORDER_H
 #define ORDER_H
 
@@ -48,7 +50,7 @@ struct scored_move {
 };
 
 
-enum search_type { main, qsearch, nullsearch, no_search };
+enum search_type { main0, qsearch, nullsearch, no_search };
 
 
 class move_order {
