@@ -160,6 +160,7 @@
     <ClInclude Include="move.hpp" />
     <ClInclude Include="options.h" />
     <ClInclude Include="order.h" />
+    <ClInclude Include="parameter.h" />
     <ClInclude Include="pawns.h" />
     <ClInclude Include="position.h" />
     <ClInclude Include="search.h" />
