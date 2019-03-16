@@ -35,7 +35,17 @@ namespace eval {
   struct parameters {
     using pbil_fp = std::unique_ptr<parameter<float>>;
 
-    const float tempo = 8;
+    pbil_fp pt = util::make_unique<parameter<float>>(8.0f, std::string("tempo"));
+    const float tempo = pt->get();
+
+    // square score parameters
+    pbil_fp sp = util::make_unique<parameter<float>>(1.0f, std::string("ss pawn"));
+    pbil_fp sn = util::make_unique<parameter<float>>(1.0f, std::string("ss knight"));
+    pbil_fp sb = util::make_unique<parameter<float>>(1.0f, std::string("ss bishop"));
+    pbil_fp sr = util::make_unique<parameter<float>>(1.0f, std::string("ss rook"));
+    pbil_fp sq = util::make_unique<parameter<float>>(1.0f, std::string("ss queen"));
+    pbil_fp sk = util::make_unique<parameter<float>>(1.0f, std::string("ss king"));
+    const std::vector<float> sq_score_scaling{ sp->get(), sn->get(), sb->get(), sr->get(), sq->get(), sk->get() };
 
     // mobility tables
     pbil_fp pm = util::make_unique<parameter<float>>(1.0f, std::string("pawn mobility"));

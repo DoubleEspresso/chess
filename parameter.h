@@ -15,6 +15,11 @@ protected:
   std::bitset<sizeof(T) * CHAR_BIT> bits;
   std::unique_ptr<T> value;
 
+  T update_val() {
+    const auto val = bits.to_ulong();
+    memcpy(value.get(), &val, sizeof(T));
+  }
+
 public:
 
   parameter<T>(T&& in, std::string& s) : tag(s) 
@@ -31,10 +36,11 @@ public:
   T& operator()() { return *value; }
 
   inline void set(T& in) {
-    value(std::move(&in)); // = &in;
+    memcpy(value.get(), &in, sizeof(T)); 
     bits = *reinterpret_cast<unsigned long*>(value.get());
   }
 
+  inline std::bitset<sizeof(T) * CHAR_BIT> get_bits() { return bits; }
   inline T get() { return *value; }
   inline void print_bits() { std::cout << bits << std::endl; }
   inline void print() {

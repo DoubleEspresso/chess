@@ -11,12 +11,34 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#include <cassert>
 
 #include "position.h"
 #include "types.h"
 #include "move.h"
 #include "utils.h"
 #include "search.h"
+#include "evaluate.h"
+#include "pbil.h"
+
+
+struct scores {
+  size_t correct;
+  size_t total;
+  double acc_score;
+  double mnps_score;
+  std::vector<double> times_ms;
+  std::vector<U64> nodes;
+  std::vector<U64> qnodes;
+};
+
+
+namespace pbil_score {
+
+  size_t iteration = 0;
+  double best_score = std::numeric_limits<double>::max();
+
+};
 
 class Perft {
   std::vector<double> do_mv_times;
@@ -40,7 +62,8 @@ class Perft {
   inline U64 search(position& p, const int& depth);
   inline void divide(position& p, int d);
   inline void gen(position& p, U64& times);
-  inline void bench(const int& depth);
+  inline double bench(const int& depth, scores& S, bool silent);
+  inline void auto_tune();
 };
 
 
@@ -219,8 +242,116 @@ inline U64 Perft::search(position& p, const int& depth) {
 }
 
 
+inline double pbil_residual(const std::vector<int>& new_params) {
 
-inline void Perft::bench(const int& depth) {
+  ++pbil_score::iteration;
+
+  std::vector<parameter<float>*> engine_params {
+      eval::Parameters.pt.get(),
+      eval::Parameters.sp.get(),
+      eval::Parameters.sn.get(),
+      eval::Parameters.sb.get(),
+      eval::Parameters.sr.get(),
+      eval::Parameters.sq.get(),
+      eval::Parameters.sk.get(),
+      eval::Parameters.nm.get(),
+      eval::Parameters.bm.get(),
+      eval::Parameters.rm.get(),
+      eval::Parameters.qm.get(),
+      eval::Parameters.na.get(),
+      eval::Parameters.ba.get(),
+      eval::Parameters.ra.get(),
+      eval::Parameters.qa.get()
+  };
+
+
+  size_t num_floats = engine_params.size();
+  size_t param_floats = new_params.size() / 32;
+
+  assert(num_floats == param_floats);
+
+  for (size_t i = 0, idx = 0; idx < engine_params.size(); ++idx) {
+
+    std::bitset<sizeof(float) * CHAR_BIT> b;
+    int bidx = 0;
+
+    std::for_each(new_params.begin() + i, new_params.begin() + i + 32,
+      [&](int val) { b[bidx++] = val; ++i; });
+
+
+    const auto val = b.to_ulong();
+    float new_value = 0;
+    memcpy(&new_value, &val, sizeof(float));
+
+    engine_params[idx]->set(new_value);
+  }
+
+  ttable.clear();
+  mtable.clear();
+  ptable.clear();
+  scores S;
+  Perft perft;
+  unsigned depth = 8;
+  double minimized_score = perft.bench(depth, S, true);
+
+
+  // log best param set thus far
+  if (minimized_score < pbil_score::best_score) {
+    pbil_score::best_score = minimized_score;
+    std::cout << " ==== new pbil best score ===" << std::endl;
+    std::cout << "best: " << minimized_score << " acc: " << S.acc_score << " MNPS: " << S.mnps_score << std::endl;
+    for (const auto& p : engine_params) {
+      p->print();
+    }
+    std::cout << std::endl;
+    std::cout << std::endl;
+  }
+
+
+
+  return std::abs(minimized_score);
+
+}
+
+
+inline void Perft::auto_tune() {
+  std::vector<parameter<float>*> engine_params{
+    eval::Parameters.pt.get(),
+    eval::Parameters.sp.get(),
+    eval::Parameters.sn.get(),
+    eval::Parameters.sb.get(),
+    eval::Parameters.sr.get(),
+    eval::Parameters.sq.get(),
+    eval::Parameters.sk.get(),
+    eval::Parameters.nm.get(),
+    eval::Parameters.bm.get(),
+    eval::Parameters.rm.get(),
+    eval::Parameters.qm.get(),
+    eval::Parameters.na.get(),
+    eval::Parameters.ba.get(),
+    eval::Parameters.ra.get(),
+    eval::Parameters.qa.get()
+  };
+  size_t length = engine_params.size() * 32;
+  pbil_score::iteration = 0;
+  pbil_score::best_score = std::numeric_limits<double>::max();
+
+  pbil p(300, length, 0.7, 0.15, 0.3, 0.05, 1e-6);
+
+  std::vector<int> i0;
+  for (auto& p : engine_params) {
+    std::bitset<sizeof(float) * CHAR_BIT> bits = p->get_bits();
+    for (size_t i = 0; i < bits.size(); ++i) {
+      i0.push_back(bits[i]);
+    }
+  }
+
+  p.set_initial_guess(i0);
+  p.optimize(pbil_residual);
+}
+
+
+inline double Perft::bench(const int& depth, scores& S, bool silent) {
 
   std::vector<std::string> positions{
     "3r1k2/4npp1/1ppr3p/p6P/P2PPPP1/1NR5/5K2/2R5 w - - bm d4d5",
@@ -354,37 +485,51 @@ inline void Perft::bench(const int& depth) {
   memset(&lims, 0, sizeof(limits));
   lims.depth = depth;
 
-  struct scores {
-    size_t correct;
-    size_t total;
-    std::vector<double> times_ms;
-    std::vector<U64> nodes;
-    std::vector<U64> qnodes;
-    void calcstuff() {};
-  };
-
-  scores S;
   S.correct = 0;
   S.total = positions.size();
-
+  size_t counter = 1;
   for (const std::string& pos : positions) {    
 
-    std::cout << "..searching position " << pos << std::endl;
+    std::cout << "iteration: " << pbil_score::iteration << " pos: " << counter << "/" << positions.size() << "\r" << std::flush;
     std::string tmp = pos.substr(0, pos.find(" bm "));
     std::string bm = pos.substr(pos.find("bm ") + 3);
     std::istringstream fen(tmp);
-    
+    ++counter;
+
     p.setup(fen);
 
-    Search::start(p, lims);
+    Search::start(p, lims, silent);
 
-    std::cout << (p.bestmove == bm ? "correct" : "incorrect") << std::endl;
+    //std::cout << (p.bestmove == bm ? "correct" : "incorrect") << std::endl;
     
     S.correct += (p.bestmove == bm);
     S.times_ms.push_back(p.elapsed_ms);
     S.nodes.push_back(p.nodes());
     S.qnodes.push_back(p.qnodes());
   }
-  std::cout << S.correct << " correct of " <<  S.total << " accuracy: " << ((float)(S.correct / (float)S.total) * 100) << std::endl;
+
+  // avg nps
+  double avg_nodes = 0;
+  double avg_time_ms = 0;
+  double avg_nps = 0;
+
+  for (auto& n : S.nodes) { avg_nodes += n; }
+  for (auto& qn : S.qnodes) { avg_nodes += qn; }
+  avg_nodes /= (S.nodes.size());
+  for (auto& t : S.times_ms) { avg_time_ms += t; }
+  avg_time_ms /= S.times_ms.size();
+  avg_nps = avg_nodes / avg_time_ms * 1000.0f;
+
+  // convert to Mega nodes / sec
+  avg_nps /= 1e6;
+
+  // assume max MNPS ~ 500 (perfect score for speed = 500 MNPS)
+  S.mnps_score = avg_nps / 500.0f;
+  S.acc_score = ((float)(S.correct / (float)S.total));
+  double minimized_score = (1.0f - (0.90 * S.acc_score + 0.10 * S.mnps_score));
+  //std::cout << "\n correct: " << S.correct << " total: " << S.total << std::endl;
+  //std::cout << " MNPS: " << nps_score << " acc: " << accuracy_score << std::endl;
+
+  return minimized_score;
 }
 #endif

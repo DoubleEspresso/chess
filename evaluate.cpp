@@ -37,7 +37,6 @@ namespace {
   template<Color c> float eval_kings(const position& p, info& ei);
   template<Color c> float eval_passers(const position& p, info& ei);
   */
-  std::vector<float> sq_score_scaling { 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 };
 
   std::vector<float> material_vals { 100.0, 300.0 , 315.0, 480.0, 910.0 };
 
@@ -132,7 +131,7 @@ namespace {
     U64 pawn_targets = ei.weak_pawns[them];
 
     for (Square s = *knights; s != no_square; s = *++knights) {
-      score += sq_score_scaling[knight] * square_score<c>(knight, s);
+      score += params.sq_score_scaling[knight] * square_score<c>(knight, s);
       
       // mobility
       U64 mvs = bitboards::nmask[s];
@@ -144,11 +143,13 @@ namespace {
       U64 pattks = (mvs & pawn_targets);
       if (attks) {
         while (attks) {
-          score += params.knight_attks[p.piece_on(Square(bits::pop_lsb(attks)))];
+          score += params.attack_scaling[knight] * 
+            params.knight_attks[p.piece_on(Square(bits::pop_lsb(attks)))];
         }
       }
       if (pattks) {
-        score += params.knight_attks[pawn] * bits::count(pattks);
+        score += params.attack_scaling[knight] *
+          params.knight_attks[pawn] * bits::count(pattks);
       }
 
       // king harassment
@@ -179,7 +180,7 @@ namespace {
     U64 pawn_targets = ei.weak_pawns[them];
 
     for (Square s = *bishops; s != no_square; s = *++bishops) {
-      score += sq_score_scaling[bishop] * square_score<c>(bishop, s);
+      score += params.sq_score_scaling[bishop] * square_score<c>(bishop, s);
 
       // mobility
       U64 mvs = magics::attacks<bishop>(ei.all_pieces, s);
@@ -191,11 +192,13 @@ namespace {
       U64 pattks = (mvs & pawn_targets);
       if (attks) {
         while (attks) {
-          score += params.bishop_attks[p.piece_on(Square(bits::pop_lsb(attks)))];
+          score += params.attack_scaling[bishop] * 
+            params.bishop_attks[p.piece_on(Square(bits::pop_lsb(attks)))];
         }
       }
       if (pattks) {
-        score += params.bishop_attks[pawn] * bits::count(pattks);
+        score += params.attack_scaling[bishop] *
+          params.bishop_attks[pawn] * bits::count(pattks);
       }
 
       // king harassment
@@ -222,7 +225,7 @@ namespace {
     U64 pawn_targets = ei.weak_pawns[them];
 
     for (Square s = *rooks; s != no_square; s = *++rooks) {
-      score += sq_score_scaling[rook] * square_score<c>(rook, s);      
+      score += params.sq_score_scaling[rook] * square_score<c>(rook, s);      
 
       // mobility
       U64 mvs = magics::attacks<rook>(ei.all_pieces, s);
@@ -234,11 +237,14 @@ namespace {
       U64 pattks = (mvs & pawn_targets);
       if (attks) {
         while (attks) {
-          score += params.rook_attks[p.piece_on(Square(bits::pop_lsb(attks)))];
+          score += params.attack_scaling[rook] * 
+            params.rook_attks[p.piece_on(Square(bits::pop_lsb(attks)))];
         }
       }
       if (pattks) {
-        score += params.rook_attks[pawn] * bits::count(pattks);
+        score += 
+          params.attack_scaling[rook] * 
+          params.rook_attks[pawn] * bits::count(pattks);
       }
       
       // king harassment
@@ -266,7 +272,7 @@ namespace {
     U64 pawn_targets = ei.weak_pawns[them];
 
     for (Square s = *queens; s != no_square; s = *++queens) {
-      score += sq_score_scaling[queen] * square_score<c>(queen, s);
+      score += params.sq_score_scaling[queen] * square_score<c>(queen, s);
 
       // mobility
       U64 mvs = (magics::attacks<bishop>(ei.all_pieces, s) |
@@ -280,11 +286,13 @@ namespace {
 
       if (attks) {
         while (attks) {
-          score += params.queen_attks[p.piece_on(Square(bits::pop_lsb(attks)))];
+          score += params.attack_scaling[queen] * 
+            params.queen_attks[p.piece_on(Square(bits::pop_lsb(attks)))];
         }
       }
       if (pattks) {
-        score += params.queen_attks[pawn] * bits::count(pattks);
+        score += params.attack_scaling[queen] *
+          params.queen_attks[pawn] * bits::count(pattks);
       }
 
       // king harassment
@@ -312,7 +320,7 @@ namespace {
     float attacker_score = 0.0f;
 
     for (Square s = *kings; s != no_square; s = *++kings) {      
-      score += sq_score_scaling[king] * square_score<c>(king, s);
+      score += params.sq_score_scaling[king] * square_score<c>(king, s);
 
       // tempo adjustments
       if (bitboards::squares[s] & ei.pe->attacks[them]) score -= params.tempo;

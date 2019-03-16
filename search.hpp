@@ -34,7 +34,7 @@ Threadpool timer_thread(1);
 volatile bool slaves_start;
 std::condition_variable cv;
 search_bounds sb;
-unsigned thread_depth = 3;
+unsigned thread_depth = 13;
 volatile double elapsed = 0;
 
 struct move_entry {
@@ -76,12 +76,12 @@ inline float razor_margin(int depth) {
   return 1810-(530 + 20 * depth);
 }
 
-void Search::start(position& p, limits& lims) {
+void Search::start(position& p, limits& lims, bool silent) {
   
   std::vector<std::unique_ptr<position>> pv;
 
   slaves_start = false;
-  bool parallel = true;
+  bool parallel = false;
   elapsed = 0;
   UCI_SIGNALS.stop = false;
 
@@ -95,13 +95,13 @@ void Search::start(position& p, limits& lims) {
   U16 depth = (lims.depth > 0 ? lims.depth : 64); // maxdepth
   searching = true;
   timer_thread.enqueue(search_timer, p, lims);
-  search_threads.enqueue(iterative_deepening, *pv[0], depth);
+  search_threads.enqueue(iterative_deepening, *pv[0], depth, silent);
 
   if (parallel) {
     std::unique_lock<std::mutex> lock(mtx);
     while(!slaves_start) cv.wait(lock);    
     for (unsigned i = 1; i<search_threads.size(); ++i) {
-      search_threads.enqueue(iterative_deepening, *pv[i], depth);
+      search_threads.enqueue(iterative_deepening, *pv[i], depth, silent);
     }
   }
 
@@ -111,17 +111,22 @@ void Search::start(position& p, limits& lims) {
   
   U64 nodes = 0ULL;
   U64 qnodes = 0ULL;
-  for(auto& t : pv) {
-    std::cout << "id: " << t->id() << " " << t->nodes() << " " << t->qnodes() << std::endl;
+  for(auto& t : pv) {    
+    if (!silent) {
+      std::cout << "id: " << t->id() << " " << t->nodes() << " " << t->qnodes() << std::endl;
+    }
     nodes += t->nodes();
     qnodes += t->qnodes();
   }
-  std::cout << "time : " << elapsed << "ms" << std::endl; 
-  std::cout << "nodes: " << nodes << std::endl;
-  std::cout << "qnodes: " << qnodes << std::endl;
-  std::cout << "knps: " << (nodes / (elapsed)) << std::endl;
-  std::cout << "bestmove " << uci::move_to_string(bestmoves[0]) <<
-    " ponder " << uci::move_to_string(bestmoves[1]) << std::endl;
+
+  if (!silent) {
+    std::cout << "time : " << elapsed << "ms" << std::endl;
+    std::cout << "nodes: " << nodes << std::endl;
+    std::cout << "qnodes: " << qnodes << std::endl;
+    std::cout << "knps: " << (nodes / (elapsed)) << std::endl;
+    std::cout << "bestmove " << uci::move_to_string(bestmoves[0]) <<
+      " ponder " << uci::move_to_string(bestmoves[1]) << std::endl;
+  }
 
   { // record some stats for benching..
     p.bestmove = uci::move_to_string(bestmoves[0]);
@@ -187,7 +192,7 @@ double Search::estimate_max_time(position& p, limits& lims) {
   return time_per_move_ms;
 }
 
-void Search::iterative_deepening(position& p, U16 depth) {
+void Search::iterative_deepening(position& p, U16 depth, bool silent) {
   int16 alpha = ninf;
   int16 beta = inf;
   int16 delta = 25;
@@ -213,7 +218,7 @@ void Search::iterative_deepening(position& p, U16 depth) {
       eval = search<root>(p, alpha, beta, id, stack + 2);
       
       if (p.is_master() && !UCI_SIGNALS.stop) {
-        readout_pv(p, eval, id);
+        readout_pv(p, eval, id, silent);
         
         if (id >= thread_depth && !slaves_start) {
           slaves_start = true;
@@ -637,7 +642,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 
   
   Bound bound = (best_score >= beta ? bound_low :
-		 best_score <= alpha ? bound_high : bound_exact);
+    best_score <= alpha ? bound_high : bound_exact);
   ttable.save(p.key(), depth, U8(bound), best_move, best_score);
     
   return best_score;
@@ -815,7 +820,7 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
 }
 
 
-void Search::readout_pv(position& p, const Score& eval, const U16& depth) {
+void Search::readout_pv(position& p, const Score& eval, const U16& depth, bool silent) {
   
     hash_data e;
     std::string res = "";
@@ -841,8 +846,10 @@ void Search::readout_pv(position& p, const Score& eval, const U16& depth) {
       moves.pop_back();
     }
         
-    printf("info score cp %d depth %d pv ",
-           eval,
-           depth);
-    std::cout << res << std::endl;  
+    if (!silent) {
+      printf("info score cp %d depth %d pv ",
+        eval,
+        depth);
+      std::cout << res << std::endl;
+    }
 }

@@ -10,7 +10,7 @@
 #include <random>
 #include <functional>
 
-#include "../threads.h"
+#include "threads.h"
 
 
 class pbil {
@@ -20,11 +20,13 @@ class pbil {
   double best_err, learn_rate, neg_learn_rate, etol;
   std::vector<double> probabilities;
   std::vector<std::vector<int>> samples;
-  std::vector<int> best_sample;
+  std::vector<int> best_sample, initial_guess;
   std::mt19937 rng;
 
   void educate();
   
+  void initialize_probabilities();
+
   void update_probabilities(const std::vector<int>& min_gene,
 			    const std::vector<int>& max_gene);
     
@@ -59,6 +61,10 @@ class pbil {
   
   template<class T, typename... Args>
   void optimize(T&& residual, Args&&... args);
+
+  void set_initial_guess(const std::vector<int>& guess) {
+    for (auto& g : guess) initial_guess.push_back(g);
+  }
 
 };
 

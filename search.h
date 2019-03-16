@@ -26,9 +26,9 @@ namespace Search {
   };
 
   void search_timer(position& p, limits& lims);
-  void start(position& p, limits& lims);
-  void iterative_deepening(position& p, U16 depth);
-  void readout_pv(position& p, const Score& eval, const U16& depth);
+  void start(position& p, limits& lims, bool silent);
+  void iterative_deepening(position& p, U16 depth, bool silent);
+  void readout_pv(position& p, const Score& eval, const U16& depth, bool silent);
   double estimate_max_time(position& p, limits& lims);
 
   template<Nodetype type>

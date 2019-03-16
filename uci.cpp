@@ -132,10 +132,9 @@ bool uci::parse_command(const std::string& input) {
       Perft perft;
       perft.divide(p, atoi(cmd.c_str()));
     }
-    else if (cmd == "bench" && instream >> cmd) {
-      int depth = atoi(cmd.c_str());
+    else if (cmd == "tune") {
       Perft perft;
-      perft.bench(depth);
+      perft.auto_tune();
     }
 
 
@@ -161,7 +160,8 @@ bool uci::parse_command(const std::string& input) {
         else if (cmd == "infinite") lims.infinite = (cmd == "infinite" ? true : false);
         else if (cmd == "ponder") lims.ponder = atoi(cmd.c_str());
       }
-      worker.enqueue(Search::start, p, lims);
+      bool silent = false;
+      worker.enqueue(Search::start, p, lims, silent);
     }
     else if (cmd == "stop") {
       UCI_SIGNALS.stop = true;

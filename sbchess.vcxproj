@@ -162,6 +162,8 @@
     <ClInclude Include="order.h" />
     <ClInclude Include="parameter.h" />
     <ClInclude Include="pawns.h" />
+    <ClInclude Include="pbil.h" />
+    <ClInclude Include="pbil.hpp" />
     <ClInclude Include="position.h" />
     <ClInclude Include="search.h" />
     <ClInclude Include="search.hpp" />

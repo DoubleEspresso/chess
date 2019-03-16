@@ -12,14 +12,32 @@ void pbil::educate() {
 }
 
 
+// warm up pbil (localize search around initial best guess)
+void pbil::initialize_probabilities() {
+  double eps = 1e-2;
+  std::uniform_real_distribution<double> dist(0, eps);
+  std::vector<int> tmp(initial_guess);
+
+  for (auto& g : tmp) g += dist(rng);
+
+
+  for (unsigned b = 0; b < probabilities.size(); ++b) {
+
+    double lr = learn_rate + neg_learn_rate;
+
+    probabilities[b] = probabilities[b] * (1 - lr) + tmp[b] * lr;
+  }
+}
+
+
 void pbil::update_probabilities(const std::vector<int>& min_gene,
 				const std::vector<int>& max_gene) {
   
-  for (unsigned b=0; b < probabilities.size(); ++b) {
-    
+  for (unsigned b = 0; b < probabilities.size(); ++b) {
+
     double lr = (min_gene[b] == max_gene[b] ?
-		 learn_rate : learn_rate + neg_learn_rate);
-    
+      learn_rate : learn_rate + neg_learn_rate);
+
     probabilities[b] = probabilities[b] * (1 - lr) + min_gene[b] * lr;
   }
 }
@@ -57,6 +75,9 @@ void pbil::optimize(T&& residual, Args&&... args) {
   
   init();
   
+  if (initial_guess.size() > 0)
+    for (size_t i = 0; i < 6; ++i) initialize_probabilities();
+
   std::vector<int> best;
   
   auto rf =
