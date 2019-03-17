@@ -36,7 +36,7 @@ namespace eval {
     using pbil_fp = std::unique_ptr<parameter<float>>;
 
     pbil_fp pt = util::make_unique<parameter<float>>(8.0f, std::string("tempo"));
-    const float tempo = pt->get();
+    float tempo = pt->get();
 
     // square score parameters
     pbil_fp sp = util::make_unique<parameter<float>>(1.0f, std::string("ss pawn"));
@@ -45,7 +45,7 @@ namespace eval {
     pbil_fp sr = util::make_unique<parameter<float>>(1.0f, std::string("ss rook"));
     pbil_fp sq = util::make_unique<parameter<float>>(1.0f, std::string("ss queen"));
     pbil_fp sk = util::make_unique<parameter<float>>(1.0f, std::string("ss king"));
-    const std::vector<float> sq_score_scaling{ sp->get(), sn->get(), sb->get(), sr->get(), sq->get(), sk->get() };
+    std::vector<float> sq_score_scaling{ sp->get(), sn->get(), sb->get(), sr->get(), sq->get(), sk->get() };
 
     // mobility tables
     pbil_fp pm = util::make_unique<parameter<float>>(1.0f, std::string("pawn mobility"));
@@ -53,7 +53,7 @@ namespace eval {
     pbil_fp bm = util::make_unique<parameter<float>>(1.0f, std::string("bishop mobility"));
     pbil_fp rm = util::make_unique<parameter<float>>(1.0f, std::string("rook mobility"));
     pbil_fp qm = util::make_unique<parameter<float>>(1.0f, std::string("queen mobility"));
-    const float mobility_scaling[5] = { pm->get(), nm->get(), bm->get(), rm->get(), qm->get() };
+    float mobility_scaling[5] = { pm->get(), nm->get(), bm->get(), rm->get(), qm->get() };
 
     // piece attack tables
     pbil_fp pa = util::make_unique<parameter<float>>(1.0f, std::string("pawn attack"));
@@ -61,7 +61,7 @@ namespace eval {
     pbil_fp ba = util::make_unique<parameter<float>>(1.0f, std::string("bishop attack"));
     pbil_fp ra = util::make_unique<parameter<float>>(1.0f, std::string("rook attack"));
     pbil_fp qa = util::make_unique<parameter<float>>(1.0f, std::string("queen attack"));
-    const float attack_scaling[5] = { pa->get(), na->get(), ba->get(), ra->get(), qa->get() };
+    float attack_scaling[5] = { pa->get(), na->get(), ba->get(), ra->get(), qa->get() };
 
     const float knight_attks[5] = { 3.0f, 9.0f, 9.45f, 14.4f, 27.3f };
     const float bishop_attks[5] = { 3.0f, 9.0f, 9.45f, 14.4f, 27.3f };

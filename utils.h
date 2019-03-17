@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef UTILS_H
 #define UTILS_H
 
@@ -7,7 +9,12 @@
 #include <memory>
 #include <chrono>
 #include <ctime>
+#include <sstream>
+#include <vector>
+#include <string>
+#include <iostream>
 
+#include "types.h"
 
 namespace util {  
   // std::make_unique is part of c++14
@@ -15,6 +22,15 @@ namespace util {
   std::unique_ptr<T> make_unique(Args&&... args) {
     return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
   }
+
+  inline std::vector<std::string> split(std::string& s, char delimiter) {
+    std::vector<std::string> tokens;
+    std::stringstream ss(s);
+    std::string t;
+    while (getline(ss, t, delimiter)) { tokens.push_back(t); }
+    return tokens;
+  }
+
 
   inline int row(const int& r) { return (r >> 3); }
   inline int col(const int& c) { return c & 7; }

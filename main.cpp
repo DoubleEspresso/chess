@@ -15,9 +15,12 @@ std::unique_ptr<options> opts;
 int main(int argc, char * argv[]) {
 
   opts = std::unique_ptr<options>(new options(argc, argv));
-   
+
+
   greeting();
   
+  opts->read_param_file("engine.conf");
+
   zobrist::load();
   bitboards::load();  
   magics::load();    

@@ -24,7 +24,8 @@ class pbil {
   std::mt19937 rng;
 
   void educate();
-  
+  void educate(float min, float max);
+
   void initialize_probabilities();
 
   void update_probabilities(const std::vector<int>& min_gene,

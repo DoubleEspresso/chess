@@ -475,6 +475,9 @@ int position::see_move(const Move& m) {
 
 bool position::is_legal_hashmove(const Move& m) {
 
+  Movetype mt = Movetype(m.type);
+  if (mt == Movetype::no_type) return false;
+
   Square f = Square(m.f);
   Square t = Square(m.t);
   Piece p = piece_on(f);
@@ -482,19 +485,20 @@ bool position::is_legal_hashmove(const Move& m) {
   Color them = Color(us ^ 1);
   Square eks = king_square(them);
   bool slider = (p == rook || p == bishop || p == queen);
-  Movetype mt = Movetype(m.type);
 
-  if (mt == Movetype::no_type) return false;  
   if (f == t) return false;
   if (t == eks) return false;
   if (color_on(t) == us) return false;
   if (color_on(f) != us) return false;
   if ((mt == ep || mt == quiet || mt == promotion) && color_on(t) != Color::no_color) return false;
+  if (mt == ep && piece_on(t) != Piece::no_piece) return false;
+
   if ((mt == capture ||
        mt == capture_promotion_q ||
        mt == capture_promotion_r ||
        mt == capture_promotion_b ||
-       mt == capture_promotion_n) && color_on(t) != them) return false;
+       mt == capture_promotion_n) && 
+    (color_on(t) != them || piece_on(t) == Piece::no_piece)) return false;
   if (mt == ep && t != ifo.eps) return false;
   
   if (!is_legal(m)) return false;
@@ -743,6 +747,7 @@ void position::clear() {
   qnodes_searched = 0;
   ifo = {};  
 }
+
 
 void position::print() const {
   std::cout << "   +---+---+---+---+---+---+---+---+" << std::endl;

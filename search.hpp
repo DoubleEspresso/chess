@@ -218,7 +218,8 @@ void Search::iterative_deepening(position& p, U16 depth, bool silent) {
       eval = search<root>(p, alpha, beta, id, stack + 2);
       
       if (p.is_master() && !UCI_SIGNALS.stop) {
-        readout_pv(p, eval, id, silent);
+        if (silent) get_bestmove(p);
+        else readout_pv(p, eval, id);
         
         if (id >= thread_depth && !slaves_start) {
           slaves_start = true;
@@ -820,36 +821,42 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
 }
 
 
-void Search::readout_pv(position& p, const Score& eval, const U16& depth, bool silent) {
+void Search::get_bestmove(position& p) {
+  hash_data e;
+  ttable.fetch(p.key(), e);
+
+  if (e.move.type != Movetype::no_type &&
+    p.is_legal_hashmove(e.move))
+    bestmoves[0] = e.move;
+}
+
+void Search::readout_pv(position& p, const Score& eval, const U16& depth) {
   
-    hash_data e;
-    std::string res = "";
-    std::vector<Move> moves;
+  hash_data e;
+  std::string res = "";
+  std::vector<Move> moves;
+  
+  for (unsigned j = 0;
+  ttable.fetch(p.key(), e) &&
+    e.move.type != Movetype::no_type &&
+    p.is_legal_hashmove(e.move) &&
+    j < depth; ++j) {
     
-    for (unsigned j = 0;
-	 ttable.fetch(p.key(), e) &&
-	   e.move.type != Movetype::no_type &&
-	   e.move.f != e.move.t &&
-	   p.is_legal(e.move) &&
-	   j < depth; ++j) {
-      
-      res += uci::move_to_string(e.move) + " ";
-      p.do_move(e.move);
-      moves.push_back(e.move);
-      
-      if (j <= 1) bestmoves[j] = e.move;
-    }
+    res += uci::move_to_string(e.move) + " ";
+    p.do_move(e.move);
+    moves.push_back(e.move);
     
-    while(!moves.empty()) {
-      Move m = moves.back();
-      p.undo_move(m);
-      moves.pop_back();
-    }
-        
-    if (!silent) {
-      printf("info score cp %d depth %d pv ",
-        eval,
-        depth);
-      std::cout << res << std::endl;
-    }
+    if (j <= 1) bestmoves[j] = e.move;
+  }
+  
+  while (!moves.empty()) {
+    Move m = moves.back();
+    p.undo_move(m);
+    moves.pop_back();
+  }
+  
+  printf("info score cp %d depth %d pv ",
+    eval,
+    depth);
+  std::cout << res << std::endl;
 }

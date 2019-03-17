@@ -144,37 +144,37 @@ bool move_order::next_move<main0>(position& pos, Move& m) {
     
   case mate_killer1 : {
     if (pos.is_legal_hashmove(killers[2]) &&
-	killers[2] != *hashmove) {
+      killers[2] != *hashmove) {
       m = killers[2];
     }
     ++phase; break;
   }
 
     
-  case mate_killer2 : {
+  case mate_killer2: {
     if (pos.is_legal_hashmove(killers[3])) {
       if (killers[3] != *hashmove && killers[3] != killers[2])
-	m = killers[3];
+        m = killers[3];
     }
     ++phase; break;
   }
 
     
-  case good_captures : {
+  case good_captures: {
     if (list.size() <= 0) {
       
       moves->generate<capture, pieces>();
       for (int i = 0; i < moves->size(); ++i) {
-
-	if (skip((*moves)[i])) continue;
-	       
-	Piece pt = pos.piece_on(Square((*moves)[i].t));
-	Piece pf = pos.piece_on(Square((*moves)[i].f));	
-
-	Score sc = ((*moves)[i].type == Movetype::ep) ? Score(0) :
-	  Score(mvals[pt] - mvals[pf]);
-	
-	list.emplace_back(scored_move((*moves)[i], sc));
+        
+        if (skip((*moves)[i])) continue;
+        
+        Piece pt = pos.piece_on(Square((*moves)[i].t));
+        Piece pf = pos.piece_on(Square((*moves)[i].f));
+        
+        Score sc = ((*moves)[i].type == Movetype::ep) ? Score(0) :
+          Score(mvals[pt] - mvals[pf]);
+        
+        list.emplace_back(scored_move((*moves)[i], sc));
       }
       
       sort();
@@ -183,8 +183,8 @@ bool move_order::next_move<main0>(position& pos, Move& m) {
     }
     else {
       if (list.back().s >= Score(0)) {
-	m = list.back().m;
-	list.pop_back();
+        m = list.back().m;
+        list.pop_back();
       }
 
       if (list.size() > 0 && list.back().s < Score(0)) { ++phase; }
@@ -197,23 +197,23 @@ bool move_order::next_move<main0>(position& pos, Move& m) {
   case killer1 : {
     if (pos.is_legal_hashmove(killers[0])) {
       if (killers[0] != *hashmove)
-	m = killers[0];
+        m = killers[0];
     }
     ++phase; break;
   }
-    
-
-  case killer2 : {
+                 
+                 
+  case killer2: {
     if (pos.is_legal_hashmove(killers[1])) {
       if ((killers[1] != *hashmove) && killers[1] != killers[0])
-	m = killers[1];
+        m = killers[1];
     }
     ++phase; break;
   }
     
     
   case bad_captures: {
-    if (list.size() <= 0) { moves->reset(); ++phase; return true; } 
+    if (list.size() <= 0) { moves->reset(); ++phase; return true; }
     else {
       m = list.back().m;
       list.pop_back();
@@ -226,18 +226,18 @@ bool move_order::next_move<main0>(position& pos, Move& m) {
     if (list.size() <= 0) {
       
       auto ss = [this](const Move& m) {
-	return Score(to_move == white ?
-		     stats->score<white>(m) : stats->score<black>(m)); };
+        return Score(to_move == white ?
+          stats->score<white>(m) : stats->score<black>(m)); };
       
       moves->generate<quiet, pieces>();
       for (int i = 0; i < moves->size(); ++i) {
 
-	if (skip((*moves)[i])) { continue; }
-	
-	Score sc = Score(ss((*moves)[i]));
-		
-	list.emplace_back(scored_move((*moves)[i], sc));
-
+        if (skip((*moves)[i])) { continue; }
+        
+        Score sc = Score(ss((*moves)[i]));
+        
+        list.emplace_back(scored_move((*moves)[i], sc));
+        
       }
       sort();
     }
@@ -272,12 +272,12 @@ bool move_order::next_move<qsearch>(position& pos, Move& m) {
     
   case hash_move: {
     if (incheck ||
-	hashmove->type == Movetype::capture ||
-	hashmove->type == Movetype::ep ||
-	hashmove->type == Movetype::capture_promotion_q ||
-	hashmove->type == Movetype::capture_promotion_r ||
-	hashmove->type == Movetype::capture_promotion_b ||
-	hashmove->type == Movetype::capture_promotion_n) {      
+      hashmove->type == Movetype::capture ||
+      hashmove->type == Movetype::ep ||
+      hashmove->type == Movetype::capture_promotion_q ||
+      hashmove->type == Movetype::capture_promotion_r ||
+      hashmove->type == Movetype::capture_promotion_b ||
+      hashmove->type == Movetype::capture_promotion_n) {
       m = *hashmove;
     }
     ++phase;
@@ -286,7 +286,7 @@ bool move_order::next_move<qsearch>(position& pos, Move& m) {
 
   case mate_killer1 : {
     if (pos.is_legal_hashmove(killers[2]) &&
-	killers[2] != *hashmove) {
+      killers[2] != *hashmove) {
       m = killers[2];
     }
     ++phase; break;
@@ -296,7 +296,7 @@ bool move_order::next_move<qsearch>(position& pos, Move& m) {
   case mate_killer2 : {
     if (pos.is_legal_hashmove(killers[3])) {
       if (killers[3] != *hashmove && killers[3] != killers[2])
-	m = killers[3];
+        m = killers[3];
     }
     ++phase; break;
   }
@@ -307,17 +307,17 @@ bool move_order::next_move<qsearch>(position& pos, Move& m) {
       moves->generate<capture, pieces>();
       for (int i = 0; i < moves->size(); ++i) {
 	
-	if (skip((*moves)[i])) continue;
+        if (skip((*moves)[i])) continue;
 	
-	Piece pt = pos.piece_on(Square((*moves)[i].t));
-	Piece pf = pos.piece_on(Square((*moves)[i].f));
+        Piece pt = pos.piece_on(Square((*moves)[i].t));
+        Piece pf = pos.piece_on(Square((*moves)[i].f));
 		
-	Score sc = ((*moves)[i].type == Movetype::ep) ? Score(0) :
-	  Score(mvals[pt] - mvals[pf]);
+        Score sc = ((*moves)[i].type == Movetype::ep) ? Score(0) :
+          Score(mvals[pt] - mvals[pf]);
+        
 	
-	
-	list.emplace_back(scored_move((*moves)[i], sc));
-      }      
+        list.emplace_back(scored_move((*moves)[i], sc));
+      }
       
       sort();
       
@@ -326,12 +326,12 @@ bool move_order::next_move<qsearch>(position& pos, Move& m) {
     }
     else {
       if (list.back().s >= Score(0)) {
-	m = list.back().m;
-	list.pop_back();
+        m = list.back().m;
+        list.pop_back();
       }
-
+      
       if (list.size() > 0 && list.back().s < Score(0)) { ++phase; }
-      if (list.size() <= 0) { moves->reset(); ++phase; }      
+      if (list.size() <= 0) { moves->reset(); ++phase; }
     }
     
     break;
@@ -341,7 +341,7 @@ bool move_order::next_move<qsearch>(position& pos, Move& m) {
   case killer1 : {
     if (incheck && pos.is_legal_hashmove(killers[0])) {
       if (killers[0].f != hashmove->f || killers[0].t != hashmove->t)
-	m = killers[0];
+        m = killers[0];
     }
     ++phase;
     break;    
@@ -351,8 +351,8 @@ bool move_order::next_move<qsearch>(position& pos, Move& m) {
   case killer2 : {
     if (incheck && pos.is_legal_hashmove(killers[1])) {
       if ((killers[1].f != hashmove->f || killers[1].t != hashmove->t) &&
-	  (killers[1].f != killers[0].f || killers[1].t != killers[0].t))
-	m = killers[1];
+        (killers[1].f != killers[0].f || killers[1].t != killers[0].t))
+        m = killers[1];
     }
     ++phase;
     break;
@@ -360,7 +360,7 @@ bool move_order::next_move<qsearch>(position& pos, Move& m) {
 
     
   case bad_captures: {
-    if (list.size() <= 0) { moves->reset(); ++phase; return true; } 
+    if (list.size() <= 0) { moves->reset(); ++phase; return true; }
     else {
       m = list.back().m;
       list.pop_back();
@@ -374,16 +374,16 @@ bool move_order::next_move<qsearch>(position& pos, Move& m) {
       
       auto ss = [this](const Move& m) {
 		  return Score(to_move == white ?
-			       stats->score<white>(m) : stats->score<black>(m)); };
+        stats->score<white>(m) : stats->score<black>(m)); };
       
       moves->generate<quiet, pieces>();
       for (int i = 0; i < moves->size(); ++i) {
-
-	if (skip((*moves)[i])) continue;
-	
-	Score sc = Score(ss((*moves)[i]));
-	
-	list.emplace_back(scored_move((*moves)[i], sc));
+        
+        if (skip((*moves)[i])) continue;
+        
+        Score sc = Score(ss((*moves)[i]));
+        
+        list.emplace_back(scored_move((*moves)[i], sc));
 
       }
       sort();

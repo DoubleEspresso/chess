@@ -17,7 +17,7 @@ namespace {
 #endif
     std::string bits = (sizeof(size_t) == 4 ? "32-bit" : "64-bit");
     std::string debug = (dbg ? "debug" : "");
-    std::cout << "sandbox chess by M.Glatzmaier" << std::endl;
+    std::cout << "Reyka" << " version " << "1.0.0" << std::endl;
   }  
 }
 

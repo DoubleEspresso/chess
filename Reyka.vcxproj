@@ -23,6 +23,7 @@
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>sbchess</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+    <ProjectName>Reyka</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -151,6 +152,7 @@
     <ClInclude Include="bitboards.h" />
     <ClInclude Include="bits.h" />
     <ClInclude Include="endgame.h" />
+    <ClInclude Include="epd.hpp" />
     <ClInclude Include="evaluate.h" />
     <ClInclude Include="hashtable.h" />
     <ClInclude Include="info.h" />
@@ -164,6 +166,7 @@
     <ClInclude Include="pawns.h" />
     <ClInclude Include="pbil.h" />
     <ClInclude Include="pbil.hpp" />
+    <ClInclude Include="pgn.h" />
     <ClInclude Include="position.h" />
     <ClInclude Include="search.h" />
     <ClInclude Include="search.hpp" />
@@ -183,6 +186,7 @@
     <ClCompile Include="material.cpp" />
     <ClCompile Include="order.cpp" />
     <ClCompile Include="pawns.cpp" />
+    <ClCompile Include="pgn.cpp" />
     <ClCompile Include="position.cpp" />
     <ClCompile Include="uci.cpp" />
     <ClCompile Include="zobrist.cpp" />
