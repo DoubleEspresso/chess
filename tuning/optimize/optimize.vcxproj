@@ -19,11 +19,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{AD52D26A-C884-48FB-9C2E-C13584EB42C1}</ProjectGuid>
+    <ProjectGuid>{B8DF6914-4827-4855-84DE-2B50AE7D9294}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>sbchess</RootNamespace>
+    <RootNamespace>optimize</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
-    <ProjectName>Reyka</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -51,7 +50,6 @@
     <PlatformToolset>v140</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
-    <CLRSupport>false</CLRSupport>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -82,7 +80,6 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <TargetName>reyka</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -103,9 +100,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_64BIT;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
-      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -137,10 +132,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_64BIT;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
-      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -150,48 +142,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="bench.h" />
-    <ClInclude Include="bitboards.h" />
-    <ClInclude Include="bits.h" />
-    <ClInclude Include="endgame.h" />
-    <ClInclude Include="epd.hpp" />
-    <ClInclude Include="evaluate.h" />
-    <ClInclude Include="hashtable.h" />
-    <ClInclude Include="info.h" />
-    <ClInclude Include="magics.h" />
-    <ClInclude Include="material.h" />
-    <ClInclude Include="move.h" />
-    <ClInclude Include="move.hpp" />
-    <ClInclude Include="options.h" />
-    <ClInclude Include="order.h" />
-    <ClInclude Include="parameter.h" />
-    <ClInclude Include="pawns.h" />
-    <ClInclude Include="pbil.h" />
-    <ClInclude Include="pbil.hpp" />
-    <ClInclude Include="pgn.h" />
-    <ClInclude Include="position.h" />
-    <ClInclude Include="search.h" />
-    <ClInclude Include="search.hpp" />
-    <ClInclude Include="squares.h" />
-    <ClInclude Include="threads.h" />
-    <ClInclude Include="types.h" />
-    <ClInclude Include="uci.h" />
-    <ClInclude Include="utils.h" />
-    <ClInclude Include="zobrist.h" />
+    <ClCompile Include="..\main.cpp" />
+    <ClCompile Include="..\pgn.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="bitboards.cpp" />
-    <ClCompile Include="evaluate.cpp" />
-    <ClCompile Include="hashtable.cpp" />
-    <ClCompile Include="magics.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="material.cpp" />
-    <ClCompile Include="order.cpp" />
-    <ClCompile Include="pawns.cpp" />
-    <ClCompile Include="pgn.cpp" />
-    <ClCompile Include="position.cpp" />
-    <ClCompile Include="uci.cpp" />
-    <ClCompile Include="zobrist.cpp" />
+    <ClInclude Include="..\direntw.h" />
+    <ClInclude Include="..\pbil.h" />
+    <ClInclude Include="..\pbil.hpp" />
+    <ClInclude Include="..\pgn.h" />
+    <ClInclude Include="..\platform.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

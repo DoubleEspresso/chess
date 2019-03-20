@@ -91,6 +91,7 @@ inline bool options::read_param_file(const std::string& filename) {
   }
 
   set_engine_params();
+  return true;
 }
 
 inline bool options::save_param_file() {
@@ -102,7 +103,7 @@ inline bool options::save_param_file() {
     std::cout << "saved " << line << " into engine.conf " << std::endl;
   }
   param_file.close();
-
+  return true;
 }
 
 

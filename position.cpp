@@ -4,16 +4,7 @@
 position::position(std::istringstream& fen) { setup(fen); }
 
 
-position::position(const position& p) {
-  std::copy(std::begin(p.history), std::end(p.history), std::begin(history));
-  ifo = p.ifo;
-  pcs = p.pcs;
-  stats = p.stats;
-  hidx = p.hidx;
-  thread_id = p.thread_id;
-  nodes_searched = p.nodes_searched;
-  qnodes_searched = p.qnodes_searched;
-}
+position::position(const position& p) { *this = p; }
 
 
 position& position::operator=(const position& p) {
@@ -25,6 +16,7 @@ position& position::operator=(const position& p) {
   thread_id = p.thread_id;
   nodes_searched = p.nodes_searched;
   qnodes_searched = p.qnodes_searched;
+  params = p.params;
   return *(this);
 }
 
@@ -196,11 +188,13 @@ void position::do_move(const Move& m) {
   else if (t == castle_ks) {
     pcs.do_castle_ks(us, from, to, ifo);
     ifo.cmask &= (us == white ? clearw : clearb);
+    ifo.has_castled[us] = true;
   }
 
   else if (t == castle_qs) {
     pcs.do_castle_qs(us, from, to, ifo);
     ifo.cmask &= (us == white ? clearw : clearb);
+    ifo.has_castled[us] = true;
   }
 
   // eps
@@ -494,10 +488,10 @@ bool position::is_legal_hashmove(const Move& m) {
   if (mt == ep && piece_on(t) != Piece::no_piece) return false;
 
   if ((mt == capture ||
-       mt == capture_promotion_q ||
-       mt == capture_promotion_r ||
-       mt == capture_promotion_b ||
-       mt == capture_promotion_n) && 
+    mt == capture_promotion_q ||
+    mt == capture_promotion_r ||
+    mt == capture_promotion_b ||
+    mt == capture_promotion_n) &&
     (color_on(t) != them || piece_on(t) == Piece::no_piece)) return false;
   if (mt == ep && t != ifo.eps) return false;
   
@@ -600,7 +594,13 @@ bool position::is_legal(const Move& m) {
   if (color_on(t) == us) return false;
   if (color_on(f) != us) return false;
   if ((mt == ep || mt == quiet || mt == promotion) && color_on(t) != Color::no_color) return false;
-  if ((mt == capture || mt == capture_promotion) && color_on(t) != them) return false;
+
+  if ((mt == capture ||
+    mt == capture_promotion_q ||
+    mt == capture_promotion_r ||
+    mt == capture_promotion_b ||
+    mt == capture_promotion_n) &&
+    (color_on(t) != them || piece_on(t) == Piece::no_piece)) return false;
   
   // pinned
   if ((bitboards::squares[f] & ifo.pinned) && !util::aligned(ks, f, t)) return false;
@@ -745,7 +745,7 @@ void position::clear() {
   thread_id = 0;
   nodes_searched = 0;
   qnodes_searched = 0;
-  ifo = {};  
+  ifo = {};
 }
 
 

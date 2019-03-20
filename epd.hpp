@@ -91,6 +91,7 @@ bool epd::load(const std::string& filename) {
   }
   std::cout << "loaded " << counter << " test positions" << std::endl;
 
+  return true;
 }
 
 #endif

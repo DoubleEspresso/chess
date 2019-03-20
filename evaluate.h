@@ -5,7 +5,6 @@
 
 #include "types.h"
 #include "utils.h"
-#include "position.h"
 #include "pawns.h"
 #include "material.h"
 #include "parameter.h"
@@ -31,52 +30,6 @@ struct einfo {
 
 
 namespace eval {
-
-  struct parameters {
-    using pbil_fp = std::unique_ptr<parameter<float>>;
-
-    pbil_fp pt = util::make_unique<parameter<float>>(8.0f, std::string("tempo"));
-    float tempo = pt->get();
-
-    // square score parameters
-    pbil_fp sp = util::make_unique<parameter<float>>(1.0f, std::string("ss pawn"));
-    pbil_fp sn = util::make_unique<parameter<float>>(1.0f, std::string("ss knight"));
-    pbil_fp sb = util::make_unique<parameter<float>>(1.0f, std::string("ss bishop"));
-    pbil_fp sr = util::make_unique<parameter<float>>(1.0f, std::string("ss rook"));
-    pbil_fp sq = util::make_unique<parameter<float>>(1.0f, std::string("ss queen"));
-    pbil_fp sk = util::make_unique<parameter<float>>(1.0f, std::string("ss king"));
-    std::vector<float> sq_score_scaling{ sp->get(), sn->get(), sb->get(), sr->get(), sq->get(), sk->get() };
-
-    // mobility tables
-    pbil_fp pm = util::make_unique<parameter<float>>(1.0f, std::string("pawn mobility"));
-    pbil_fp nm = util::make_unique<parameter<float>>(1.0f, std::string("knight mobility"));
-    pbil_fp bm = util::make_unique<parameter<float>>(1.0f, std::string("bishop mobility"));
-    pbil_fp rm = util::make_unique<parameter<float>>(1.0f, std::string("rook mobility"));
-    pbil_fp qm = util::make_unique<parameter<float>>(1.0f, std::string("queen mobility"));
-    float mobility_scaling[5] = { pm->get(), nm->get(), bm->get(), rm->get(), qm->get() };
-
-    // piece attack tables
-    pbil_fp pa = util::make_unique<parameter<float>>(1.0f, std::string("pawn attack"));
-    pbil_fp na = util::make_unique<parameter<float>>(1.0f, std::string("knight attack"));
-    pbil_fp ba = util::make_unique<parameter<float>>(1.0f, std::string("bishop attack"));
-    pbil_fp ra = util::make_unique<parameter<float>>(1.0f, std::string("rook attack"));
-    pbil_fp qa = util::make_unique<parameter<float>>(1.0f, std::string("queen attack"));
-    float attack_scaling[5] = { pa->get(), na->get(), ba->get(), ra->get(), qa->get() };
-
-    const float knight_attks[5] = { 3.0f, 9.0f, 9.45f, 14.4f, 27.3f };
-    const float bishop_attks[5] = { 3.0f, 9.0f, 9.45f, 14.4f, 27.3f };
-    const float rook_attks[5] = { 1.5f, 4.5f, 4.725f, 7.2f, 13.65f };
-    const float queen_attks[5] = { 0.75f, 2.25f, 2.3625f, 3.6f, 6.825f };
-
-    // king harassment tables
-    const float knight_king[3] = { 1.0, 2.0, 3.0 };
-    const float bishop_king[3] = { 1.0, 2.0, 3.0 };
-    const float rook_king[5] = { 1.0, 2.0, 3.0, 3.0, 4.0 };
-    const float queen_king[7] = { 1.0, 3.0, 3.0, 4.0, 4.0, 5.0, 6.0 };
-    const float attacker_weight[5] = { 0.5, 4.0, 8.0, 16.0, 32.0 };
-    const float king_shelter[3] = { -2.0, 0.0, 2.0 };
-
-  };
 
   float evaluate(const position& p);
 

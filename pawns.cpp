@@ -80,7 +80,7 @@ int16 evaluate(const position& p, pawn_entry& e) {
 
     U64 fbb = bitboards::squares[s];
 
-    score += eval::Parameters.sq_score_scaling[pawn] * square_score<c>(pawn, Square(s));
+    score += p.params.sq_score_scaling[pawn] * square_score<c>(pawn, Square(s));
     score += pawn_scaling[util::col(s)] * material_vals[pawn];
 
     

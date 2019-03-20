@@ -19,8 +19,10 @@
 #include "magics.h"
 #include "zobrist.h"
 #include "order.h"
+#include "parameter.h" // just for parameter reference (todo: refactor)
 
 struct Move;
+
 
 struct info {
   U64 checkers;
@@ -35,6 +37,7 @@ struct info {
   Color stm;
   Square eps;
   Square ks[2];
+  bool has_castled[2];
   Piece captured;    
   bool incheck;
 };
@@ -97,7 +100,6 @@ class position {
   U64 hidx;
   U64 nodes_searched;
   U64 qnodes_searched;
-
   
  public:
   position() {}
@@ -112,7 +114,7 @@ class position {
 
   double elapsed_ms;
   std::string bestmove;
-
+  parameters params; // reference to our tuneable parameters
 
   // setup/clear a position
   void setup(std::istringstream& fen);
@@ -154,7 +156,26 @@ class position {
   inline bool can_castle_qs() const {
     return (ifo.cmask & (ifo.stm == white ? wqs : bqs)) == (ifo.stm == white ? wqs : bqs);
   }
-  
+
+  template<Color c>
+  inline bool can_castle_ks() const {
+    return (ifo.cmask & (c == white ? wks : bks) == ( c == white ? wks : bks) );
+  }
+
+  template<Color c>
+  inline bool can_castle_qs() const {
+    return (ifo.cmask & (c == white ? wqs : bqs) == (c == white ? wks : bks) );
+  }
+
+  template<Color c>
+  inline bool can_castle() const {
+    return can_castle_ks<c>() || can_castle_qs<c>();
+  }
+
+  template<Color c>
+  inline bool has_castled() const { return ifo.has_castled[c]; }
+
+
   // position info access wrappers
   inline Square eps() const { return ifo.eps; }
   inline Color to_move() const { return ifo.stm; }

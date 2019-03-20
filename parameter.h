@@ -36,7 +36,7 @@ public:
   T& operator()() { return *value; }
 
   inline void set(T& in) {
-    memcpy(value.get(), &in, sizeof(T)); 
+    memcpy(value.get(), &in, sizeof(T));
     bits = *reinterpret_cast<unsigned long*>(value.get());
   }
 
@@ -52,4 +52,64 @@ public:
 };
 
 
+struct parameters {
+
+  parameters() {}
+
+  parameters(const parameters& o) { *this = o; }
+
+  parameters& operator=(const parameters& o) {
+    tempo = o.tempo;
+    sq_score_scaling = o.sq_score_scaling;
+    mobility_scaling = o.mobility_scaling;
+    attack_scaling = o.attack_scaling;
+    return *this;
+  }
+
+  float tempo = 1.0f;
+
+  // square score parameters
+  std::vector<float> sq_score_scaling{ 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
+
+  // mobility tables
+  std::vector<float> mobility_scaling{ 1.0f, 1.0, 1.0f, 1.0f, 1.0f };
+
+  // piece attack tables
+  std::vector<float> attack_scaling{ 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
+
+  const float knight_attks[5] = { 3.0f, 9.0f, 9.45f, 14.4f, 27.3f };
+  const float bishop_attks[5] = { 3.0f, 9.0f, 9.45f, 14.4f, 27.3f };
+  const float rook_attks[5] = { 1.5f, 4.5f, 4.725f, 7.2f, 13.65f };
+  const float queen_attks[5] = { 0.75f, 2.25f, 2.3625f, 3.6f, 6.825f };
+
+  // king harassment tables
+  const float knight_king[3] = { 1.0, 2.0, 3.0 };
+  const float bishop_king[3] = { 1.0, 2.0, 3.0 };
+  const float rook_king[5] = { 1.0, 2.0, 3.0, 3.0, 4.0 };
+  const float queen_king[7] = { 1.0, 3.0, 3.0, 4.0, 4.0, 5.0, 6.0 };
+  const float attacker_weight[5] = { 0.5, 4.0, 8.0, 16.0, 32.0 };
+  const float king_shelter[3] = { -2.0, 0.0, 2.0 };
+  const float uncastled_penalty = 5.0f;
+  const float connected_rook_bonus = 4.0f;
+
+};
+
+
+/*
+template<typename T>
+class tuneable_params {
+
+  std::vector<parameter<T>> params;
+
+public:
+  params() {};
+
+
+  void load(const std::string& filename);
+  void save(const std::string& filename);
+  void update(const std::vector<int> pbil_bits);
+
+
+};
+*/
 #endif

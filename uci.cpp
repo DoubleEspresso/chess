@@ -11,6 +11,8 @@ Threadpool worker(1);
 signals UCI_SIGNALS;
 
 void uci::loop() {
+  p.params = eval::Parameters;
+
   std::string input = "";
   while (std::getline(std::cin, input)) {
     if (!parse_command(input)) break;
@@ -69,18 +71,18 @@ bool uci::parse_command(const std::string& input) {
       
       for (int i=0; i<mvs.size(); ++i) {
 
-	if (!p.is_legal(mvs[i])) continue;
+        if (!p.is_legal(mvs[i])) continue;
 	
-	if (move_to_string(mvs[i]) == cmd) {
-	  move = mvs[i];
-	  break;
-	}
+        if (move_to_string(mvs[i]) == cmd) {
+          move = mvs[i];
+          break;
+        }
 	
       }
       
       if (move.type != Movetype::no_type) {
-	int score = p.see_move(move);
-	std::cout << "See score:  " << score << std::endl;
+        int score = p.see_move(move);
+        std::cout << "See score:  " << score << std::endl;
       }
       else std::cout << " (dbg) See : error, illegal move." << std::endl;
     }
@@ -136,6 +138,11 @@ bool uci::parse_command(const std::string& input) {
       Perft perft;
       perft.auto_tune();
     }
+    else if (cmd == "bench" && instream >> cmd) {
+      Perft perft;
+      int depth = atoi(cmd.c_str());
+      perft.bench(depth, true);
+    }
 
 
     // game specific uci commands (refactor?)
@@ -146,6 +153,7 @@ bool uci::parse_command(const std::string& input) {
     else if (!Search::searching && cmd == "go") {           
       limits lims;
       memset(&lims, 0, sizeof(limits));
+
       while (instream >> cmd)
       {
         if (cmd == "wtime" && instream >> cmd) lims.wtime = atoi(cmd.c_str());

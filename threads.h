@@ -60,6 +60,8 @@ class Threadpool {
      cv_task.notify_one();
    }
    
+   void clear_tasks() { while (!tasks.empty()) tasks.pop_front();  }
+
    unsigned int size() { return num_threads; }
    
    void wait_finished() {

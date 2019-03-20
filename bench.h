@@ -12,6 +12,8 @@
 #include <string>
 #include <vector>
 #include <cassert>
+#include <thread>
+#include <fstream>
 
 #include "position.h"
 #include "types.h"
@@ -22,8 +24,9 @@
 #include "pbil.h"
 #include "epd.hpp"
 #include "options.h"
+#include "parameter.h"
 
-
+std::mutex mtx;
 
 struct scores {
   size_t correct;
@@ -40,6 +43,8 @@ namespace pbil_score {
 
   size_t iteration = 0;
   double best_score = std::numeric_limits<double>::max();
+  parameters engine_params;
+  std::vector<float> tuneable_params;
   std::unique_ptr<epd> E;
 };
 
@@ -65,8 +70,9 @@ class Perft {
   inline U64 search(position& p, const int& depth);
   inline void divide(position& p, int d);
   inline void gen(position& p, U64& times);
-  inline double bench(const int& depth, scores& S, bool silent);
+  inline double pbil_search(position& p, const int& depth, scores& S, bool silent);
   inline void auto_tune();
+  inline void bench(const int& depth, bool silent);
 };
 
 
@@ -245,62 +251,52 @@ inline U64 Perft::search(position& p, const int& depth) {
 }
 
 
-inline void update_options_file() {
+inline void update_options_file(const position& p) {
   using namespace eval;
-  opts->set<float>("tempo", Parameters.tempo);
-  opts->set<float>("pawn ss", Parameters.sq_score_scaling[pawn]);
-  opts->set<float>("knight ss", Parameters.sq_score_scaling[knight]);
-  opts->set<float>("bishop ss", Parameters.sq_score_scaling[bishop]);
-  opts->set<float>("rook ss", Parameters.sq_score_scaling[rook]);
-  opts->set<float>("queen ss", Parameters.sq_score_scaling[queen]);
-  opts->set<float>("king ss", Parameters.sq_score_scaling[king]);
-  opts->set<float>("pawn  ms", Parameters.mobility_scaling[pawn]);
-  opts->set<float>("knight ms", Parameters.mobility_scaling[knight]);
-  opts->set<float>("bishop ms", Parameters.mobility_scaling[bishop]);
-  opts->set<float>("rook ms", Parameters.mobility_scaling[rook]);
-  opts->set<float>("queen ms", Parameters.mobility_scaling[queen]);
-  opts->set<float>("pawn as", Parameters.attack_scaling[pawn]);
-  opts->set<float>("knight as", Parameters.attack_scaling[knight]);
-  opts->set<float>("bishop as", Parameters.attack_scaling[bishop]);
-  opts->set<float>("rook as", Parameters.attack_scaling[rook]);
-  opts->set<float>("queen as", Parameters.attack_scaling[queen]);
+  opts->set<float>("tempo", p.params.tempo);
+  opts->set<float>("pawn ss", p.params.sq_score_scaling[pawn]);
+  opts->set<float>("knight ss", p.params.sq_score_scaling[knight]);
+  opts->set<float>("bishop ss", p.params.sq_score_scaling[bishop]);
+  opts->set<float>("rook ss", p.params.sq_score_scaling[rook]);
+  opts->set<float>("queen ss", p.params.sq_score_scaling[queen]);
+  opts->set<float>("king ss", p.params.sq_score_scaling[king]);
+  opts->set<float>("pawn  ms", p.params.mobility_scaling[pawn]);
+  opts->set<float>("knight ms", p.params.mobility_scaling[knight]);
+  opts->set<float>("bishop ms", p.params.mobility_scaling[bishop]);
+  opts->set<float>("rook ms", p.params.mobility_scaling[rook]);
+  opts->set<float>("queen ms", p.params.mobility_scaling[queen]);
+  opts->set<float>("pawn as", p.params.attack_scaling[pawn]);
+  opts->set<float>("knight as", p.params.attack_scaling[knight]);
+  opts->set<float>("bishop as", p.params.attack_scaling[bishop]);
+  opts->set<float>("rook as", p.params.attack_scaling[rook]);
+  opts->set<float>("queen as", p.params.attack_scaling[queen]);
   opts->save_param_file();
 }
 
-inline double pbil_residual(const std::vector<int>& new_params) {
+inline double pbil_residual(const std::vector<int>& new_bits) {
 
   ++pbil_score::iteration;
 
-  std::vector<parameter<float>*> engine_params {
-    eval::Parameters.pt.get(),
-    eval::Parameters.sp.get(),
-    eval::Parameters.sn.get(),
-    eval::Parameters.sb.get(),
-    eval::Parameters.sr.get(),
-    eval::Parameters.sq.get(),
-    eval::Parameters.sk.get(),
-    eval::Parameters.nm.get(),
-    eval::Parameters.bm.get(),
-    eval::Parameters.rm.get(),
-    eval::Parameters.qm.get(),
-    eval::Parameters.na.get(),
-    eval::Parameters.ba.get(),
-    eval::Parameters.ra.get(),
-    eval::Parameters.qa.get()
-  };
+  position p;
+
+  {
+    std::unique_lock<std::mutex> lock(mtx);
+
+    p.params = pbil_score::engine_params;
+    size_t num_floats = pbil_score::tuneable_params.size();
+    size_t param_floats = new_bits.size() / 32;
+    assert(num_floats == param_floats);
+  }
 
 
-  size_t num_floats = engine_params.size();
-  size_t param_floats = new_params.size() / 32;
+  std::vector<float> new_params;
 
-  assert(num_floats == param_floats);
-
-  for (size_t i = 0, idx = 0; idx < engine_params.size(); ++idx) {
+  for (size_t i = 0, idx = 0; idx < pbil_score::tuneable_params.size(); ++idx) {
 
     std::bitset<sizeof(float) * CHAR_BIT> b;
     int bidx = 0;
 
-    std::for_each(new_params.begin() + i, new_params.begin() + i + 32,
+    std::for_each(new_bits.begin() + i, new_bits.begin() + i + 32,
       [&](int val) { b[bidx++] = val; ++i; });
 
 
@@ -308,82 +304,78 @@ inline double pbil_residual(const std::vector<int>& new_params) {
     float new_value = 0;
     memcpy(&new_value, &val, sizeof(float));
 
-    engine_params[idx]->set(new_value);
+    new_params.push_back(new_value);
   }
 
-  // todo: something better here .. 
-  eval::Parameters.tempo = engine_params[0]->get();
-  eval::Parameters.sq_score_scaling[pawn] = engine_params[1]->get();
-  eval::Parameters.sq_score_scaling[knight] = engine_params[2]->get();
-  eval::Parameters.sq_score_scaling[bishop] = engine_params[3]->get();
-  eval::Parameters.sq_score_scaling[rook] = engine_params[4]->get();
-  eval::Parameters.sq_score_scaling[queen] = engine_params[5]->get();
-  eval::Parameters.sq_score_scaling[king] = engine_params[6]->get();
-  eval::Parameters.mobility_scaling[knight] = engine_params[7]->get();
-  eval::Parameters.mobility_scaling[bishop] = engine_params[8]->get();
-  eval::Parameters.mobility_scaling[rook] = engine_params[9]->get();
-  eval::Parameters.mobility_scaling[queen] = engine_params[10]->get();
-  eval::Parameters.attack_scaling[knight] = engine_params[11]->get();
-  eval::Parameters.attack_scaling[bishop] = engine_params[12]->get();
-  eval::Parameters.attack_scaling[rook] = engine_params[13]->get();
-  eval::Parameters.attack_scaling[queen] = engine_params[14]->get();
-
+  // update tuneable params in position class
+  p.params.tempo = new_params[0];
+  p.params.sq_score_scaling[pawn] = new_params[1];
+  p.params.sq_score_scaling[knight] = new_params[2];
+  p.params.sq_score_scaling[bishop] = new_params[3];
+  p.params.sq_score_scaling[rook] = new_params[4];
+  p.params.sq_score_scaling[queen] = new_params[5];
+  p.params.sq_score_scaling[king] = new_params[6];
+  p.params.mobility_scaling[knight] = new_params[7];
+  p.params.mobility_scaling[bishop] = new_params[8];
+  p.params.mobility_scaling[rook] = new_params[9];
+  p.params.mobility_scaling[queen] = new_params[10];
+  p.params.attack_scaling[knight] = new_params[11];
+  p.params.attack_scaling[bishop] = new_params[12];
+  p.params.attack_scaling[rook] = new_params[13];
+  p.params.attack_scaling[queen] = new_params[14];
+  
   ttable.clear();
   mtable.clear();
   ptable.clear();
+
   scores S;
   Perft perft;
-  unsigned depth = 8;
-  double minimized_score = perft.bench(depth, S, true);
+  unsigned depth = 10;
+  double minimized_score = perft.pbil_search(p, depth, S, true);
 
 
-  // log best param set thus far
+  // log best param set thus far (under lock)
   if (minimized_score < pbil_score::best_score) {
+    std::unique_lock<std::mutex> lock(mtx);
+
     pbil_score::best_score = minimized_score;
-    /*
-    std::cout << " ==== new pbil best score ===" << std::endl;
-    std::cout << "best: " << minimized_score << " acc: " << S.acc_score << " MNPS: " << S.mnps_score << std::endl;
-    for (const auto& p : engine_params) {
-      p->print();
-    }
-    std::cout << std::endl;
-    std::cout << std::endl;
-    */
-    update_options_file();
+
+    update_options_file(p);
   }
-
-
 
   return std::abs(minimized_score);
 
 }
 
 
-
 inline void Perft::auto_tune() {
-  std::vector<parameter<float>*> engine_params{
-    eval::Parameters.pt.get(),
-    eval::Parameters.sp.get(),
-    eval::Parameters.sn.get(),
-    eval::Parameters.sb.get(),
-    eval::Parameters.sr.get(),
-    eval::Parameters.sq.get(),
-    eval::Parameters.sk.get(),
-    eval::Parameters.nm.get(),
-    eval::Parameters.bm.get(),
-    eval::Parameters.rm.get(),
-    eval::Parameters.qm.get(),
-    eval::Parameters.na.get(),
-    eval::Parameters.ba.get(),
-    eval::Parameters.ra.get(),
-    eval::Parameters.qa.get()
+
+  pbil_score::engine_params = eval::Parameters;
+  pbil_score::tuneable_params =
+  {
+    eval::Parameters.tempo,
+    eval::Parameters.sq_score_scaling[pawn],
+    eval::Parameters.sq_score_scaling[knight],
+    eval::Parameters.sq_score_scaling[bishop],
+    eval::Parameters.sq_score_scaling[rook],
+    eval::Parameters.sq_score_scaling[queen],
+    eval::Parameters.sq_score_scaling[king],
+    eval::Parameters.mobility_scaling[knight],
+    eval::Parameters.mobility_scaling[bishop],
+    eval::Parameters.mobility_scaling[rook],
+    eval::Parameters.mobility_scaling[queen],
+    eval::Parameters.attack_scaling[knight],
+    eval::Parameters.attack_scaling[bishop],
+    eval::Parameters.attack_scaling[rook],
+    eval::Parameters.attack_scaling[queen]   
   };
+ 
 
-  pbil_score::E = util::make_unique<epd>("A:\\code\\chess\\sbchess\\tuning\\epd\\tests.txt");
+  pbil_score::E = util::make_unique<epd>("A:\\code\\chess\\sbchess\\tuning\\epd\\mini-test.txt");
 
 
 
-  size_t length = engine_params.size() * 32;
+  size_t length = pbil_score::tuneable_params.size() * 32;
   pbil_score::iteration = 0;
   pbil_score::best_score = std::numeric_limits<double>::max();
 
@@ -391,8 +383,8 @@ inline void Perft::auto_tune() {
   pbil p(10, length, 0.7, 0.15, 0.3, 0.05, 1e-6);
 
   std::vector<int> i0;
-  for (auto& p : engine_params) {
-    std::bitset<sizeof(float) * CHAR_BIT> bits = p->get_bits();
+  for (auto& p : pbil_score::tuneable_params) {
+    std::bitset<sizeof(float) * CHAR_BIT> bits = *reinterpret_cast<unsigned long*>(&p);
     for (size_t i = 0; i < bits.size(); ++i) {
       i0.push_back(bits[i]);
     }
@@ -403,11 +395,10 @@ inline void Perft::auto_tune() {
 }
 
 
-inline double Perft::bench(const int& depth, scores& S, bool silent) {
+inline double Perft::pbil_search(position& p, const int& depth, scores& S, bool silent) {
 
   std::vector<epd_entry> positions = pbil_score::E->get_positions();
 
-  position p;
 
   limits lims;
   memset(&lims, 0, sizeof(limits));
@@ -416,7 +407,7 @@ inline double Perft::bench(const int& depth, scores& S, bool silent) {
   S.correct = 0;
   S.total = positions.size();
   size_t counter = 1;
-  for (const epd_entry& e : positions) {    
+  for (const epd_entry& e : positions) {
 
     std::cout << "iteration: " << pbil_score::iteration << " pos: " << counter << "/" << positions.size() << " best score: " << pbil_score::best_score << "\r" << std::flush;
     std::istringstream fen(e.pos);
@@ -451,9 +442,84 @@ inline double Perft::bench(const int& depth, scores& S, bool silent) {
   S.mnps_score = avg_nps / 500.0f;
   S.acc_score = ((float)(S.correct / (float)S.total));
   double minimized_score = (1.0f - (0.90 * S.acc_score + 0.10 * S.mnps_score));
-  //std::cout << "\n correct: " << S.correct << " total: " << S.total << std::endl;
-  //std::cout << " MNPS: " << nps_score << " acc: " << accuracy_score << std::endl;
+
 
   return minimized_score;
 }
+
+inline void Perft::bench(const int& depth, bool silent) {
+
+  pbil_score::E = util::make_unique<epd>("A:\\code\\chess\\sbchess\\tuning\\epd\\mini-test.txt");
+  std::vector<epd_entry> positions = pbil_score::E->get_positions();
+  std::vector<std::string> csv_data;
+
+  limits lims;
+  memset(&lims, 0, sizeof(limits));
+  lims.depth = depth;
+
+  position p;
+  scores S;
+
+  S.correct = 0;
+  S.total = positions.size();
+  size_t counter = 1;
+
+  for (const epd_entry& e : positions) {
+
+    std::cout << "test pos: " << counter << "/" << positions.size() << " correct: " << S.correct << "/" << S.total << "\r" << std::flush;
+    std::istringstream fen(e.pos);
+    ++counter;
+
+    ttable.clear();
+    mtable.clear();
+    ptable.clear();
+
+    p.setup(fen);
+
+    Search::start(p, lims, silent);
+
+
+    S.correct += (p.bestmove == e.bestmove);
+    S.times_ms.push_back(p.elapsed_ms);
+    S.nodes.push_back(p.nodes());
+    S.qnodes.push_back(p.qnodes());
+  }
+
+  // avg nps
+  double avg_nodes = 0;
+  double avg_qnodes = 0;
+  double avg_time_ms = 0;
+  double avg_nps = 0;
+
+  for (auto& n : S.nodes) { avg_nodes += n; }
+  for (auto& qn : S.qnodes) { avg_qnodes += qn; }
+  avg_nodes /= (S.nodes.size());
+  avg_qnodes /= (S.qnodes.size());
+
+  for (auto& t : S.times_ms) { avg_time_ms += t; }
+  avg_time_ms /= S.times_ms.size();
+  avg_nps = (avg_nodes + avg_qnodes) / avg_time_ms * 1000.0f;
+
+  // convert to Mega nodes / sec
+  avg_nps /= 1e6;
+  S.acc_score = ((float)(S.correct / (float)S.total));
+
+
+  std::ofstream result_csv("mini-test-result.csv", std::ios_base::app);
+
+  result_csv << "\n";
+  result_csv << "depth, acc, corr, total, avg ms, avg nodes, avg qnodes, avg MNPS\n";
+  result_csv <<
+    depth << "," <<
+    S.acc_score << "," <<
+    S.correct << "," <<
+    S.total << "," <<
+    avg_time_ms << "," <<
+    avg_nodes << "," <<
+    avg_qnodes << "," <<
+    avg_nps << "\n";
+
+  result_csv.close();
+}
+
 #endif

@@ -13,8 +13,9 @@
 #include "types.h"
 
 struct Move;
-class Movegen;
 class position;
+class Movegen;
+
 
 struct move_history {
   std::array<std::array<std::array<int, squares>, squares>, colors> history;  
