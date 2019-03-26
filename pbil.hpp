@@ -152,7 +152,7 @@ void pbil::optimize(T&& residual, Args&&... args) {
   while (best_err >= etol) {
     
     //educate();
-    educate(0, 30);
+    educate(-100, 100);
             
     if (start) {
       start = false;

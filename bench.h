@@ -270,6 +270,23 @@ inline void update_options_file(const position& p) {
   opts->set<float>("bishop as", p.params.attack_scaling[bishop]);
   opts->set<float>("rook as", p.params.attack_scaling[rook]);
   opts->set<float>("queen as", p.params.attack_scaling[queen]);
+  opts->set<float>("castle pen", p.params.uncastled_penalty);
+  opts->set<float>("knight ak", p.params.attacker_weight[knight]);
+  opts->set<float>("bishop ak", p.params.attacker_weight[bishop]);
+  opts->set<float>("rook ak", p.params.attacker_weight[rook]);
+  opts->set<float>("queen ak", p.params.attacker_weight[queen]);
+  opts->set<float>("bishop pin", p.params.pinned_scaling[bishop]);
+  opts->set<float>("rook pin", p.params.pinned_scaling[rook]);
+  opts->set<float>("queen pin", p.params.pinned_scaling[queen]);
+  opts->set<float>("king s1", p.params.king_safe_sqs[0]);
+  opts->set<float>("king s2", p.params.king_safe_sqs[1]);
+  opts->set<float>("king s3", p.params.king_safe_sqs[2]);
+  opts->set<float>("king s4", p.params.king_safe_sqs[3]);
+  opts->set<float>("king s5", p.params.king_safe_sqs[4]);
+  opts->set<float>("king s6", p.params.king_safe_sqs[5]);
+  opts->set<float>("king s7", p.params.king_safe_sqs[6]);
+  opts->set<float>("king s8", p.params.king_safe_sqs[7]);
+
   opts->save_param_file();
 }
 
@@ -323,6 +340,22 @@ inline double pbil_residual(const std::vector<int>& new_bits) {
   p.params.attack_scaling[bishop] = new_params[12];
   p.params.attack_scaling[rook] = new_params[13];
   p.params.attack_scaling[queen] = new_params[14];
+  p.params.uncastled_penalty = new_params[15];
+  p.params.attacker_weight[knight] = new_params[16];
+  p.params.attacker_weight[bishop] = new_params[17];
+  p.params.attacker_weight[rook] = new_params[18];
+  p.params.attacker_weight[queen] = new_params[19];
+  p.params.pinned_scaling[bishop] = new_params[20];
+  p.params.pinned_scaling[rook] = new_params[21];
+  p.params.pinned_scaling[queen] = new_params[22];
+  p.params.king_safe_sqs[0] = new_params[23];
+  p.params.king_safe_sqs[1] = new_params[24];
+  p.params.king_safe_sqs[2] = new_params[25];
+  p.params.king_safe_sqs[3] = new_params[26];
+  p.params.king_safe_sqs[4] = new_params[27];
+  p.params.king_safe_sqs[5] = new_params[28];
+  p.params.king_safe_sqs[6] = new_params[29];
+  p.params.king_safe_sqs[7] = new_params[30];
   
   ttable.clear();
   mtable.clear();
@@ -330,7 +363,7 @@ inline double pbil_residual(const std::vector<int>& new_bits) {
 
   scores S;
   Perft perft;
-  unsigned depth = 10;
+  unsigned depth = 8;
   double minimized_score = perft.pbil_search(p, depth, S, true);
 
 
@@ -367,7 +400,23 @@ inline void Perft::auto_tune() {
     eval::Parameters.attack_scaling[knight],
     eval::Parameters.attack_scaling[bishop],
     eval::Parameters.attack_scaling[rook],
-    eval::Parameters.attack_scaling[queen]   
+    eval::Parameters.attack_scaling[queen],
+    eval::Parameters.uncastled_penalty,
+    eval::Parameters.attacker_weight[knight],
+    eval::Parameters.attacker_weight[bishop],
+    eval::Parameters.attacker_weight[rook],
+    eval::Parameters.attacker_weight[queen],
+    eval::Parameters.pinned_scaling[bishop],
+    eval::Parameters.pinned_scaling[rook],
+    eval::Parameters.pinned_scaling[queen],
+    eval::Parameters.king_safe_sqs[0],
+    eval::Parameters.king_safe_sqs[1],
+    eval::Parameters.king_safe_sqs[2],
+    eval::Parameters.king_safe_sqs[3],
+    eval::Parameters.king_safe_sqs[4],
+    eval::Parameters.king_safe_sqs[5],
+    eval::Parameters.king_safe_sqs[6],
+    eval::Parameters.king_safe_sqs[7]
   };
  
 
@@ -380,7 +429,7 @@ inline void Perft::auto_tune() {
   pbil_score::best_score = std::numeric_limits<double>::max();
 
   // was 300
-  pbil p(10, length, 0.7, 0.15, 0.3, 0.05, 1e-6);
+  pbil p(30, length, 0.7, 0.15, 0.3, 0.05, 1e-6);
 
   std::vector<int> i0;
   for (auto& p : pbil_score::tuneable_params) {

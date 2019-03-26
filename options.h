@@ -100,7 +100,7 @@ inline bool options::save_param_file() {
   for (const auto& p : opts) {
     std::string line = p.first + ":" + p.second + "\n";
     param_file << line; 
-    std::cout << "saved " << line << " into engine.conf " << std::endl;
+    //std::cout << "saved " << line << " into engine.conf " << std::endl;
   }
   param_file.close();
   return true;
@@ -121,15 +121,32 @@ inline void options::set_engine_params() {
     else if (matches(p.first, "queen ss")) Parameters.sq_score_scaling[queen] = value<float>("queen ss");
     else if (matches(p.first, "king ss")) Parameters.sq_score_scaling[king] = value<float>("king ss");
     else if (matches(p.first, "pawn ms")) Parameters.mobility_scaling[pawn] = value<float>("pawn ms");
-    else if (matches(p.first, "knight ms")) Parameters.mobility_scaling[pawn] = value<float>("knight ms");
-    else if (matches(p.first, "bishop ms")) Parameters.mobility_scaling[pawn] = value<float>("bishop ms");
-    else if (matches(p.first, "rook ms")) Parameters.mobility_scaling[pawn] = value<float>("rook ms");
-    else if (matches(p.first, "queen ms")) Parameters.mobility_scaling[pawn] = value<float>("queen ms");
+    else if (matches(p.first, "knight ms")) Parameters.mobility_scaling[knight] = value<float>("knight ms");
+    else if (matches(p.first, "bishop ms")) Parameters.mobility_scaling[bishop] = value<float>("bishop ms");
+    else if (matches(p.first, "rook ms")) Parameters.mobility_scaling[rook] = value<float>("rook ms");
+    else if (matches(p.first, "queen ms")) Parameters.mobility_scaling[queen] = value<float>("queen ms");
     else if (matches(p.first, "pawn as")) Parameters.attack_scaling[pawn] = value<float>("pawn as");
-    else if (matches(p.first, "knight as")) Parameters.attack_scaling[pawn] = value<float>("knight as");
-    else if (matches(p.first, "bishop as")) Parameters.attack_scaling[pawn] = value<float>("bishop as");
-    else if (matches(p.first, "rook as")) Parameters.attack_scaling[pawn] = value<float>("rook as");
-    else if (matches(p.first, "queen as")) Parameters.attack_scaling[pawn] = value<float>("queen as");
+    else if (matches(p.first, "knight as")) Parameters.attack_scaling[knight] = value<float>("knight as");
+    else if (matches(p.first, "bishop as")) Parameters.attack_scaling[bishop] = value<float>("bishop as");
+    else if (matches(p.first, "rook as")) Parameters.attack_scaling[rook] = value<float>("rook as");
+    else if (matches(p.first, "queen as")) Parameters.attack_scaling[queen] = value<float>("queen as");
+    else if (matches(p.first, "castle pen")) Parameters.uncastled_penalty = value<float>("castle pen");
+    else if (matches(p.first, "pawn ak")) Parameters.attacker_weight[pawn] = value<float>("pawn ak");
+    else if (matches(p.first, "knight ak")) Parameters.attacker_weight[knight] = value<float>("knight ak");
+    else if (matches(p.first, "bishop ak")) Parameters.attacker_weight[bishop] = value<float>("bishop ak");
+    else if (matches(p.first, "rook ak")) Parameters.attacker_weight[rook] = value<float>("rook ak");
+    else if (matches(p.first, "queen ak")) Parameters.attacker_weight[queen] = value<float>("queen ak");
+    else if (matches(p.first, "bishop pin")) Parameters.pinned_scaling[bishop] = value<float>("bishop pin");
+    else if (matches(p.first, "rook pin")) Parameters.pinned_scaling[rook] = value<float>("rook pin");
+    else if (matches(p.first, "queen pin")) Parameters.pinned_scaling[queen] = value<float>("queen pin");
+    else if (matches(p.first, "king s1")) Parameters.king_safe_sqs[0] = value<float>("king s1");
+    else if (matches(p.first, "king s2")) Parameters.king_safe_sqs[1] = value<float>("king s2");
+    else if (matches(p.first, "king s3")) Parameters.king_safe_sqs[2] = value<float>("king s3");
+    else if (matches(p.first, "king s4")) Parameters.king_safe_sqs[3] = value<float>("king s4");
+    else if (matches(p.first, "king s5")) Parameters.king_safe_sqs[4] = value<float>("king s5");
+    else if (matches(p.first, "king s6")) Parameters.king_safe_sqs[5] = value<float>("king s6");
+    else if (matches(p.first, "king s7")) Parameters.king_safe_sqs[6] = value<float>("king s7");
+    else if (matches(p.first, "king s8")) Parameters.king_safe_sqs[7] = value<float>("king s8");    
   }
 }
 

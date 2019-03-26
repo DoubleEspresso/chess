@@ -94,7 +94,7 @@ void position::setup(std::istringstream& fen) {
   ifo.incheck = is_attacked(ifo.ks[stm], stm, Color(stm^1));
   
   ifo.checkers = (in_check() ? attackers_of(ifo.ks[stm], Color(stm^1)) : 0ULL);
-  ifo.pinned = pinned();
+  ifo.pinned[stm] = pinned();
 }
 
 bool position::is_draw() {
@@ -221,7 +221,7 @@ void position::do_move(const Move& m) {
   
   ifo.incheck = is_attacked(king_square(), ifo.stm, us);
   ifo.checkers = (ifo.incheck ? attackers_of(king_square(), Color(ifo.stm^1)) : 0ULL);
-  ifo.pinned = pinned();
+  ifo.pinned[ifo.stm] = pinned();
   ++nodes_searched;
 }
 
@@ -603,7 +603,7 @@ bool position::is_legal(const Move& m) {
     (color_on(t) != them || piece_on(t) == Piece::no_piece)) return false;
   
   // pinned
-  if ((bitboards::squares[f] & ifo.pinned) && !util::aligned(ks, f, t)) return false;
+  if ((bitboards::squares[f] & ifo.pinned[ifo.stm]) && !util::aligned(ks, f, t)) return false;
   
   // ep can uncover a discovered check
   if (mt == ep) {

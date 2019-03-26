@@ -26,7 +26,7 @@ struct Move;
 
 struct info {
   U64 checkers;
-  U64 pinned;
+  U64 pinned[2];
   U64 key;
   U64 mkey;
   U64 pawnkey;
@@ -174,6 +174,9 @@ class position {
 
   template<Color c>
   inline bool has_castled() const { return ifo.has_castled[c]; }
+
+  template<Color c>
+  inline U64 pinned() const { return ifo.pinned[c];  }
 
 
   // position info access wrappers

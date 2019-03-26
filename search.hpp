@@ -307,6 +307,12 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     !stack->null_search &&
     static_eval != ninf);
 
+  // 0. futility pruning
+  //if ( forward_prune &&
+  //  depth <= 1 &&
+  //  static_eval > mated_max_ply &&
+  //  static_eval + 1050 < alpha) return static_eval;
+
   // 0. razoring
   float rm = razor_margin(depth);
   if (depth <= 2 &&
@@ -355,8 +361,9 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       depth >= (pv_type ? 6 : 4) &&
       (pv_type || static_eval + 50 >= beta)) {
     
-    int R = 2 + depth / 6;
-    int iid = depth - R;
+    //int16 R = (depth >= 6 ? depth / 2 : 2);
+    int16 R = 2 + depth / 6;
+    int16 iid = depth - R;
     
     stack->null_search = true;
     
@@ -473,6 +480,19 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       continue;
     }
 
+    // futility pruning
+    if (!pv_type &&
+      move.type == Movetype::quiet &&
+      move != ttm &&
+      move != stack->killers[0] &&
+      move != stack->killers[1] &&
+      move != stack->killers[2] &&
+      move != stack->killers[3] &&
+      !in_check &&
+      depth <= 1 &&
+      best_score > mated_max_ply &&
+      best_score + 950 < alpha) continue;
+
 
     // continue if another thread is already searching this position
     if (depth > thread_depth && moves_searched > 0 && is_searching(p, move)) {
@@ -500,10 +520,10 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       int16 LMR = newdepth;
       if (move.type == quiet &&
         move != ttm &&
-        //move != stack->killers[0] &&
-        //move != stack->killers[1] &&
-        //move != stack->killers[2] &&
-        //move != stack->killers[3] &&
+        move != stack->killers[0] &&
+        move != stack->killers[1] &&
+        move != stack->killers[2] &&
+        move != stack->killers[3] &&
         !in_check &&
         !gives_check &&
         //newdepth >= 2 &&
@@ -543,6 +563,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
                   
       if (score >= beta) {
 	
+        //deferred = 0; // skip deferred moves (logical - but regression testing shows it plays worse?)
         if (best_move.type == Movetype::quiet) {
           p.stats_update(best_move,
             (stack - 1)->curr_move,
@@ -575,6 +596,20 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     
   // re-try deferred moves (already passed legality check)
   for (size_t i = 0; i < deferred; ++i) {
+
+    // futility pruning
+    if (!pv_type &&
+      stack->deferred_moves[i].type == Movetype::quiet &&
+      stack->deferred_moves[i] != ttm &&
+      stack->deferred_moves[i] != stack->killers[0] &&
+      stack->deferred_moves[i] != stack->killers[1] &&
+      stack->deferred_moves[i] != stack->killers[2] &&
+      stack->deferred_moves[i] != stack->killers[3] &&
+      !in_check &&
+      depth <= 1 &&
+      best_score > mated_max_ply &&
+      best_score + 950 < alpha) continue;
+    
     
     p.do_move(stack->deferred_moves[i]);
 
@@ -594,10 +629,10 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       if (move.type == quiet &&
         !in_check &&
         move != ttm &&
-        //move != stack->killers[0] &&
-        //move != stack->killers[1] &&
-        //move != stack->killers[2] &&
-        //move != stack->killers[3] &&
+        move != stack->killers[0] &&
+        move != stack->killers[1] &&
+        move != stack->killers[2] &&
+        move != stack->killers[3] &&
         !gives_check &&
         //newdepth >= 2 &&
         best_score <= alpha) {

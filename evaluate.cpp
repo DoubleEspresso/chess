@@ -166,7 +166,7 @@ namespace {
       if (kattks) {
         ei.kattackers[c][knight]++; // kattackers of "other" king
         ei.kattk_points[c] |= kattks; // attack points of "other" king
-        score += p.params.knight_king[bits::count(kattks)];
+        score += p.params.knight_king[std::min(2, bits::count(kattks))];
       }
 
     }    
@@ -180,9 +180,14 @@ namespace {
     Color them = Color(c ^ 1);
     U64 enemies = ei.pieces[them];
     U64 pawn_targets = ei.weak_pawns[them];
+   // bool dark_sq = false;
+   // bool light_sq = false;
 
     for (Square s = *bishops; s != no_square; s = *++bishops) {
       score += p.params.sq_score_scaling[bishop] * square_score<c>(bishop, s);
+
+     // if (bitboards::squares[s] & bitboards::colored_sqs[white]) light_sq = true;
+     // if (bitboards::squares[s] & bitboards::colored_sqs[black]) dark_sq = true;
 
       // mobility      
       U64 mvs = magics::attacks<bishop>(ei.all_pieces, s);
@@ -209,10 +214,11 @@ namespace {
       if (kattks) {
         ei.kattackers[c][bishop]++;
         ei.kattk_points[c] |= kattks;
-        score += p.params.bishop_king[bits::count(kattks)];
+        score += p.params.bishop_king[std::min(2, bits::count(kattks))];
       }      
     }
-    
+    //if (light_sq && dark_sq) score += p.params.doubled_bishop_bonus;
+
     return score;
   }
   
@@ -262,7 +268,7 @@ namespace {
       if (kattks) {
         ei.kattackers[c][rook]++;
         ei.kattk_points[c] |= kattks;
-        score += p.params.rook_king[bits::count(kattks)];
+        score += p.params.rook_king[std::min(4, bits::count(kattks))];
       }
       
     }
@@ -316,7 +322,7 @@ namespace {
       if (kattks) {
         ei.kattackers[c][queen]++;
         ei.kattk_points[c] |= kattks;
-        score += p.params.queen_king[bits::count(kattks)];
+        score += p.params.queen_king[std::min(6, bits::count(kattks))];
       }            
     }
     
@@ -352,17 +358,17 @@ namespace {
 
         score -= attacker_score;
 
-        int num_safe = bits::count(mvs);
-        score += attacker_score;// num_attackers;
+        // number of safe squares
+        score += p.params.king_safe_sqs[std::min(7, bits::count(mvs))];
       }
     
-      //// reward having "good" pawns around the king
+      // pawns around king bonus
       U64 pawn_shelter = ei.pe->king[c] & ei.kmask[c];
-      if (pawn_shelter) {
-        int n = std::min(3, bits::count(pawn_shelter)) - 1;
-        score += p.params.king_shelter[n];
-      }
-      
+      int n = 0;
+      if (pawn_shelter) n = std::min(3, bits::count(pawn_shelter));
+      score += p.params.king_shelter[n];
+
+
       // reward for castling
       if (p.can_castle<c>() && !p.has_castled<c>()) score -= p.params.uncastled_penalty;
 

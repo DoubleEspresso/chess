@@ -63,10 +63,18 @@ struct parameters {
     sq_score_scaling = o.sq_score_scaling;
     mobility_scaling = o.mobility_scaling;
     attack_scaling = o.attack_scaling;
+    attacker_weight = o.attacker_weight;
+    king_shelter = o.king_shelter;
+    king_safe_sqs = o.king_safe_sqs;
+    uncastled_penalty = o.uncastled_penalty;
+    pinned_scaling = o.pinned_scaling;
     return *this;
   }
 
   float tempo = 1.0f;
+
+  // pawn evaluation parameters
+
 
   // square score parameters
   std::vector<float> sq_score_scaling{ 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
@@ -87,10 +95,16 @@ struct parameters {
   const float bishop_king[3] = { 1.0, 2.0, 3.0 };
   const float rook_king[5] = { 1.0, 2.0, 3.0, 3.0, 4.0 };
   const float queen_king[7] = { 1.0, 3.0, 3.0, 4.0, 4.0, 5.0, 6.0 };
-  const float attacker_weight[5] = { 0.5, 4.0, 8.0, 16.0, 32.0 };
-  const float king_shelter[3] = { -2.0, 0.0, 2.0 };
-  const float uncastled_penalty = 5.0f;
+  std::vector<float> attacker_weight { 0.5f, 4.0f, 8.0f, 16.0f, 32.0f };
+  std::vector<float> king_shelter { -3.0f, -2.0f, 2.0f, 3.0f }; // 0,1,2,3 pawns
+  std::vector<float> king_safe_sqs{ -4.0f, -2.0f, -1.0f, 0.0f, 0.0f, 1.0f, 2.0f, 4.0f };
+  float uncastled_penalty = 5.0f;
   const float connected_rook_bonus = 4.0f;
+  const float doubled_bishop_bonus = 3.0f;
+
+
+  // piece pinned scale factors
+  std::vector<float> pinned_scaling{1.0f, 1.0f, 3.0f, 4.0f, 5.0f };
 
 };
 
