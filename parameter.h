@@ -90,6 +90,10 @@ struct parameters {
   const float rook_attks[5] = { 1.5f, 4.5f, 4.725f, 7.2f, 13.65f };
   const float queen_attks[5] = { 0.75f, 2.25f, 2.3625f, 3.6f, 6.825f };
 
+  // piece pinned scale factors
+  std::vector<float> pinned_scaling{ 1.0f, 1.0f, 2.0f, 3.0f, 4.0f };
+
+
   // king harassment tables
   const float knight_king[3] = { 1.0, 2.0, 3.0 };
   const float bishop_king[3] = { 1.0, 2.0, 3.0 };
@@ -100,12 +104,14 @@ struct parameters {
   std::vector<float> king_safe_sqs{ -4.0f, -2.0f, -1.0f, 0.0f, 0.0f, 1.0f, 2.0f, 4.0f };
   float uncastled_penalty = 5.0f;
   const float connected_rook_bonus = 4.0f;
-  const float doubled_bishop_bonus = 3.0f;
+  const float doubled_bishop_bonus = 2.0f;
+  const float open_file_bonus = 1.0f;
 
-
-  // piece pinned scale factors
-  std::vector<float> pinned_scaling{1.0f, 1.0f, 3.0f, 4.0f, 5.0f };
-
+  // pawn params
+  const float doubled_pawn_penalty = 4.0f;
+  const float backward_pawn_penalty = 2.0f;
+  const float isolated_pawn_penalty = 4.0f;
+  const float passed_pawn_bonus = 4.0f;
 };
 
 

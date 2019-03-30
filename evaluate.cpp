@@ -143,9 +143,12 @@ namespace {
       
       // mobility
       U64 mvs = bitboards::nmask[s];
-      U64 mobility = (mvs & ei.empty) & (~ei.pe->attacks[them]);
-      score += p.params.mobility_scaling[knight] * knight_mobility(bits::count(mobility));
-     
+
+      if (!(bitboards::squares[s] & p.pinned<c>())) {
+        U64 mobility = (mvs & ei.empty) & (~ei.pe->attacks[them]);
+        score += p.params.mobility_scaling[knight] * knight_mobility(bits::count(mobility));
+      }
+
       // attacks      
       U64 attks = (mvs & enemies) & (~pawn_targets);      
       U64 pattks = (mvs & pawn_targets);
@@ -180,20 +183,25 @@ namespace {
     Color them = Color(c ^ 1);
     U64 enemies = ei.pieces[them];
     U64 pawn_targets = ei.weak_pawns[them];
-   // bool dark_sq = false;
-   // bool light_sq = false;
+    bool dark_sq = false;
+    bool light_sq = false;
 
     for (Square s = *bishops; s != no_square; s = *++bishops) {
       score += p.params.sq_score_scaling[bishop] * square_score<c>(bishop, s);
 
-     // if (bitboards::squares[s] & bitboards::colored_sqs[white]) light_sq = true;
-     // if (bitboards::squares[s] & bitboards::colored_sqs[black]) dark_sq = true;
+      if (bitboards::squares[s] & bitboards::colored_sqs[white]) light_sq = true;
+      if (bitboards::squares[s] & bitboards::colored_sqs[black]) dark_sq = true;
+
 
       // mobility      
       U64 mvs = magics::attacks<bishop>(ei.all_pieces, s);
+
       U64 mobility = (mvs & ei.empty) & (~ei.pe->attacks[them]);
-      score += p.params.mobility_scaling[bishop] * bishop_mobility(bits::count(mobility));
-      
+      float mscore = p.params.mobility_scaling[bishop] * bishop_mobility(bits::count(mobility));
+      if ((bitboards::squares[s] & p.pinned<c>())) mscore /= p.params.pinned_scaling[bishop];
+      score += mscore;
+
+
       // attacks      
       U64 attks = (mvs & enemies) & (~pawn_targets);
       U64 pattks = (mvs & pawn_targets);
@@ -217,7 +225,7 @@ namespace {
         score += p.params.bishop_king[std::min(2, bits::count(kattks))];
       }      
     }
-    //if (light_sq && dark_sq) score += p.params.doubled_bishop_bonus;
+    if (light_sq && dark_sq) score += p.params.doubled_bishop_bonus;
 
     return score;
   }
@@ -245,8 +253,11 @@ namespace {
 
       // mobility      
       U64 mvs = magics::attacks<rook>(ei.all_pieces, s);
+
       U64 mobility = (mvs & ei.empty) & (~ei.pe->attacks[them]);
-      score += p.params.mobility_scaling[rook] * rook_mobility(bits::count(mobility));
+      float mscore = p.params.mobility_scaling[rook] * rook_mobility(bits::count(mobility));
+      if ((bitboards::squares[s] & p.pinned<c>())) mscore /= p.params.pinned_scaling[rook];
+      score += mscore;
       
       // attacks      
       U64 attks = (mvs & enemies) & (~pawn_targets);
@@ -263,6 +274,11 @@ namespace {
           p.params.rook_attks[pawn] * bits::count(pattks);
       }
       
+      // open file bonus
+      U64 column = bitboards::col[util::col(s)] & (p.get_pieces<white, pawn>() | p.get_pieces<black, pawn>());
+      if (column == 0ULL) score += p.params.open_file_bonus;
+
+
       // king harassment      
       U64 kattks = mvs & ei.kmask[them];
       if (kattks) {
@@ -296,12 +312,15 @@ namespace {
     for (Square s = *queens; s != no_square; s = *++queens) {
       score += p.params.sq_score_scaling[queen] * square_score<c>(queen, s);
 
+
       // mobility      
       U64 mvs = (magics::attacks<bishop>(ei.all_pieces, s) |
         magics::attacks<rook>(ei.all_pieces, s));
       U64 mobility = (mvs  & ei.empty) & (~ei.pe->attacks[them]);
-      score += p.params.mobility_scaling[queen] * queen_mobility(bits::count(mobility));
-      
+      float mscore = p.params.mobility_scaling[queen] * queen_mobility(bits::count(mobility));
+      if ((bitboards::squares[s] & p.pinned<c>())) mscore /= p.params.pinned_scaling[rook];
+      score += mscore;
+
       // attacks      
       U64 attks = (mvs & enemies) & (~pawn_targets);
       U64 pattks = (mvs & pawn_targets);
@@ -340,8 +359,6 @@ namespace {
     for (Square s = *kings; s != no_square; s = *++kings) {      
       score += p.params.sq_score_scaling[king] * square_score<c>(king, s);
 
-      // tempo adjustments
-      if (bitboards::squares[s] & ei.pe->attacks[them]) score -= p.params.tempo;
 
       // mobility      
       U64 mvs = ei.kmask[c] & ei.empty;

@@ -32,7 +32,7 @@ struct search_bounds {
 volatile bool slaves_start;
 std::condition_variable cv;
 search_bounds sb;
-unsigned thread_depth = 3;
+unsigned thread_depth = 133;
 volatile double elapsed = 0;
 
 struct move_entry {
@@ -81,7 +81,7 @@ void Search::start(position& p, limits& lims, bool silent) {
   Threadpool timer_thread(1);
 
   slaves_start = false;
-  bool parallel = true;
+  bool parallel = false;
   elapsed = 0;
   UCI_SIGNALS.stop = false;
 
@@ -90,6 +90,7 @@ void Search::start(position& p, limits& lims, bool silent) {
     pv.emplace_back(util::make_unique<position>(p));
     pv[i]->set_id(i);
   }
+
 
   // launch master
   U16 depth = (lims.depth > 0 ? lims.depth : 64); // maxdepth
@@ -311,7 +312,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   //if ( forward_prune &&
   //  depth <= 1 &&
   //  static_eval > mated_max_ply &&
-  //  static_eval + 1050 < alpha) return static_eval;
+  //  static_eval + 2050 < alpha) return static_eval;
 
   // 0. razoring
   float rm = razor_margin(depth);
