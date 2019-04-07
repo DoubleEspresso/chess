@@ -38,34 +38,11 @@ bool hash_table::fetch(const U64& key, hash_data& e) {
   return false;
 }
 
-
-bool hash_table::searching(const U64& key, entry& eo) {
-
-  entry * e = first_entry(key);
-
-  for (unsigned i = 0; i < cluster_size; ++i, ++e) {
-    if ((e->pkey ^ e->dkey) == key) {
-
-      if (e->is_searching()) {
-	eo = *e;
-	return true;
-      }
-    }
-    else if (e->empty()) break;
-  }
-
-  
-  e->dkey ^= search_bit;
-  e->pkey = key ^ e->dkey;
-  eo = *e;
-  return false;
-}
-
 void hash_table::save(const U64& key,
 		      const U8& depth,
 		      const U8& bound,
 		      const Move& m,
-		      const int16& score) {
+		      const int16& score, const bool& pv_node) {
   
   entry * e, *replace;
 
@@ -73,12 +50,14 @@ void hash_table::save(const U64& key,
 
   for (unsigned i = 0; i < cluster_size; ++i, ++e) {
     
+    // empty entry or hash collision
     if (e->empty() || ((e->pkey) ^ (e->dkey)) == key ) {
       replace = e;
       break;      
     }
 
-    if (e->depth() > depth) {
+    // nonempty and keys differ 
+    if (e->depth() > depth && pv_node) {
       replace = e;
     }    
   }

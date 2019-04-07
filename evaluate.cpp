@@ -24,6 +24,9 @@ namespace {
   template<Color c> float eval_rooks(const position& p, einfo& ei);
   template<Color c> float eval_queens(const position& p, einfo& ei);
   template<Color c> float eval_king(const position& p, einfo& ei);
+  template<Color c> float eval_space(const position& p, einfo& ei);
+  template<Color c> float eval_center(const position& p, einfo& ei);
+
   //template<Color c> float eval_material(const position&p, info& ei);
 
   template<Color c> float eval_kpk(const position& p, einfo& ei);
@@ -84,7 +87,12 @@ namespace {
     ei.weak_pawns[black] = ei.pe->doubled[black] | ei.pe->isolated[black];
     ei.kmask[white] = bitboards::kmask[p.king_square(white)];
     ei.kmask[black] = bitboards::kmask[p.king_square(black)];
+    ei.central_pawns[white] = p.get_pieces<white, pawn>() & bitboards::big_center_mask;
+    ei.central_pawns[black] = p.get_pieces<black, pawn>() & bitboards::big_center_mask;
     
+    U64 all_center_pawns = ei.central_pawns[white] | ei.central_pawns[black];
+    ei.closed_center = bits::count(all_center_pawns) > 4;
+
     // init score    
     score += ei.pe->score;
     score += ei.me->score;    
@@ -115,7 +123,9 @@ namespace {
     score += (eval_rooks<white>(p, ei) - eval_rooks<black>(p, ei));
     score += (eval_queens<white>(p, ei) - eval_queens<black>(p, ei));
     score += (eval_king<white>(p, ei) - eval_king<black>(p, ei));
-    
+    score += (eval_space<white>(p, ei) - eval_space<black>(p, ei));
+    score += (eval_center<white>(p, ei) - eval_center<black>(p, ei));
+
     return p.to_move() == white ? score : -score;
   }
 
@@ -201,6 +211,8 @@ namespace {
       if ((bitboards::squares[s] & p.pinned<c>())) mscore /= p.params.pinned_scaling[bishop];
       score += mscore;
 
+      // closed center
+      //if (!ei.closed_center) score += p.params.bishop_open_center_bonus;
 
       // attacks      
       U64 attks = (mvs & enemies) & (~pawn_targets);
@@ -398,9 +410,46 @@ namespace {
     return score;
   }
 
+
+  template<Color c> float eval_space(const position& p, einfo& ei) {
+    float score = 0;
+
+    U64 pawns = p.get_pieces<c, pawn>();
+    U64 doubled = ei.pe->doubled[c];
+    U64 isolated = ei.pe->isolated[c];
+
+    // remove doubled/isolated pawns
+    pawns &= ~(doubled | isolated);
+
+    U64 space = 0ULL;
+    while (pawns) {
+      int s = bits::pop_lsb(pawns);
+      space |= util::squares_behind(bitboards::col[util::col(s)], c, s);
+    }
+    
+    space &= (bitboards::col[Col::C] | bitboards::col[Col::D] | 
+      bitboards::col[Col::E] | bitboards::col[Col::F]);
+
+
+    score += bits::count(space) / 2.0f;
+    
+
+    return score;
+  }
   
 
+  template<Color c> float eval_center(const position& p, einfo& ei) {
+    float score = 0;
 
+    score += bits::count(ei.central_pawns[c]) / 2.0f;
+
+
+    return score;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // endgame evaluations
+  ////////////////////////////////////////////////////////////////////////////////
   template<Color c> float eval_kpk(const position& p, einfo& ei) {
     float score = 0;
     p.print();
@@ -427,6 +476,8 @@ namespace {
     return score;
   }
 }
+
+
 
 
 

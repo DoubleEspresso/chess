@@ -15,6 +15,8 @@ namespace bitboards {
   U64 rmask[64]; // rook mask (outer board edges are trimmed)
   U64 battks[64];
   U64 rattks[64];
+  U64 small_center_mask;
+  U64 big_center_mask;
   U64 squares[64];
   U64 diagonals[64];
   U64 between[64][64];
@@ -67,7 +69,13 @@ void bitboards::load() {
     }
   }
 
+  // central control masks
+  big_center_mask = squares[C3] | squares[D3] | squares[E3] | squares[F3] |
+    squares[C4] | squares[D4] | squares[E4] | squares[F4] |
+    squares[C5] | squares[D5] | squares[E5] | squares[F5] |
+    squares[C6] | squares[D6] | squares[E6] | squares[F6];
 
+  small_center_mask = squares[D4] | squares[D5] | squares[E4] | squares[E5];
   
   for (Square s = A1; s <= H8; ++s) {
     
@@ -81,8 +89,8 @@ void bitboards::load() {
     for (int sd = 0; sd < 64; ++sd) {
       for (int mc = 0; mc < 64; ++mc) {
         // pv nodes
-        double small_r = log(double(sd + 1)) * log(double(mc + 1)) / 4.0;
-        double big_r = 0.25 + log(double(sd + 1)) * log(double(mc + 1)) / 3.0;
+        double small_r = log(double(sd + 1)) * log(double(mc + 1)) / 2.0;
+        double big_r = 0.25 + log(double(sd + 1)) * log(double(mc + 1)) / 1.5;
 
         // pv-nodes
         reductions[1][0][sd][mc] = int(big_r >= 1.0 ? big_r + 0.5 : 0);

@@ -106,12 +106,13 @@ struct parameters {
   const float connected_rook_bonus = 4.0f;
   const float doubled_bishop_bonus = 2.0f;
   const float open_file_bonus = 1.0f;
+  const float bishop_open_center_bonus = 1.0f;
 
   // pawn params
-  const float doubled_pawn_penalty = 4.0f;
+  const float doubled_pawn_penalty = 2.0f;
   const float backward_pawn_penalty = 2.0f;
-  const float isolated_pawn_penalty = 4.0f;
-  const float passed_pawn_bonus = 4.0f;
+  const float isolated_pawn_penalty = 1.0f;
+  const float passed_pawn_bonus = 2.0f;
 };
 
 

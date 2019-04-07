@@ -25,6 +25,8 @@ struct einfo {
   U64 empty;
   U64 kmask[2];
   U64 kattk_points[2];
+  U64 central_pawns[2];
+  bool closed_center;
   unsigned kattackers[2][5];
 };
 

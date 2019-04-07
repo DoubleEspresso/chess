@@ -198,7 +198,7 @@ double Search::estimate_max_time(position& p, limits& lims) {
 void Search::iterative_deepening(position& p, U16 depth, bool silent) {
   int16 alpha = ninf;
   int16 beta = inf;
-  int16 delta = 25;
+  int16 delta = 75;
   Score eval = ninf;
   
   const unsigned stack_size = 64 + 4;
@@ -213,7 +213,7 @@ void Search::iterative_deepening(position& p, U16 depth, bool silent) {
     stack->ply = (stack+1)->ply = 0;
     
     while (true) {
-      if (id >= 4) {
+      if (id >= 2) {
         alpha = std::max(int16(eval - delta), int16(ninf));
         beta = std::min(int16(eval + delta), int16(inf));
       }
@@ -280,7 +280,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     if (beta <= mated_score) return mated_score;
   }
 
-  //if (p.is_draw()) return Score::draw;
+  if (p.is_draw()) return Score::draw;
 
   {  // hashtable lookup
     hash_data e;
@@ -309,10 +309,10 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     static_eval != ninf);
 
   // 0. futility pruning
-  //if ( forward_prune &&
-  //  depth <= 1 &&
-  //  static_eval > mated_max_ply &&
-  //  static_eval + 2050 < alpha) return static_eval;
+  if ( forward_prune &&
+    depth <= 1 &&
+    static_eval > mated_max_ply &&
+    static_eval + 750 < alpha) return static_eval;
 
   // 0. razoring
   float rm = razor_margin(depth);
@@ -512,8 +512,8 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     // pvs  	
     Score score = Score::ninf;
     if (moves_searched < 3) {
-      score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack+1) :
-		    -search<non_pv>(p, -beta, -alpha, newdepth-1, stack+1));
+      score = Score(newdepth <= 1 ? -qsearch<pv>(p, -beta, -alpha, 0, stack+1) :
+		    -search<pv>(p, -beta, -alpha, newdepth-1, stack+1));
     }
     else {
       
@@ -538,8 +538,8 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       
       
       if (score > alpha) {
-        score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack + 1) :
-          -search<non_pv>(p, -beta, -alpha, newdepth - 1, stack + 1));
+        score = Score(newdepth <= 1 ? -qsearch<pv>(p, -beta, -alpha, 0, stack + 1) :
+          -search<pv>(p, -beta, -alpha, newdepth - 1, stack + 1));
       } 
       
 
@@ -564,7 +564,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
                   
       if (score >= beta) {
 	
-        //deferred = 0; // skip deferred moves (logical - but regression testing shows it plays worse?)
+        deferred = 0; // skip deferred moves
         if (best_move.type == Movetype::quiet) {
           p.stats_update(best_move,
             (stack - 1)->curr_move,
@@ -622,8 +622,8 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 
     Score score = Score::ninf;
     if (moves_searched < 3) {
-      score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack + 1) :
-        -search<non_pv>(p, -beta, -alpha, newdepth - 1, stack + 1));
+      score = Score(newdepth <= 1 ? -qsearch<pv>(p, -beta, -alpha, 0, stack + 1) :
+        -search<pv>(p, -beta, -alpha, newdepth - 1, stack + 1));
     }
     else {
       int16 LMR = newdepth;
@@ -645,8 +645,8 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
         -search<non_pv>(p, -alpha - 1, -alpha, LMR - 1, stack + 1));
       
       if (score > alpha) {
-        score = Score(newdepth <= 1 ? -qsearch<non_pv>(p, -beta, -alpha, 0, stack + 1) :
-          -search<non_pv>(p, -beta, -alpha, newdepth - 1, stack + 1));
+        score = Score(newdepth <= 1 ? -qsearch<pv>(p, -beta, -alpha, 0, stack + 1) :
+          -search<pv>(p, -beta, -alpha, newdepth - 1, stack + 1));
       } 
     }
 	
@@ -701,7 +701,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   
   Bound bound = (best_score >= beta ? bound_low :
     best_score <= alpha ? bound_high : bound_exact);
-  ttable.save(p.key(), depth, U8(bound), best_move, best_score);
+  ttable.save(p.key(), depth, U8(bound), best_move, best_score, pv_type);
   
   return best_score;
 }
@@ -719,6 +719,7 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
   Move ttm = {};
   ttm.type = Movetype::no_type;
   Score ttvalue = Score::ninf;
+  bool pv_type = type == pv;
 
   stack->ply = (stack-1)->ply + 1;
   U16 root_dist = stack->ply;
@@ -836,7 +837,7 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
       move != stack->killers[1] &&
       move != stack->killers[2] &&
       move != stack->killers[3] &&
-      //!pv_type &&
+      !pv_type &&
       !in_check &&
       best_score < alpha &&
       //moves_searched > 1 &&
@@ -870,10 +871,10 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
 
   /*
   Bound bound = (best_score >= beta ? bound_low :
-		 best_score <= alpha ? bound_high : bound_exact);
-  ttable.save(p.key(), depth, U8(bound), best_move, best_score);
+    best_score <= alpha ? bound_high : bound_exact);
+  ttable.save(p.key(), depth, U8(bound), best_move, best_score, pv_type);
   */
-  
+
   return best_score;  
 }
 

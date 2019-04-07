@@ -14,10 +14,9 @@ struct entry {
   
   U64 pkey;  // zobrist hashing
   U64 dkey;  // 17 bit val, 8 bit depth, 8 bit bound, 8 bit f, 8 bit t, 8 bit type
-
   
   inline bool empty() { return pkey == 0ULL && dkey == 0ULL; }
-  inline bool is_searching() { return (dkey & search_bit) == search_bit; }
+
   inline void encode(const U8& depth,
 		     const U8& bound,
 		     const Move& m,
@@ -29,14 +28,9 @@ struct entry {
     dkey |= (U64(bound) << 28); // 8 bits;
     dkey |= (U64(depth+1) << 36); // 8 bits
     dkey |= (U64(score < 0 ? -score : score) << 44); // 16 bits
-    dkey |= (U64(score < 0 ? 1ULL : 0ULL) << 60);    
+    dkey |= (U64(score < 0 ? 1ULL : 0ULL) << 60);   // free 
   }
   
-  inline void unset_searching(const U64& key) {
-    dkey ^= search_bit;
-    pkey = key ^ dkey;
-  }
-
   inline U8 depth() { return U8(dkey & 0xFF000000000); }
 };
 
@@ -94,7 +88,7 @@ class hash_table {
 	    const U8& depth,
 	    const U8& bound,
 	    const Move& m,
-	    const int16& score);
+	    const int16& score, const bool& pv_node);
   bool fetch(const U64& key, hash_data& e);
   bool searching(const U64& key, entry& eo);
   inline entry * first_entry(const U64& key);

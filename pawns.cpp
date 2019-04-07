@@ -96,7 +96,7 @@ int16 evaluate(const position& p, pawn_entry& e) {
     U64 mask = bitboards::passpawn_mask[c][s] & epawns;  
     if (mask == 0ULL) { 
       e.passed[c] |= fbb; 
-      //e.score += p.params.passed_pawn_bonus;
+      e.score += p.params.passed_pawn_bonus;
     }
 
     // isolated pawns
@@ -118,7 +118,7 @@ int16 evaluate(const position& p, pawn_entry& e) {
     U64 doubled = bitboards::col[util::col(s)] & pawns;
     if (bits::more_than_one(doubled)) {
       e.doubled[c] |= doubled;
-      //score -= p.params.doubled_pawn_penalty;
+      score -= p.params.doubled_pawn_penalty;
       // isolated and doubled
       //doubled = bitboards::neighbor_cols[util::col(s)] & pawns;
       // doubled == 0ULL // ...
