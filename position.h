@@ -343,10 +343,10 @@ inline void piece_data::add_piece(const Color& c, const Piece& p, const Square& 
   piece_on[s] = p;
   piece_idx[c][p][s] = number_of[c][p];
   color_on[s] = c;
-  ifo.key |= zobrist::piece(s, c, p);
-  ifo.mkey |= zobrist::piece(s, c, p);
-  ifo.repkey |= zobrist::piece(s, c, p);
-  if (p == Piece::pawn) ifo.pawnkey |= zobrist::piece(s, c, p);
+  ifo.key ^= zobrist::piece(s, c, p);
+  ifo.mkey ^= zobrist::piece(s, c, p);
+  ifo.repkey ^= zobrist::piece(s, c, p);
+  if (p == Piece::pawn) ifo.pawnkey ^= zobrist::piece(s, c, p);
 }
 
 inline void piece_data::set(const Color& c, const Piece& p, const Square& s, info& ifo) {
@@ -359,10 +359,10 @@ inline void piece_data::set(const Color& c, const Piece& p, const Square& s, inf
   piece_on[s] = p;
   if (p == Piece::king) king_sq[c] = s;
 
-  ifo.key |= zobrist::piece(s, c, p);
-  ifo.mkey |= zobrist::piece(s, c, p);
-  ifo.repkey |= zobrist::piece(s, c, p);
-  if (p == Piece::pawn) ifo.pawnkey |= zobrist::piece(s, c, p);
+  ifo.key ^= zobrist::piece(s, c, p);
+  ifo.mkey ^= zobrist::piece(s, c, p);
+  ifo.repkey ^= zobrist::piece(s, c, p);
+  if (p == Piece::pawn) ifo.pawnkey ^= zobrist::piece(s, c, p);
 }
 
 #endif

@@ -305,16 +305,18 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   // forward pruning
   const bool forward_prune = (!in_check &&
     !pv_type &&
+    (stack-1)->curr_move.type == Movetype::quiet &&
     !stack->null_search &&
+    abs(alpha - beta) == 1 && // only prune in null windows
     static_eval != ninf);
 
-  // 0. futility pruning
-  if ( forward_prune &&
-    depth <= 1 &&
-    static_eval > mated_max_ply &&
-    static_eval + 750 < alpha) return static_eval;
+  // 0. futility pruning (razoring is better)
+  //if ( forward_prune &&
+  //  depth <= 1 &&
+  //  static_eval > mated_max_ply &&
+  //  static_eval + 750 < alpha) return static_eval;
 
-  // 0. razoring
+  // 0. razoring - prune when losing
   float rm = razor_margin(depth);
   if (depth <= 2 &&
     forward_prune &&
@@ -324,16 +326,16 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     
     if (depth <= 1) {
       Score v = qsearch<non_pv>(p, alpha, beta, 0, stack);
-      if (v <= alpha) return v;
+      if (v <= alpha) return Score(alpha); // v;
     }
     else {
       int16 ralpha = alpha - rm;
       Score v = qsearch<non_pv>(p, ralpha, ralpha + 1, 0, stack);
-      if (v <= ralpha) return v;
+      if (v <= ralpha) return Score(ralpha); // v;
     }
   }
   
-  // 1. null move pruning
+  // 1. null move pruning - prune when winning
   if (forward_prune &&
       depth >= 2 &&
       static_eval >= beta) {
@@ -353,11 +355,12 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     
     (stack+1)->null_search = false;
     
-    if (null_eval >= beta) return null_eval;
+    if (null_eval >= beta) return Score(beta); // null_eval;
+
+    // threat move - null move failed low (counter array)
   }
 
-
-  // 2. internal iterative deepening
+  // 2. internal iterative deepening - improve move ordering
   if (ttm.type == Movetype::no_type &&
       depth >= (pv_type ? 6 : 4) &&
       (pv_type || static_eval + 50 >= beta)) {
@@ -482,7 +485,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     }
 
     // futility pruning
-    if (!pv_type &&
+    if (!pv_type && 0 &&
       move.type == Movetype::quiet &&
       move != ttm &&
       move != stack->killers[0] &&
@@ -490,10 +493,40 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       move != stack->killers[2] &&
       move != stack->killers[3] &&
       !in_check &&
-      depth <= 1 &&
+      //depth <= 1 &&
+      (stack-1)->curr_move.type == Movetype::capture &&
       best_score > mated_max_ply &&
-      best_score + 950 < alpha) continue;
+      best_score + 950 < alpha)
+    {
+      //std::cout << "Fuility prune" << std::endl;
+      continue;
+    }
 
+    // probcut - skip uninteresting moves
+    
+    if (move != ttm &&
+      move != stack->killers[0] &&
+      move != stack->killers[1] &&
+      move != stack->killers[2] &&
+      move != stack->killers[3] &&
+      !pv_type &&
+      !in_check &&
+      best_score <= alpha &&
+      depth > 14) { // &&
+      //moves_searched >= 0 ) {// && p.see(move) < 0
+
+      int16 pcd = 4;// +depth / 6;
+
+     // std::cout << "doing pcp search pcd = " << pcd << std::endl;
+      Score s = search<non_pv>(p, alpha, alpha + 1, pcd, stack);
+
+      if (s <= alpha) {
+        //std::cout << "PCP" << std::endl;
+        continue;
+      }
+    }
+    
+    
 
     // continue if another thread is already searching this position
     if (depth > thread_depth && moves_searched > 0 && is_searching(p, move)) {
@@ -538,6 +571,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       
       
       if (score > alpha) {
+        
         score = Score(newdepth <= 1 ? -qsearch<pv>(p, -beta, -alpha, 0, stack + 1) :
           -search<pv>(p, -beta, -alpha, newdepth - 1, stack + 1));
       } 
@@ -749,6 +783,7 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
   // stand pat
   if (!in_check) {
     best_score = (Score)std::lround(eval::evaluate(p));
+    //if (best_score + 975 < alpha) return best_score;
     if (best_score >= beta) return best_score;
     if (alpha < best_score) alpha = best_score;
   }
@@ -815,7 +850,8 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
   */
 
 
-  
+  U16 qsdepth = in_check ? 1 : 0;
+
   U16 moves_searched = 0;
   move_order mvs(p, ttm, stack->killers);
   Move move;
@@ -847,7 +883,7 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
     p.do_move(move);
     p.adjust_qnodes(1);
     
-    Score score = Score(-qsearch<type>(p, -beta, -alpha, (depth - 1 <= 0 ? 0 : depth - 1), stack + 1));
+    Score score = Score(-qsearch<type>(p, -beta, -alpha, 0, stack + 1));
 
     ++moves_searched;
 

@@ -173,6 +173,8 @@ bool move_order::next_move<main0>(position& pos, Move& m) {
         
         Score sc = ((*moves)[i].type == Movetype::ep) ? Score(0) :
           Score(mvals[pt] - mvals[pf]);
+
+        //Score sc = Score(pos.see((*moves)[i]));
         
         list.emplace_back(scored_move((*moves)[i], sc));
       }
@@ -313,6 +315,8 @@ bool move_order::next_move<qsearch>(position& pos, Move& m) {
 	
         Piece pt = pos.piece_on(Square((*moves)[i].t));
         Piece pf = pos.piece_on(Square((*moves)[i].f));
+
+        //Score sc = Score(pos.see((*moves)[i]));
 		
         Score sc = ((*moves)[i].type == Movetype::ep) ? Score(0) :
           Score(mvals[pt] - mvals[pf]);

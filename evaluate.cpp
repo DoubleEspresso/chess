@@ -83,20 +83,29 @@ namespace {
     ei.empty = ~p.all_pieces();
     ei.pieces[white] = p.get_pieces<white>();
     ei.pieces[black] = p.get_pieces<black>();
-    ei.weak_pawns[white] = ei.pe->doubled[white] | ei.pe->isolated[white];
-    ei.weak_pawns[black] = ei.pe->doubled[black] | ei.pe->isolated[black];
+    ei.weak_pawns[white] = ei.pe->doubled[white] | ei.pe->isolated[white] | ei.pe->backward[white];
+    ei.weak_pawns[black] = ei.pe->doubled[black] | ei.pe->isolated[black] | ei.pe->backward[black]; 
     ei.kmask[white] = bitboards::kmask[p.king_square(white)];
     ei.kmask[black] = bitboards::kmask[p.king_square(black)];
     ei.central_pawns[white] = p.get_pieces<white, pawn>() & bitboards::big_center_mask;
     ei.central_pawns[black] = p.get_pieces<black, pawn>() & bitboards::big_center_mask;
-    
-    U64 all_center_pawns = ei.central_pawns[white] | ei.central_pawns[black];
-    ei.closed_center = bits::count(all_center_pawns) > 4;
+    ei.queen_sqs[white] = p.get_pieces<white, queen>();
+    ei.queen_sqs[black] = p.get_pieces<black, queen>();
 
+
+    // closed center
+    //U64 all_center_pawns = ei.central_pawns[white] | ei.central_pawns[black];
+    //ei.closed_center = bits::count(all_center_pawns) > 4;
+
+    // pawn holes
+    ei.pawn_holes[white] = (ei.pe->backward[white] != 0ULL ? ei.pe->backward[white] << 8 : 0ULL);
+    ei.pawn_holes[black] = (ei.pe->backward[black] != 0ULL ? ei.pe->backward[black] >> 8 : 0ULL);
+
+    
     // init score    
     score += ei.pe->score;
     score += ei.me->score;    
-    //score += (p.to_move() == white ? p.params.tempo : -p.params.tempo);
+    score += (p.to_move() == white ? p.params.tempo : -p.params.tempo);
 
     // pure endgame evaluation    
     if (ei.me->is_endgame()) {
@@ -147,17 +156,26 @@ namespace {
     Color them = Color(c ^ 1);
     U64 enemies = ei.pieces[them];
     U64 pawn_targets = ei.weak_pawns[them];
+    U64 equeen_sq = ei.queen_sqs[them];
 
     for (Square s = *knights; s != no_square; s = *++knights) {
       score += p.params.sq_score_scaling[knight] * square_score<c>(knight, s);
       
       // mobility
       U64 mvs = bitboards::nmask[s];
-
       if (!(bitboards::squares[s] & p.pinned<c>())) {
         U64 mobility = (mvs & ei.empty) & (~ei.pe->attacks[them]);
         score += p.params.mobility_scaling[knight] * knight_mobility(bits::count(mobility));
       }
+
+      // outpost (pawn-hole occupation)
+      if ((bitboards::squares[s] & ei.pawn_holes[them])) {
+        score += p.params.knight_outpost_bonus[util::col(s)];
+      }
+
+      // bonus for queen attacks
+      U64 qattks = mvs & equeen_sq;
+      if (qattks) score += p.params.attk_queen_bonus[knight];
 
       // attacks      
       U64 attks = (mvs & enemies) & (~pawn_targets);      
@@ -195,6 +213,7 @@ namespace {
     U64 pawn_targets = ei.weak_pawns[them];
     bool dark_sq = false;
     bool light_sq = false;
+    U64 equeen_sq = ei.queen_sqs[them];
 
     for (Square s = *bishops; s != no_square; s = *++bishops) {
       score += p.params.sq_score_scaling[bishop] * square_score<c>(bishop, s);
@@ -213,6 +232,15 @@ namespace {
 
       // closed center
       //if (!ei.closed_center) score += p.params.bishop_open_center_bonus;
+
+      // outpost bonus
+      if ((bitboards::squares[s] & ei.pawn_holes[them])) {
+        score += p.params.bishop_outpost_bonus[util::col(s)];
+      }
+
+      // bonus for queen attacks
+      U64 qattks = mvs & equeen_sq;
+      if (qattks) score += p.params.attk_queen_bonus[bishop];
 
       // attacks      
       U64 attks = (mvs & enemies) & (~pawn_targets);
@@ -248,20 +276,14 @@ namespace {
     Square * rooks = p.squares_of<c, rook>();
     Color them = Color(c ^ 1);
     U64 enemies = ei.pieces[them];
-    U64 pawn_targets = ei.weak_pawns[them];
-    /*
-    typedef struct Loc {
-      Row r;
-      Col c;
-      Loc(Row _r, Col _c) : r(_r), c(_c) {}
-      bool connected(const Loc& l) { return l.r == r || l.c == c; }
-    };
-    std::vector<Loc> locs;
-    */
+    U64 pawn_targets = ei.weak_pawns[them];    
+    std::vector<Square> Squares;
+    U64 equeen_sq = ei.queen_sqs[them];
+    
     for (Square s = *rooks; s != no_square; s = *++rooks) {
       score += p.params.sq_score_scaling[rook] * square_score<c>(rook, s);
 
-      //locs.emplace_back(Row(util::row(s)), Col(util::col(s)));
+      Squares.push_back(s);
 
       // mobility      
       U64 mvs = magics::attacks<rook>(ei.all_pieces, s);
@@ -271,6 +293,10 @@ namespace {
       if ((bitboards::squares[s] & p.pinned<c>())) mscore /= p.params.pinned_scaling[rook];
       score += mscore;
       
+      // bonus for queen attacks
+      U64 qattks = mvs & equeen_sq;
+      if (qattks) score += p.params.attk_queen_bonus[rook];
+
       // attacks      
       U64 attks = (mvs & enemies) & (~pawn_targets);
       U64 pattks = (mvs & pawn_targets);
@@ -290,6 +316,12 @@ namespace {
       U64 column = bitboards::col[util::col(s)] & (p.get_pieces<white, pawn>() | p.get_pieces<black, pawn>());
       if (column == 0ULL) score += p.params.open_file_bonus;
 
+      // 7th rank bonus
+      if (bitboards::squares[s] &
+        (c == white ? bitboards::row[Row::r7] :
+          bitboards::row[Row::r2])) {
+        score += p.params.rook_7th_bonus;
+      }
 
       // king harassment      
       U64 kattks = mvs & ei.kmask[them];
@@ -297,18 +329,27 @@ namespace {
         ei.kattackers[c][rook]++;
         ei.kattk_points[c] |= kattks;
         score += p.params.rook_king[std::min(4, bits::count(kattks))];
-      }
-      
+      }      
     }
-    /*
-    if (locs.size() >= 2) {
-      for (size_t i = 0; i < locs.size() - 1; ++i) {
-        for (size_t j = i + 1; j < locs.size(); ++j) {
-          if (locs[i].connected(locs[j])) score += p.params.connected_rook_bonus;
+    
+
+    if (Squares.size() >= 2) {
+      int row0 = util::row(Squares[0]);
+      int row1 = util::row(Squares[1]);
+      int col0 = util::col(Squares[0]);
+      int col1 = util::col(Squares[1]);
+
+      if ((row0 == row1) || (col0 == col1)) {
+        U64 between_bb = bitboards::between[Squares[0]][Squares[1]];
+        U64 sq_bb = bitboards::squares[Squares[0]] | bitboards::squares[Squares[1]];
+        U64 blockers = (between_bb ^ sq_bb) & ei.all_pieces;
+
+        if (!blockers) {
+          score += p.params.connected_rook_bonus;
         }
       }
     }
-    */
+
     return score;
   }
 
@@ -324,14 +365,16 @@ namespace {
     for (Square s = *queens; s != no_square; s = *++queens) {
       score += p.params.sq_score_scaling[queen] * square_score<c>(queen, s);
 
-
       // mobility      
       U64 mvs = (magics::attacks<bishop>(ei.all_pieces, s) |
         magics::attacks<rook>(ei.all_pieces, s));
       U64 mobility = (mvs  & ei.empty) & (~ei.pe->attacks[them]);
       float mscore = p.params.mobility_scaling[queen] * queen_mobility(bits::count(mobility));
-      if ((bitboards::squares[s] & p.pinned<c>())) mscore /= p.params.pinned_scaling[rook];
+      if ((bitboards::squares[s] & p.pinned<c>())) mscore /= p.params.pinned_scaling[queen];
       score += mscore;
+
+      // tempo
+      // penalty for being attacked by minor/pawn
 
       // attacks      
       U64 attks = (mvs & enemies) & (~pawn_targets);

@@ -57,7 +57,7 @@ void hash_table::save(const U64& key,
     }
 
     // nonempty and keys differ 
-    if (e->depth() > depth && pv_node) {
+    if (e->depth() > depth ) {
       replace = e;
     }    
   }

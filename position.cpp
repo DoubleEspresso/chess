@@ -745,6 +745,7 @@ void position::clear() {
   thread_id = 0;
   nodes_searched = 0;
   qnodes_searched = 0;
+  std::memset(&ifo, 0, sizeof(info));
   ifo = {};
 }
 
