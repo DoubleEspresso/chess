@@ -28,6 +28,12 @@ void hash_table::clear() {
 bool hash_table::fetch(const U64& key, hash_data& e) {
   entry * stored = first_entry(key);
   
+  { // prefetch.. ?
+    char * addr = (char*)stored;
+    _mm_prefetch(addr, _MM_HINT_T0);
+    _mm_prefetch(addr + 32, _MM_HINT_T0);
+  }
+
   for (unsigned i = 0; i<cluster_size; ++i, ++stored) {
     if ((stored->pkey ^ stored->dkey) == key) {
       e.decode(stored->dkey);      

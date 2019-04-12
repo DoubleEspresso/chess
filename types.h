@@ -35,6 +35,47 @@ typedef uint16_t U16;
 typedef uint8_t U8;
 #endif
 
+enum Movetype {
+  promotion_q,
+  promotion_r,
+  promotion_b,
+  promotion_n,
+  capture_promotion_q,
+  capture_promotion_r,
+  capture_promotion_b,
+  capture_promotion_n,
+  castle_ks,
+  castle_qs,
+  quiet,
+  capture,
+  ep,
+  castles,
+  pseudo_legal,
+  promotion,
+  capture_promotion,
+  no_type
+};
+
+struct Move {
+  U8 f;
+  U8 t;
+  U8 type;
+
+  inline Move& operator=(const Move& m) {
+    f = m.f; t = m.t; type = m.type;
+    return *this;
+  }
+  inline bool operator==(const Move& m) const {
+    return (f == m.f && t == m.t && type == m.type);
+  }
+  inline bool operator!=(const Move& m) const {
+    return (f != m.f || t != m.t || type != m.type);
+  }
+  inline void set(const U8& frm, const U8& to, const Movetype& mt) {
+    f = frm; t = to; type = mt;
+  }
+};
+
 // enums
 enum Piece { pawn, knight, bishop, rook, queen, king, pieces, no_piece };
 enum Color { white, black, colors, no_color };

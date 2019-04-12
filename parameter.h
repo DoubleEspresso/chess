@@ -71,14 +71,14 @@ struct parameters {
     return *this;
   }
 
-  float tempo = 1.0f;
+  float tempo = 0.3f;
 
 
   // square score parameters
   std::vector<float> sq_score_scaling{ 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
 
   // mobility tables
-  std::vector<float> mobility_scaling{ 1.0f, 1.0, 1.0f, 1.0f, 1.0f };
+  std::vector<float> mobility_scaling{ 1.0f, 1.0, 1.0f, 1.0f, 0.0f };
 
   // piece attack tables
   std::vector<float> attack_scaling{ 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
@@ -118,6 +118,10 @@ struct parameters {
   const float isolated_pawn_penalty = 1.0f;
   const float passed_pawn_bonus = 2.0f;
   const float semi_open_pawn_penalty = 1.0f;
+
+  // move ordering
+  const float counter_move_bonus = 18.0f; // 5
+  const float threat_evasion_bonus = 18.0f; // 2
 };
 
 
