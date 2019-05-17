@@ -188,9 +188,9 @@ double Search::estimate_max_time(position& p, limits& lims) {
     bool sudden_death = lims.movestogo == 0; // no moves until next time control
     bool exact_time = lims.movetime != 0; // searching for an exact number of ms?
     double remainder_ms = (p.to_move() == white ? lims.wtime + lims.winc : lims.btime + lims.binc);
-    material_entry * me = mtable.fetch(p);
-    bool endgame = me->endgame;
-    double moves_to_go = 45.0 - (!endgame ? 22.5 : 30.0);
+    //material_entry * me = mtable.fetch(p);
+    //bool endgame = me->endgame;
+    double moves_to_go = 45.0 - 22.5; // (!endgame ? 22.5 : 30.0);
 
     if (sudden_death && !exact_time) {
       time_per_move_ms = 2.5 * remainder_ms / moves_to_go;
@@ -315,7 +315,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     !pv_type &&
     (stack-1)->curr_move.type == Movetype::quiet &&
     !stack->null_search &&
-    abs(alpha - beta) == 1 && // only prune in null windows
+    abs(alpha - beta) == 1 && // only prune in null windows (same condition as !pv_node)
     static_eval != ninf);
 
   // 0. futility pruning (razoring is better)
@@ -329,8 +329,9 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   if (depth <= 2 &&
     forward_prune &&
     ttm.type == no_type &&
-    static_eval + rm <= alpha) {
-    //!b.pawn_on_7(b.whos_move())) {    
+    static_eval + rm <= alpha 
+    //&& !p.pawn_on_7th(p.to_move())
+    ) {
     
     if (depth <= 1) {
       Score v = qsearch<non_pv>(p, alpha, beta, 0, stack);
@@ -344,7 +345,11 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   }
   
   // 1. null move pruning - prune when winning
+  bool null_move_allowed = (p.to_move() == white ?
+    p.non_pawn_material<white>() : 
+    p.non_pawn_material<black>());
   if (forward_prune &&
+      null_move_allowed &&
       depth >= 2 &&
       static_eval >= beta) {
     
@@ -370,16 +375,6 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     else {
       Move tm = (stack + 1)->curr_move;
       if (tm.type != Movetype::quiet && abs(null_eval - beta) >= 200) {
-        /*
-        std::cout << "" << std::endl;
-        std::cout << "tomove: " << (p.to_move() == white ? "white" : "black") << std::endl;
-        std::cout << "null depth: " << ndepth << std::endl;
-        std::cout << "null eval: " << null_eval << " beta: " << beta << std::endl;
-        std::cout << "threat: " << uci::move_to_string(tm) << std::endl;
-        std::cout << "threat is quiet: " << (tm.type == Movetype::quiet ? "yes" : "no") << std::endl;
-        p.print();
-        std::cout << "" << std::endl;
-        */
         stack->threat_move = tm;
       }
     }
@@ -408,8 +403,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   if (ttm.type == Movetype::no_type &&
       depth >= (pv_type ? 6 : 4) &&
       (pv_type || static_eval + 50 >= beta)) {
-    
-    //int16 R = (depth >= 6 ? depth / 2 : 2);
+
     int16 R = 2 + depth / 6;
     int16 iid = depth - R;
     
@@ -558,6 +552,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 
     bool gives_check = p.in_check();
     int16 extensions = gives_check + in_check;
+
     int16 reductions = 1;
 
     if (!pv_type &&
@@ -567,15 +562,29 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       move != stack->killers[1] &&
       move != stack->killers[2] &&
       move != stack->killers[3] &&
-      !in_check &&
+      //!in_check &&
       p.piece_on(Square(move.f)) != pawn &&
       p.piece_on(Square(move.f)) != king &&
-      best_score + 250 < alpha &&
-      best_score > mated_max_ply &&
-      moves_searched > 1) {
+      best_score + 350 < alpha &&
+      best_score > mated_max_ply) { // &&
+      //moves_searched > 1
+      //) {
       reductions += 1; // (depth > 14 ? 2 : 1);
+
+      // reduce with history score
+      if (depth > 8) {
+        int hscore = (p.to_move() == white ?
+          p.history_stats().score<white>(move, (stack - 1)->curr_move, stack->threat_move) :
+          p.history_stats().score<black>(move, (stack - 1)->curr_move, stack->threat_move));
+        if (hscore < 0)
+        {
+          //std::cout << "hreduction" << std::endl;
+          reductions += 1;
+        }
+      }
+
     }
-    
+
     int16 newdepth = depth + extensions - reductions;
     
     // pvs
@@ -612,7 +621,6 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
           -search<pv>(p, -beta, -alpha, newdepth - 1, stack + 1));
       } 
       
-
     }
     
     ++moves_searched;
@@ -628,7 +636,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       best_score = score;      
       best_move = move;
 
-      if (score >= alpha) {
+      if (score > alpha) {
         alpha = score;
       }
                   
@@ -667,29 +675,52 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     
   // re-try deferred moves (already passed legality check)
   for (size_t i = 0; i < deferred; ++i) {
+    
+    // see pruning
+    /*
+    if (move != ttm &&
+      stack->deferred_moves[i] != stack->killers[0] &&
+      stack->deferred_moves[i] != stack->killers[1] &&
+      stack->deferred_moves[i] != stack->killers[2] &&
+      stack->deferred_moves[i] != stack->killers[3] &&
+      !pv_type &&
+      !in_check &&
+      best_score < alpha &&
+      move.type != Movetype::quiet &&
+      depth <= 1 &&
+      //moves_searched > 1 &&
+      p.see(stack->deferred_moves[i]) < 0) continue;
+      */
 
-    // futility pruning
+
+    p.do_move(stack->deferred_moves[i]);
+
+    bool gives_check = p.in_check();
+    int16 extensions = gives_check + in_check;
+    int16 reductions = 1;
+
     if (!pv_type &&
-      stack->deferred_moves[i].type == Movetype::quiet &&
+      stack->deferred_moves[i].type == quiet &&
       stack->deferred_moves[i] != ttm &&
       stack->deferred_moves[i] != stack->killers[0] &&
       stack->deferred_moves[i] != stack->killers[1] &&
       stack->deferred_moves[i] != stack->killers[2] &&
       stack->deferred_moves[i] != stack->killers[3] &&
       !in_check &&
-      depth <= 1 &&
+      p.piece_on(Square(move.f)) != pawn &&
+      p.piece_on(Square(move.f)) != king &&
+      best_score + 250 < alpha &&
       best_score > mated_max_ply &&
-      best_score + 950 < alpha) continue;
-    
-    
-    p.do_move(stack->deferred_moves[i]);
+      moves_searched > 1) {
+      reductions += 1; // (depth > 14 ? 2 : 1);
+    }
+
+    int16 newdepth = depth + extensions - reductions;
+
 
     stack->curr_move = stack->deferred_moves[i];
-    bool gives_check = p.in_check();
-    int16 newdepth = depth + gives_check; // p.in_check();
 
     // pvs
-
     Score score = Score::ninf;
     if (moves_searched < 3) {
       score = Score(newdepth <= 1 ? -qsearch<pv>(p, -beta, -alpha, 0, stack + 1) :
@@ -771,7 +802,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   
   Bound bound = (best_score >= beta ? bound_low :
     best_score <= alpha ? bound_high : bound_exact);
-  ttable.save(p.key(), depth, U8(bound), best_move, best_score, pv_type);
+  ttable.save(p.key(), depth, U8(bound), U8(stack->ply), best_move, best_score, pv_type);
   
   return best_score;
 }
@@ -806,7 +837,7 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
       ttm = e.move;
       ttvalue = Score(e.score);
       
-      if (e.depth >= depth ) {
+      if (e.depth >= depth) {
         if ((ttvalue >= beta && e.bound == bound_low) ||
           (ttvalue <= alpha && e.bound == bound_high) ||
           (ttvalue > alpha && ttvalue < beta && e.bound == bound_exact))
@@ -943,9 +974,9 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
   }
 
   
-  //Bound bound = (best_score >= beta ? bound_low :
-  //  best_score <= alpha ? bound_high : bound_exact);
-  //ttable.save(p.key(), qsdepth, U8(bound), best_move, best_score, pv_type);
+  Bound bound = (best_score >= beta ? bound_low :
+    best_score <= alpha ? bound_high : bound_exact);
+  ttable.save(p.key(), qsdepth, U8(bound), stack->ply, best_move, best_score, pv_type);
   
 
   return best_score;  

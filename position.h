@@ -178,6 +178,20 @@ class position {
   template<Color c>
   inline U64 pinned() const { return ifo.pinned[c];  }
 
+  // evaluation/search related
+  inline bool pawn_on_7th(const Color& c) const {
+    return (c == white ? (get_pieces<white, pawn>() & bitboards::row[Row::r7]) != 0ULL :
+      (get_pieces<black, pawn>() & bitboards::row[Row::r2]) != 0ULL);
+  }
+
+  template<Color c>
+  inline bool non_pawn_material() const {
+    return ((get_pieces<c, knight>() |
+      get_pieces<c, bishop>() |
+      get_pieces<c, rook>() |
+      get_pieces<c, queen>()) != 0ULL);
+  }
+
 
   // position info access wrappers
   inline Square eps() const { return ifo.eps; }

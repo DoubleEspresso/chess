@@ -26,6 +26,7 @@ namespace {
   template<Color c> float eval_king(const position& p, einfo& ei);
   template<Color c> float eval_space(const position& p, einfo& ei);
   template<Color c> float eval_center(const position& p, einfo& ei);
+  template<Color c> float eval_color(const position& p, einfo& ei);
 
   //template<Color c> float eval_material(const position&p, info& ei);
 
@@ -71,7 +72,7 @@ namespace {
     float score = 0;
     einfo ei = {};
     memset(&ei, 0, sizeof(einfo));
-
+    
     {
       // hash table data
       //std::unique_lock<std::mutex> lock(eval::mtx);
@@ -127,6 +128,7 @@ namespace {
       }
     }
 
+    //score += (eval_color<white>(p, ei) - eval_color<black>(p, ei));
     score += (eval_knights<white>(p, ei) - eval_knights<black>(p, ei));
     score += (eval_bishops<white>(p, ei) - eval_bishops<black>(p, ei));
     score += (eval_rooks<white>(p, ei) - eval_rooks<black>(p, ei));
@@ -213,6 +215,10 @@ namespace {
     U64 pawn_targets = ei.weak_pawns[them];
     bool dark_sq = false;
     bool light_sq = false;
+    U64 elight_sq_pawns = ei.white_pawns[them];
+    U64 flight_sq_pawns = ei.white_pawns[c];
+    U64 edark_sq_pawns = ei.black_pawns[them];
+    U64 fdark_sq_pawns = ei.black_pawns[c];
     U64 equeen_sq = ei.queen_sqs[them];
 
     for (Square s = *bishops; s != no_square; s = *++bishops) {
@@ -237,6 +243,40 @@ namespace {
       if ((bitboards::squares[s] & ei.pawn_holes[them])) {
         score += p.params.bishop_outpost_bonus[util::col(s)];
       }
+
+
+      // light-square bishop color bonus
+      //if (light_sq) {
+      //  // case 1: no opposing bishop to challenge ours + pawn color weaknesses
+      //  if (elight_sq_pawns == 0ULL || bits::count(elight_sq_pawns) <= 1) {
+      //    U64 ew_bishop =
+      //      (c == white ? p.get_pieces<black, bishop>() : p.get_pieces<white, bishop>()) &
+      //      bitboards::colored_sqs[white];
+      //    if (ew_bishop == 0ULL) score += p.params.bishop_color_complex_bonus;
+      //  }
+      //  
+      //  // case 2: penalty for too many friendly pawns on light-squares
+      //  //if (flight_sq_pawns != 0ULL && bits::count(flight_sq_pawns) >= 4) {        
+      //  //  score -= p.params.bishop_penalty_pawns_same_color;
+      //  //}
+
+      //}
+
+      //// dark-square bishop color bonus
+      //if (dark_sq) {
+      //  // case 1: no opposing bishop to challenge ours + pawn color weaknesses
+      //  if (edark_sq_pawns == 0ULL || bits::count(edark_sq_pawns) <= 1) {
+      //    U64 ed_bishop =
+      //      (c == white ? p.get_pieces<black, bishop>() : p.get_pieces<white, bishop>()) &
+      //      bitboards::colored_sqs[black];
+      //    if (ed_bishop == 0ULL) score += p.params.bishop_color_complex_bonus;
+      //  }
+
+      //  // case 2: penalty for too many friendly pawns on light-squares
+      //  //if (fdark_sq_pawns != 0ULL && bits::count(fdark_sq_pawns) >= 4) {
+      //  //  score -= p.params.bishop_penalty_pawns_same_color;
+      //  //}
+      //}
 
       // bonus for queen attacks
       U64 qattks = mvs & equeen_sq;
@@ -332,7 +372,7 @@ namespace {
       }      
     }
     
-
+    // connected rooks
     if (Squares.size() >= 2) {
       int row0 = util::row(Squares[0]);
       int row1 = util::row(Squares[1]);
@@ -481,10 +521,22 @@ namespace {
   }
   
 
+  template<Color c> float eval_color(const position& p, einfo& ei) {
+    float score = 0;
+    U64 pawns = p.get_pieces<c, pawn>();
+
+    ei.white_pawns[c] = pawns & bitboards::colored_sqs[white];
+    ei.black_pawns[c] = pawns & bitboards::colored_sqs[black];
+
+    return score;
+  }
+
+
   template<Color c> float eval_center(const position& p, einfo& ei) {
     float score = 0;
 
-    score += bits::count(ei.central_pawns[c]) / 2.0f;
+    U64 center_pawns = ei.central_pawns[c] & bitboards::small_center_mask;
+    score += bits::count(center_pawns);
 
 
     return score;

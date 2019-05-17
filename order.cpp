@@ -45,10 +45,10 @@ void move_history::update(const position& p,
     history[c ^ 1][previous.f][previous.t] -= score;
   }  
   
-  for (auto& q : quiets) {
-    if (m.f == q.f) continue;
-    history[c][q.f][q.t] -= score;
-  }
+  //for (auto& q : quiets) {
+  //  if (m.f == q.f) continue;
+  //  history[c][q.f][q.t] -= score;
+  //}
   
 }
 

@@ -45,10 +45,11 @@ bool hash_table::fetch(const U64& key, hash_data& e) {
 }
 
 void hash_table::save(const U64& key,
-		      const U8& depth,
-		      const U8& bound,
-		      const Move& m,
-		      const int16& score, const bool& pv_node) {
+  const U8& depth,
+  const U8& bound,
+  const U8& age,
+  const Move& m,
+  const int16& score, const bool& pv_node) {
   
   entry * e, *replace;
 
@@ -57,17 +58,25 @@ void hash_table::save(const U64& key,
   for (unsigned i = 0; i < cluster_size; ++i, ++e) {
     
     // empty entry or hash collision
-    if (e->empty() || ((e->pkey) ^ (e->dkey)) == key ) {
+    if (e->empty()) {
       replace = e;
       break;      
     }
 
-    // nonempty and keys differ 
-    if (e->depth() > depth ) {
-      replace = e;
-    }    
+    // collision handling (depth, age and pv node)
+    else if (((e->pkey) ^ (e->dkey)) == key) {
+      if (age - e->age() > 1)
+      {
+        replace = e;
+      }
+      else if (e->depth() - depth > 0 && pv_node)
+      {
+        replace = e;
+      }
+    }
+  
   }
   
-  replace->encode(depth, bound, m, score);
+  replace->encode(depth, bound, age, m, score);
   replace->pkey = key ^ replace->dkey;
 }

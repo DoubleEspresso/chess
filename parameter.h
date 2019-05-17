@@ -110,6 +110,8 @@ struct parameters {
   const float doubled_bishop_bonus = 2.0f;
   const float open_file_bonus = 1.0f;
   const float bishop_open_center_bonus = 1.0f;
+  const float bishop_color_complex_bonus = 1.0f;
+  const float bishop_penalty_pawns_same_color = 0.0f;
   const float rook_7th_bonus = 2.0f;
 
   // pawn params
@@ -120,8 +122,8 @@ struct parameters {
   const float semi_open_pawn_penalty = 1.0f;
 
   // move ordering
-  const float counter_move_bonus = 18.0f; // 5
-  const float threat_evasion_bonus = 18.0f; // 2
+  const float counter_move_bonus = 27.0f; // 5
+  const float threat_evasion_bonus = 27.0f; // 2
 };
 
 

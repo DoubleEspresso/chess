@@ -4,7 +4,6 @@
 namespace bitboards {
   U64 row[8];
   U64 col[8];
-  U64 color[2]; // white/black squares
   U64 bmask[64]; // bishop mask (outer board edges are trimmed)
   U64 pawnmask[2]; // 2nd - 6th rank mask for pawns (to exclude promotion candidates)
   U64 pattks[2][64];
@@ -75,7 +74,7 @@ void bitboards::load() {
     squares[C5] | squares[D5] | squares[E5] | squares[F5] |
     squares[C6] | squares[D6] | squares[E6] | squares[F6];
 
-  small_center_mask = squares[D4] | squares[D5] | squares[E4] | squares[E5];
+  small_center_mask = squares[C4] | squares[C5] | squares[D4] | squares[D5] | squares[E4] | squares[E5];
   
   for (Square s = A1; s <= H8; ++s) {
     
