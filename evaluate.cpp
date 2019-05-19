@@ -460,9 +460,11 @@ namespace {
 
       // harassment score
       U64 unsafe_bb = ei.kattk_points[them];  // their attack points to our king
+
       if (unsafe_bb) {
         mvs &= (~unsafe_bb);
         unsigned num_attackers = 0;
+
         for (int j = 1; j < 5; ++j) {
           num_attackers += ei.kattackers[them][j];
         }
@@ -510,7 +512,7 @@ namespace {
       space |= util::squares_behind(bitboards::col[util::col(s)], c, s);
     }
     
-    space &= (bitboards::col[Col::C] | bitboards::col[Col::D] | 
+    space &= (bitboards::col[Col::C] | bitboards::col[Col::D] |
       bitboards::col[Col::E] | bitboards::col[Col::F]);
 
 

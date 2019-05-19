@@ -565,7 +565,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       //!in_check &&
       p.piece_on(Square(move.f)) != pawn &&
       p.piece_on(Square(move.f)) != king &&
-      best_score + 350 < alpha &&
+      best_score + 250 < alpha &&
       best_score > mated_max_ply) { // &&
       //moves_searched > 1
       //) {
@@ -578,7 +578,6 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
           p.history_stats().score<black>(move, (stack - 1)->curr_move, stack->threat_move));
         if (hscore < 0)
         {
-          //std::cout << "hreduction" << std::endl;
           reductions += 1;
         }
       }
@@ -936,14 +935,17 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
 
 
     // see pruning
-    if (move != ttm &&
+    if (
+      /*
+      move != ttm &&
       move != stack->killers[0] &&
       move != stack->killers[1] &&
       move != stack->killers[2] &&
       move != stack->killers[3] &&
       !pv_type &&
+      */
       !in_check &&
-      best_score < alpha &&
+      //best_score < alpha &&
       //moves_searched > 1 &&
       p.see(move) < 0) continue;
     

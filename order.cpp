@@ -44,7 +44,7 @@ void move_history::update(const position& p,
   if (previous.type == Movetype::quiet) {
     history[c ^ 1][previous.f][previous.t] -= score;
   }  
-  
+  //
   //for (auto& q : quiets) {
   //  if (m.f == q.f) continue;
   //  history[c][q.f][q.t] -= score;
@@ -162,7 +162,7 @@ bool move_order::next_move<main0>(position& pos, Move& m, const Move& previous, 
     }
     ++phase; break;
   }
-
+                      
     
   case mate_killer2: {
     if (pos.is_legal_hashmove(killers[3])) {
