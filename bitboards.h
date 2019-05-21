@@ -26,6 +26,7 @@ namespace bitboards {
   extern U64 corners;
   extern U64 small_center_mask;
   extern U64 big_center_mask;
+  extern U64 pawn_majority_masks[3];
   extern U64 passpawn_mask[2][64];
   extern U64 neighbor_cols[8];
   extern U64 colored_sqs[2];

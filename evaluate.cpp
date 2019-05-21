@@ -112,7 +112,7 @@ namespace {
     if (ei.me->is_endgame()) {
       EndgameType t = ei.me->endgame;
       switch (t) {
-      //case KpK:  score += (eval_kpk<white>(p, ei) - eval_kpk<black>(p, ei)); break;
+      case KpK:  score += (eval_kpk<white>(p, ei) - eval_kpk<black>(p, ei)); break;
         /*
       case KnnK:  score += (eval_knnk<white>(p, ei) - eval_knnk<black>(p, ei)); break;
       case KbbK:  score += (eval_kbbk<white>(p, ei) - eval_kbbk<black>(p, ei)); break;
@@ -549,27 +549,73 @@ namespace {
   ////////////////////////////////////////////////////////////////////////////////
   template<Color c> float eval_kpk(const position& p, einfo& ei) {
     float score = 0;
-    p.print();
-    std::cout << "evaluating endgame kpk" << std::endl;
+
+    // parameters to move to main parameter tracking thing
+    const float pawn_majority_bonus = 3;
+    const float opposition_bonus = 4;
+    const float advanced_passed_pawn_bonus = 10;
+    const float king_proximity_bonus = 2;
+
     // only evaluate the fence once
     if (!ei.endgame.evaluated_fence) {
       ei.endgame.is_fence = eval::is_fence(p, ei);
       ei.endgame.evaluated_fence = true;
 
       if (ei.endgame.is_fence) {
-        std::cout << "kpk is a fence position" << std::endl;
+        //std::cout << "kpk is a fence position" << std::endl;
         return Score::draw;
       }
-      else std::cout << "kpk is not a fence position" << std::endl;
+      //else std::cout << "kpk is not a fence position" << std::endl;
     }
 
     // we do not have a fence - evaluate 
     // 1. king opposition and tempo (separate score)
+    bool has_opposition = eval::has_opposition<c>(p, ei);
+
+
     // 2. pawn majorities 
+    //  -- minor bonus for pawn majority
+    //  -- if we have a pawn majority, minor bonus for king proximity
+    std::vector<U64> our_pawn_majorities;
+    eval::get_pawn_majorities<c>(p, ei, our_pawn_majorities);
+    for (const auto& m : our_pawn_majorities) {
+      if (m != 0ULL) {
+        score += pawn_majority_bonus;
+      }
+    }
+
     // 3. passed pawns
+    //  -- bonus for passed pawns (row dependent)
+    //  -- large bonus for king proximity
+    U64 passed_pawns = ei.pe->passed[c];
+    if (passed_pawns != 0ULL) {
+      while (passed_pawns) {
+        int f = bits::pop_lsb(passed_pawns);
+        int row = util::row(f);
+        int dist = (c == white ? 8 - row : row);
+
+        switch (dist) {
+        case 1: score += 4 * advanced_passed_pawn_bonus;
+        case 2: score += 2 * advanced_passed_pawn_bonus;
+        case 3: score += advanced_passed_pawn_bonus;
+        case 4: score += 0.5 * advanced_passed_pawn_bonus;
+        }
+
+        Square ks = p.king_square(c);
+        int rks = util::row(ks);
+
+        if (rks > row && util::col_dist(f, ks) <= 1) {
+          score += 2; // good
+          if (has_opposition) score += 10; // very close to winning (?)
+        }
+      }
+    }
+
     // 4. pawn breaks
-    // 5. others?
-   
+    
+    // 5. opposition (always good)
+    if (has_opposition) score += opposition_bonus;
+
     return score;
   }
 }

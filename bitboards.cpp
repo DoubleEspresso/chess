@@ -22,6 +22,7 @@ namespace bitboards {
   U64 passpawn_mask[2][64];
   U64 neighbor_cols[8];
   U64 colored_sqs[2];
+  U64 pawn_majority_masks[3]; // 1 for each flank
   unsigned reductions[2][2][64][64]; // max-depth = 64
   U64 edges;
   U64 corners;
@@ -51,6 +52,11 @@ void bitboards::load() {
     row[r] = rw;
     col[r] = cl;
   }
+
+  // pawn majority masks
+  pawn_majority_masks[0] = col[Col::A] | col[Col::B] | col[Col::C];
+  pawn_majority_masks[1] = col[Col::D] | col[Col::E];
+  pawn_majority_masks[2] = col[Col::F] | col[Col::G] | col[Col::H];
 
   // helpful definitions for board corners/edges
   edges = row[r1] | col[A] | row[r8] | col[H];
