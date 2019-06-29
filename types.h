@@ -114,42 +114,42 @@ const std::string SanSquares[64] =
 endgame material encoding reference : kxxk where xx is given by the following encodings
 NBRQ  nbrq
 0000  0000 (kk)  0
-1000  1000 (nn)  136
-1000  0100 (nb)  132
-1000  0010 (nr)  130
-1000  0001 (nq)  129
-0100  1000 (bn)  72
-0100  0100 (bb)  68
-0100  0010 (br)  66
-0100  0001 (bq)  65
-0010  1000 (rn)  40
-0010  0100 (rb)  36
-0010  0010 (rr)  34
-0010  0001 (rq)  33
-0001  0001 (qq)  17
-0001  1000 (qn)  24
-0001  0100 (qb)  20
-0001  0010 (qr)  18
+0001  0001 (nn)  17
+0001  0010 (nb)  19
+0001  0100 (nr)  20
+0001  1000 (nq)  24
+0010  0001 (bn)  33  
+0010  0010 (bb)  35
+0010  0100 (br)  39
+0010  1000 (bq)  40
+0100  0001 (rn)  65
+0100  0010 (rb)  66
+0100  0100 (rr)  68
+0100  1000 (rq)  72
+1000  0001 (qn)  129
+1000  0010 (qb)  130
+1000  0100 (qr)  132
+1000  1000 (qq)  136
 */
 enum EndgameType {
   none = -1,
   KpK = 0,
-  KnnK = 136,
-  KnbK = 132,
-  KnrK = 130,
-  KnqK = 129,
-  KbnK = 72,
-  KbbK = 68,
-  KbrK = 66,
-  KbqK = 65,
-  KrnK = 40,
-  KrbK = 36,
-  KrrK = 34,
-  KrqK = 33,
-  KqqK = 17,
-  KqnK = 24,
-  KqbK = 20,
-  KqrK = 18
+  KnnK = 17,
+  KnbK = 19,
+  KnrK = 20,
+  KnqK = 24,
+  KbnK = 33,
+  KbbK = 35,
+  KbrK = 39,
+  KbqK = 40,
+  KrnK = 65,
+  KrbK = 66,
+  KrrK = 68,
+  KrqK = 72,
+  KqnK = 129,
+  KqbK = 130,
+  KqrK = 132,
+  KqqK = 136
 };
 
 // enum type enabled iterators

@@ -73,16 +73,19 @@ int16 evaluate(const position& p, material_entry& e) {
   // see types.h for enumeration of different endgame types
   if (total <= 2) {
     U8 endgame_encoding = U8(0);
-
+    int count = 0;
+    // see types.h for encoding notes
     for (const auto& piece : pieces) {
       int i = int(piece - 1);
       if (e.number[piece] == 2) {
         // two pieces of the same type
         endgame_encoding |= (U8(1) << i);
-        endgame_encoding |= (U8(1) << (4 + i));
+        endgame_encoding |= (U8(1) << 4 + i);
       }
       else if (e.number[piece] == 1) {
-        endgame_encoding |= (U8(1) << i);
+        endgame_encoding |= count == 0 ? (U8(1) << i) : 
+          (U8(1) << (4 + i));
+        ++count;
       }
     }
     e.endgame = EndgameType(endgame_encoding);

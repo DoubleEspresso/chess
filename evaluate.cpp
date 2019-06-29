@@ -14,8 +14,8 @@ namespace eval {
 }
 
 namespace {
-  
-    
+
+
   float do_eval(const position& p);
 
   template<Color c> float eval_pawns(const position& p, einfo& ei);
@@ -27,15 +27,14 @@ namespace {
   template<Color c> float eval_space(const position& p, einfo& ei);
   template<Color c> float eval_center(const position& p, einfo& ei);
   template<Color c> float eval_color(const position& p, einfo& ei);
-
+  template<Color c> float eval_pawn_levers(const position& p, einfo& ei);
   //template<Color c> float eval_material(const position&p, info& ei);
 
   template<Color c> float eval_kpk(const position& p, einfo& ei);
+  template<Color c> float eval_krrk(const position& p, einfo& ei);
   /*
-  template<Color c> float eval_kxk(const position&p, info& e); // check for draws here
   template<Color c> float eval_knnk(const position& p, info& ei);
   template<Color c> float eval_kbbk(const position& p, info& ei);
-  template<Color c> float eval_krrk(const position& p, info& ei);
   template<Color c> float eval_kqqk(const position& p, info& ei);
   template<Color c> float eval_knbk(const position& p, info& ei);
   template<Color c> float eval_knqk(const position& p, info& ei);
@@ -47,7 +46,7 @@ namespace {
   template<Color c> float eval_passers(const position& p, info& ei);
   */
 
-  std::vector<float> material_vals { 100.0, 300.0 , 315.0, 480.0, 910.0 };
+  std::vector<float> material_vals{ 100.0, 300.0 , 315.0, 480.0, 910.0 };
 
 
   inline float knight_mobility(const unsigned& n) {
@@ -72,7 +71,7 @@ namespace {
     float score = 0;
     einfo ei = {};
     memset(&ei, 0, sizeof(einfo));
-    
+
     {
       // hash table data
       //std::unique_lock<std::mutex> lock(eval::mtx);
@@ -85,7 +84,7 @@ namespace {
     ei.pieces[white] = p.get_pieces<white>();
     ei.pieces[black] = p.get_pieces<black>();
     ei.weak_pawns[white] = ei.pe->doubled[white] | ei.pe->isolated[white] | ei.pe->backward[white];
-    ei.weak_pawns[black] = ei.pe->doubled[black] | ei.pe->isolated[black] | ei.pe->backward[black]; 
+    ei.weak_pawns[black] = ei.pe->doubled[black] | ei.pe->isolated[black] | ei.pe->backward[black];
     ei.kmask[white] = bitboards::kmask[p.king_square(white)];
     ei.kmask[black] = bitboards::kmask[p.king_square(black)];
     ei.central_pawns[white] = p.get_pieces<white, pawn>() & bitboards::big_center_mask;
@@ -102,10 +101,10 @@ namespace {
     ei.pawn_holes[white] = (ei.pe->backward[white] != 0ULL ? ei.pe->backward[white] << 8 : 0ULL);
     ei.pawn_holes[black] = (ei.pe->backward[black] != 0ULL ? ei.pe->backward[black] >> 8 : 0ULL);
 
-    
+
     // init score    
     score += ei.pe->score;
-    score += ei.me->score;    
+    score += ei.me->score;
     score += (p.to_move() == white ? p.params.tempo : -p.params.tempo);
 
     // pure endgame evaluation    
@@ -113,10 +112,10 @@ namespace {
       EndgameType t = ei.me->endgame;
       switch (t) {
       case KpK:  score += (eval_kpk<white>(p, ei) - eval_kpk<black>(p, ei)); break;
+      case KrrK:  score += (eval_krrk<white>(p, ei) - eval_krrk<black>(p, ei)); break;
         /*
       case KnnK:  score += (eval_knnk<white>(p, ei) - eval_knnk<black>(p, ei)); break;
       case KbbK:  score += (eval_kbbk<white>(p, ei) - eval_kbbk<black>(p, ei)); break;
-      case KrrK:  score += (eval_krrk<white>(p, ei) - eval_krrk<black>(p, ei)); break;
       case KqqK:  score += (eval_kqqk<white>(p, ei) - eval_kqqk<black>(p, ei)); break;
       case KnbK: case KbnK:	score += (eval_knbk<white>(p, ei) - eval_knbk<black>(p, ei)); break;
       case KnqK: case KqnK:	score += (eval_knqk<white>(p, ei) - eval_knqk<black>(p, ei)); break;
@@ -136,12 +135,13 @@ namespace {
     score += (eval_king<white>(p, ei) - eval_king<black>(p, ei));
     score += (eval_space<white>(p, ei) - eval_space<black>(p, ei));
     score += (eval_center<white>(p, ei) - eval_center<black>(p, ei));
+    //score += (eval_pawns<white>(p, ei) - eval_pawn_levers<black>(p, ei));
 
     return p.to_move() == white ? score : -score;
   }
 
 
-  
+
   template<Color c> float eval_pawns(const position& p, einfo& ei) {
     float score = 0;
     //U64 pawns = p.get_pieces<c, pawn>();
@@ -151,9 +151,9 @@ namespace {
     return score;
   }
 
-  
+
   template<Color c> float eval_knights(const position& p, einfo& ei) {
-    float score = 0;    
+    float score = 0;
     Square * knights = p.squares_of<c, knight>();
     Color them = Color(c ^ 1);
     U64 enemies = ei.pieces[them];
@@ -162,7 +162,7 @@ namespace {
 
     for (Square s = *knights; s != no_square; s = *++knights) {
       score += p.params.sq_score_scaling[knight] * square_score<c>(knight, s);
-      
+
       // mobility
       U64 mvs = bitboards::nmask[s];
       if (!(bitboards::squares[s] & p.pinned<c>())) {
@@ -180,20 +180,20 @@ namespace {
       if (qattks) score += p.params.attk_queen_bonus[knight];
 
       // attacks      
-      U64 attks = (mvs & enemies) & (~pawn_targets);      
+      U64 attks = (mvs & enemies) & (~pawn_targets);
       U64 pattks = (mvs & pawn_targets);
       if (attks) {
         while (attks) {
-          score += p.params.attack_scaling[knight] * 
+          score += p.params.attack_scaling[knight] *
             p.params.knight_attks[p.piece_on(Square(bits::pop_lsb(attks)))];
         }
       }
-      
+
       if (pattks) {
         score += p.params.attack_scaling[knight] *
           p.params.knight_attks[pawn] * bits::count(pattks);
       }
-      
+
       // king harassment
       U64 kattks = mvs & ei.kmask[them];
       if (kattks) {
@@ -202,13 +202,13 @@ namespace {
         score += p.params.knight_king[std::min(2, bits::count(kattks))];
       }
 
-    }    
+    }
     return score;
   }
 
-  
+
   template<Color c> float eval_bishops(const position& p, einfo& ei) {
-    float score = 0;    
+    float score = 0;
     Square * bishops = p.squares_of<c, bishop>();
     Color them = Color(c ^ 1);
     U64 enemies = ei.pieces[them];
@@ -295,7 +295,7 @@ namespace {
         score += p.params.attack_scaling[bishop] *
           p.params.bishop_attks[pawn] * bits::count(pattks);
       }
-      
+
 
       // king harassment      
       U64 kattks = mvs & ei.kmask[them];
@@ -303,23 +303,23 @@ namespace {
         ei.kattackers[c][bishop]++;
         ei.kattk_points[c] |= kattks;
         score += p.params.bishop_king[std::min(2, bits::count(kattks))];
-      }      
+      }
     }
     if (light_sq && dark_sq) score += p.params.doubled_bishop_bonus;
 
     return score;
   }
-  
-  
+
+
   template<Color c> float eval_rooks(const position& p, einfo& ei) {
-    float score = 0;    
+    float score = 0;
     Square * rooks = p.squares_of<c, rook>();
     Color them = Color(c ^ 1);
     U64 enemies = ei.pieces[them];
-    U64 pawn_targets = ei.weak_pawns[them];    
+    U64 pawn_targets = ei.weak_pawns[them];
     std::vector<Square> Squares;
     U64 equeen_sq = ei.queen_sqs[them];
-    
+
     for (Square s = *rooks; s != no_square; s = *++rooks) {
       score += p.params.sq_score_scaling[rook] * square_score<c>(rook, s);
 
@@ -332,7 +332,7 @@ namespace {
       float mscore = p.params.mobility_scaling[rook] * rook_mobility(bits::count(mobility));
       if ((bitboards::squares[s] & p.pinned<c>())) mscore /= p.params.pinned_scaling[rook];
       score += mscore;
-      
+
       // bonus for queen attacks
       U64 qattks = mvs & equeen_sq;
       if (qattks) score += p.params.attk_queen_bonus[rook];
@@ -347,11 +347,11 @@ namespace {
         }
       }
       if (pattks) {
-        score += 
+        score +=
           p.params.attack_scaling[rook] *
           p.params.rook_attks[pawn] * bits::count(pattks);
       }
-      
+
       // open file bonus
       U64 column = bitboards::col[util::col(s)] & (p.get_pieces<white, pawn>() | p.get_pieces<black, pawn>());
       if (column == 0ULL) score += p.params.open_file_bonus;
@@ -369,9 +369,9 @@ namespace {
         ei.kattackers[c][rook]++;
         ei.kattk_points[c] |= kattks;
         score += p.params.rook_king[std::min(4, bits::count(kattks))];
-      }      
+      }
     }
-    
+
     // connected rooks
     if (Squares.size() >= 2) {
       int row0 = util::row(Squares[0]);
@@ -394,9 +394,9 @@ namespace {
   }
 
 
-  
+
   template<Color c> float eval_queens(const position& p, einfo& ei) {
-    float score = 0;    
+    float score = 0;
     Square * queens = p.squares_of<c, queen>();
     Color them = Color(c ^ 1);
     U64 enemies = ei.pieces[them];
@@ -430,28 +430,28 @@ namespace {
         score += p.params.attack_scaling[queen] *
           p.params.queen_attks[pawn] * bits::count(pattks);
       }
-      
+
       // king harassment      
       U64 kattks = mvs & ei.kmask[them];
       if (kattks) {
         ei.kattackers[c][queen]++;
         ei.kattk_points[c] |= kattks;
         score += p.params.queen_king[std::min(6, bits::count(kattks))];
-      }            
+      }
     }
-    
+
     return score;
   }
 
 
 
   template<Color c> float eval_king(const position& p, einfo& ei) {
-    float score = 0;    
+    float score = 0;
     Square * kings = p.squares_of<c, king>();
     Color them = Color(c ^ 1);
     float attacker_score = 0.0f;
 
-    for (Square s = *kings; s != no_square; s = *++kings) {      
+    for (Square s = *kings; s != no_square; s = *++kings) {
       score += p.params.sq_score_scaling[king] * square_score<c>(king, s);
 
 
@@ -475,7 +475,7 @@ namespace {
         // number of safe squares
         score += p.params.king_safe_sqs[std::min(7, bits::count(mvs))];
       }
-    
+
       // pawns around king bonus
       U64 pawn_shelter = ei.pe->king[c] & ei.kmask[c];
       int n = 0;
@@ -484,13 +484,13 @@ namespace {
 
 
       // reward for castling
-      if (p.can_castle<c>() && !p.has_castled<c>()) score -= p.params.uncastled_penalty;
+      if (!p.has_castled<c>()) score -= p.params.uncastled_penalty;
 
 
       // reward having "friends" near the king
-      
+
     }
-    
+
     //std::cout << "c = " << c << " score = " << score << std::endl;
     return score;
   }
@@ -511,17 +511,17 @@ namespace {
       int s = bits::pop_lsb(pawns);
       space |= util::squares_behind(bitboards::col[util::col(s)], c, s);
     }
-    
+
     space &= (bitboards::col[Col::C] | bitboards::col[Col::D] |
       bitboards::col[Col::E] | bitboards::col[Col::F]);
 
 
     score += bits::count(space) / 2.0f;
-    
+
 
     return score;
   }
-  
+
 
   template<Color c> float eval_color(const position& p, einfo& ei) {
     float score = 0;
@@ -544,6 +544,21 @@ namespace {
     return score;
   }
 
+  template<Color c> float eval_pawn_levers(const position& p, einfo& ei)
+  {
+    float score = 0;
+    U64 their_pawns = (c == white ? p.get_pieces<black, pawn>() : p.get_pieces<white, pawn>());
+
+    U64 pawn_lever_attacks = ei.pe->attacks[c] & their_pawns;
+
+    while (pawn_lever_attacks) {
+      int to = bits::pop_lsb(pawn_lever_attacks);
+      if (c == p.to_move()) score += p.params.pawn_lever_score[to];
+      // 0.25f * p.params.pawn_lever_score[to];
+    }
+    return score;
+  }
+
   ////////////////////////////////////////////////////////////////////////////////
   // endgame evaluations
   ////////////////////////////////////////////////////////////////////////////////
@@ -551,7 +566,7 @@ namespace {
     float score = 0;
 
     // parameters to move to main parameter tracking thing
-    const float pawn_majority_bonus = 3;
+    const float pawn_majority_bonus = 16;
     const float opposition_bonus = 4;
     const float advanced_passed_pawn_bonus = 10;
     const float king_proximity_bonus = 2;
@@ -576,13 +591,63 @@ namespace {
     // 2. pawn majorities 
     //  -- minor bonus for pawn majority
     //  -- if we have a pawn majority, minor bonus for king proximity
-    std::vector<U64> our_pawn_majorities;
-    eval::get_pawn_majorities<c>(p, ei, our_pawn_majorities);
-    for (const auto& m : our_pawn_majorities) {
-      if (m != 0ULL) {
-        score += pawn_majority_bonus;
+    //std::vector<U64> our_pawn_majorities;
+    //eval::get_pawn_majorities<c>(p, ei, our_pawn_majorities);
+    //for (const auto& m : our_pawn_majorities) {
+    //  if (m != 0ULL) {
+    //    score += pawn_majority_bonus; // these are winning in many kp endings
+    //  }
+    //}
+
+    // 3. passed pawns
+    //  -- bonus for passed pawns (row dependent)
+    //  -- large bonus for king proximity
+    U64 passed_pawns = ei.pe->passed[c];
+    if (passed_pawns != 0ULL) {
+      while (passed_pawns) {
+
+        int f = bits::pop_lsb(passed_pawns);
+        score += eval::eval_passed_kpk<c>(p, ei, Square(f), has_opposition);
       }
     }
+
+    // 4. pawn breaks
+    // - give a small bonus to our pawn levers
+    // - if we have the move
+    if (c == p.to_move()) score += eval_pawn_levers<c>(p, ei);
+
+    // 5. opposition (always good)
+    if (has_opposition) score += opposition_bonus;
+
+    return score;
+  }
+
+
+  template<Color c> float eval_krrk(const position& p, einfo& ei) {
+    float score = 0;
+
+    // parameters to move to main parameter tracking thing
+    const float pawn_majority_bonus = 16;
+    const float opposition_bonus = 4;
+    const float advanced_passed_pawn_bonus = 10;
+    const float king_proximity_bonus = 2;
+
+
+    // we do not have a fence - evaluate 
+    // 1. king opposition and tempo (separate score)
+    bool has_opposition = eval::has_opposition<c>(p, ei);
+
+
+    // 2. pawn majorities 
+    //  -- minor bonus for pawn majority
+    //  -- if we have a pawn majority, minor bonus for king proximity
+    //std::vector<U64> our_pawn_majorities;
+    //eval::get_pawn_majorities<c>(p, ei, our_pawn_majorities);
+    //for (const auto& m : our_pawn_majorities) {
+    //  if (m != 0ULL) {
+    //    score += pawn_majority_bonus; // these are winning in many kp endings
+    //  }
+    //}
 
     // 3. passed pawns
     //  -- bonus for passed pawns (row dependent)
@@ -591,37 +656,17 @@ namespace {
     if (passed_pawns != 0ULL) {
       while (passed_pawns) {
         int f = bits::pop_lsb(passed_pawns);
-        int row = util::row(f);
-        int dist = (c == white ? 8 - row : row);
-
-        switch (dist) {
-        case 1: score += 4 * advanced_passed_pawn_bonus;
-        case 2: score += 2 * advanced_passed_pawn_bonus;
-        case 3: score += advanced_passed_pawn_bonus;
-        case 4: score += 0.5 * advanced_passed_pawn_bonus;
-        }
-
-        Square ks = p.king_square(c);
-        int rks = util::row(ks);
-
-        if (rks > row && util::col_dist(f, ks) <= 1) {
-          score += 2; // good
-          if (has_opposition) score += 10; // very close to winning (?)
-        }
+        score += eval::eval_passed_krrk<c>(p, ei, Square(f), has_opposition);
       }
     }
 
-    // 4. pawn breaks
-    
-    // 5. opposition (always good)
-    if (has_opposition) score += opposition_bonus;
+    // 4. open row/col bonus
+    // 5.
 
     return score;
   }
+
 }
-
-
-
 
 
 

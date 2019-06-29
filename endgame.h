@@ -66,6 +66,182 @@ namespace eval {
     }
   }
 
+
+  template<Color c>
+  inline float eval_passed_kpk(const position& p, einfo& ei, const Square& f, const bool& has_opposition) {
+    float score = 0;
+
+    const float advanced_passed_pawn_bonus = 15;
+    const float good_king_bonus = 5;
+
+    Color them = Color(c ^ 1);
+
+    Square ks = p.king_square(c);
+    int row_ks = util::row(ks);
+    int col_ks = util::col(ks);
+
+    Square eks = p.king_square(them);
+    int row_eks = util::row(eks);
+    int col_eks = util::col(eks);
+
+    int row = util::row(f);
+    int col = util::col(f);
+
+    Square in_front = Square(f + (c == white ? 8 : -8));
+
+    U64 eks_bb = (bitboards::kmask[f] & bitboards::squares[eks]);
+    U64 fks_bb = (bitboards::kmask[f] & bitboards::squares[ks]);
+
+    bool e_control_next = eks_bb != 0ULL;
+    bool f_control_next = fks_bb != 0ULL;
+
+    bool f_king_infront = (c == white ? row_ks >= row : row_ks <= row);
+    bool e_king_infront = (c == white ? row_eks > row : row_eks < row);
+
+    // edge column draw
+    if (col == Col::A || col == Col::H) {
+      if (e_control_next) return 0;
+      if (col_eks == col && e_king_infront) return 0;
+    }
+
+    // case 1. bad king position (enemy king blocking pawn)
+    if (e_king_infront && !f_king_infront && e_control_next && !has_opposition) {
+      return 0;
+    }
+    
+
+    // case 2. we control front square and have opposition (winning)
+    if (f_control_next && has_opposition) {
+      score += good_king_bonus;
+    }
+
+    int dist = (c == white ? 8 - row : row) - 1;
+    dist = (dist < 0 ? 0 : dist);
+
+    // case 3. we are behind the pawn
+    //int f_min_dist = std::min(row_ks, col_ks);
+    //int e_min_dist = std::min(row_eks, col_eks);
+    bool inside_pawn_box = util::col_dist(eks, f) <= dist;
+    
+    /*
+    {
+      // debug info
+      std::cout << "color = " << c << std::endl;
+      std::cout << "ek col dist = " << util::col_dist(eks, f) << std::endl;
+      std::cout << "pp dist = " << dist << std::endl;
+      std::cout << "ek inside box = " << inside_pawn_box << std::endl;
+      std::cout << "ek in front = " << e_king_infront << std::endl;
+      std::cout << "fk in front = " << f_king_infront << std::endl;
+    }
+    */
+
+    int fk_dist = std::max(util::col_dist(ks, f), util::row_dist(ks, f));
+    int ek_dist = std::max(util::col_dist(eks, f), util::row_dist(eks, f));
+    bool too_far = fk_dist >= ek_dist;
+    if (too_far && !f_king_infront && inside_pawn_box) {
+      //std::cout << "...ek catches pawn .. draw here..." << std::endl;
+      return 0;
+    }
+
+    // bonus for being closer to queening
+    switch (dist) {
+    case 1: score += 6 * advanced_passed_pawn_bonus;
+    case 2: score += 5 * advanced_passed_pawn_bonus;
+    case 3: score += 4 * advanced_passed_pawn_bonus;
+    case 4: score += 3 * advanced_passed_pawn_bonus;
+    case 5: score += 2 * advanced_passed_pawn_bonus;
+    case 6: score += advanced_passed_pawn_bonus;
+    }
+
+    return score;
+  }
+
+  template<Color c>
+  inline float eval_passed_krrk(const position& p, einfo& ei, const Square& f, const bool& has_opposition) {
+    float score = 0;
+
+    const float advanced_passed_pawn_bonus = 15;
+    const float rook_behind_pawn_bonus = 10;
+    const float free_king_row_bonus = 4;
+    const float free_king_col_bonus = 4;
+    const float good_king_bonus = 5;
+
+    Color them = Color(c ^ 1);
+
+    Square ks = p.king_square(c);
+    int row_ks = util::row(ks);
+    int col_ks = util::col(ks);
+
+    Square eks = p.king_square(them);
+    int row_eks = util::row(eks);
+    int col_eks = util::col(eks);
+
+    int row = util::row(f);
+    int col = util::col(f);
+
+    Square frs = p.squares_of<c, rook>()[0];
+    int col_fr = util::col(frs);
+    int row_fr = util::row(frs);
+
+    Square ers = (c == white ? p.squares_of<black, rook>()[0] :
+      p.squares_of<white, rook>()[0]);
+    int col_er = util::col(ers);
+    int row_er = util::row(ers);
+
+
+    Square in_front = Square(f + (c == white ? 8 : -8));
+
+    U64 eks_bb = (bitboards::kmask[f] & bitboards::squares[eks]);
+    U64 fks_bb = (bitboards::kmask[f] & bitboards::squares[ks]);
+
+    bool e_control_next = eks_bb != 0ULL;
+    bool f_control_next = fks_bb != 0ULL;
+
+    bool f_king_infront = (c == white ? row_ks >= row : row_ks <= row);
+    bool e_king_infront = (c == white ? row_eks > row : row_eks < row);
+
+    // 1. does our king control the next square
+    if (f_control_next && has_opposition) {
+      score += good_king_bonus;
+    }
+
+    // 2. is our rook behind the passed pawn
+    bool fr_behind = (c == white ? row_fr < row : row_fr > row);
+    bool same_column = col_fr == col;
+    if (fr_behind && same_column) {
+      score += rook_behind_pawn_bonus;
+    }
+
+    // 3. can our king walk forward (rook is not blocking)
+    bool er_row_block = util::row_dist(ers, ks) <= 1;
+    if (!er_row_block) {
+      score += free_king_row_bonus;
+    }
+
+    // 4. can our king walk to our pawn (accross cols)
+    // without being blocked by the enemy rook?
+    bool bad_order_1 = col_ks < col_er < col;
+    bool bad_order_2 = col < col_er < col_ks;
+    if (!bad_order_1 && !bad_order_2) {
+      score += free_king_col_bonus;
+    }
+
+    // bonus for being closer to queening
+    int dist = (c == white ? 8 - row : row) - 1;
+    dist = (dist < 0 ? 0 : dist);
+    switch (dist) {
+    case 1: score += 6 * advanced_passed_pawn_bonus;
+    case 2: score += 5 * advanced_passed_pawn_bonus;
+    case 3: score += 4 * advanced_passed_pawn_bonus;
+    case 4: score += 3 * advanced_passed_pawn_bonus;
+    case 5: score += 2 * advanced_passed_pawn_bonus;
+    case 6: score += advanced_passed_pawn_bonus;
+    }
+
+    return score;
+  }
+
+
   // only evaluated from white perspective
   inline bool is_fence(const position& p, einfo& ei) {
 
@@ -93,7 +269,8 @@ namespace eval {
 
       Square occ = Square(start + 8);
 
-      if (!(bitboards::squares[occ] & enemies)) {
+      if (!(bitboards::squares[occ] & enemies) && 
+          !(bitboards::squares[occ] & bking)) {
         //std::cout << "..dbg detected pawn-chain is not \"locked\", not a fence position" << std::endl;
         return false;
       }

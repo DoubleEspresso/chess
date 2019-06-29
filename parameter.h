@@ -124,6 +124,18 @@ struct parameters {
   // move ordering
   const float counter_move_bonus = 27.0f; // 5
   const float threat_evasion_bonus = 27.0f; // 2
+
+  const float pawn_lever_score[64] =
+  {
+    1, 2, 3, 4, 4, 3, 2, 1,
+    1, 2, 3, 4, 4, 3, 2, 1,
+    1, 2, 3, 4, 4, 3, 2, 1,
+    1, 2, 3, 4, 4, 3, 2, 1,
+    1, 2, 3, 4, 4, 3, 2, 1,
+    1, 2, 3, 4, 4, 3, 2, 1,
+    1, 2, 3, 4, 4, 3, 2, 1,
+    1, 2, 3, 4, 4, 3, 2, 1
+  };
 };
 
 
