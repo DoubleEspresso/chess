@@ -1,4 +1,5 @@
 #include "zobrist.h"
+#include "bits.h"
 
 namespace zobrist {
   U64 piece_rands[Square::squares][2][pieces];
@@ -10,16 +11,49 @@ namespace zobrist {
 }
 
 
+U64 zobrist::gen(const unsigned int& bits, util::rand<unsigned int>& r) {
+  U64 res = 0ULL;
+  for (unsigned int i = 0; i<bits; ++i) res |= (1ULL << (r.next() & 63));
+  return res;
+}
+
+const unsigned _bits = 25;
 
 bool zobrist::load() {
   
-  util::rand<U64> gen;
+  const unsigned int N = 1826;
+  std::vector<U64> rands;
+  util::rand<unsigned int> R;
+
+  bool ok = true;
+  while (rands.size() < N) {
+
+    U64 rand = R.next(); // gen(bits, R);
+    
+    // filter zobrist keys to be unique
+    // and favor smaller values (bits distributed near lower half)
+    if (bits::count(rand) > 4) continue;
+    
+    U64 filter_low = (rand >> 20); // 0x000000FFFFFFFF;
+    if (bits::count(filter_low) >= 3) continue;
+
+    //U64 filter_high = (rand << 20); // 0xFFFFFFFF;
+    //if (bits::count(filter_high) <= 3) continue;
+
+    for (unsigned i = 0; i < rands.size(); ++i) {
+      ok = (rand != rands[i]);
+      if (!ok) break;
+    }
+    if (ok) rands.emplace_back(rand);
+  }
+
 
   // pieces
+  unsigned int idx = 0;
   for (Square sq = A1; sq <= H8; ++sq) {
     for (Color c = white; c <= black; ++c) {
-      for (Piece p = pawn; p <= king; ++p) {
-	piece_rands[sq][c][p] = gen.next();
+      for (Piece p = pawn; p <= king; ++p, ++idx) {
+        piece_rands[sq][c][p] = rands[idx]; // gen(bits, R);//gen.next();
       }
     }
   }
@@ -27,25 +61,25 @@ bool zobrist::load() {
 
   // castle rights
   for (Color c = white; c <= black; ++c) {
-    for (int bit = 0; bit < 16; ++bit) {
-      castle_rands[c][bit] = gen.next();
+    for (int bit = 0; bit < 16; ++bit, ++idx) {
+      castle_rands[c][bit] = rands[idx]; // gen(bits, R);// .next();
     }
   }
 
   
   // ep
-  for (int col = 0; col < 8; ++col) {
-    ep_rands[col] = gen.next();
+  for (int col = 0; col < 8; ++col, ++idx) {
+    ep_rands[col] = rands[idx]; // gen(bits, R); // gen.next();
   }
 
   // stm
-  stm_rands[white] = gen.next();
-  stm_rands[black] = gen.next();
+  stm_rands[white] = rands[idx++]; // gen(bits, R); // .next();
+  stm_rands[black] = rands[idx++]; // gen(bits, R); // .next();
 
 
-  for (int m = 0; m < 512; ++m) {
-    move50_rands[m] = gen.next();
-    hmv_rands[m] = gen.next();
+  for (int m = 0; m < 512; ++m, idx += 2) {
+    move50_rands[m] = rands[idx]; // gen(bits, R); // .next();
+    hmv_rands[m] = rands[idx + 1]; // gen(bits, R);// .next();
   }
   
   return true;

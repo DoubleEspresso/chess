@@ -65,12 +65,10 @@ void hash_table::save(const U64& key,
 
     // collision handling (depth, age and pv node)
     else if (((e->pkey) ^ (e->dkey)) == key) {
-      if (age - e->age() > 1)
-      {
+      if (age - e->age() > 1) {
         replace = e;
       }
-      else if (e->depth() - depth > 0 && pv_node)
-      {
+      else if (e->depth() - depth > 0 && pv_node) {
         replace = e;
       }
     }

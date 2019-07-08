@@ -14,6 +14,7 @@ namespace zobrist {
   U64 stm(const Color& c);
   U64 mv50(const U16& count);
   U64 hmvs(const U16& count);
+  U64 gen(const unsigned int& bits, util::rand<unsigned int>& r);
 
   extern U64 piece_rands[Square::squares][2][pieces];
   extern U64 castle_rands[2][16];

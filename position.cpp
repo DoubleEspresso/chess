@@ -50,7 +50,8 @@ void position::setup(std::istringstream& fen) {
   fen >> token;
   ifo.stm = (token == "w" ? Color::white : Color::black);
   ifo.key ^= zobrist::stm(ifo.stm);
-  
+  ifo.repkey ^= zobrist::stm(ifo.stm);
+
   // the castle rights
   fen >> token;  
   ifo.cmask = U16(0);
@@ -58,6 +59,7 @@ void position::setup(std::istringstream& fen) {
     U16 cr = CastleRights.at(c);
     ifo.cmask |= cr;
     ifo.key ^= zobrist::castle(ifo.stm, cr);
+    ifo.repkey ^= zobrist::castle(ifo.stm, cr);
   }
   
 
@@ -73,8 +75,10 @@ void position::setup(std::istringstream& fen) {
 
   if (!util::on_board(ifo.eps)) ifo.eps = Square::no_square;
   
-  if (ifo.eps != Square::no_square) ifo.key ^= zobrist::ep(util::col(ifo.eps));
-  ifo.repkey = ifo.key;
+  if (ifo.eps != Square::no_square) {
+    ifo.key ^= zobrist::ep(util::col(ifo.eps));
+    ifo.repkey ^= zobrist::ep(util::col(ifo.eps));
+  }
 
   // half-moves since last pawn move/capture
   fen >> token;
@@ -125,12 +129,15 @@ void position::do_move(const Move& m) {
   if (p == king) {
     pcs.king_sq[us] = to;
     ifo.ks[us] = to;
-    ifo.cmask &= (us == white ? clearw : clearb);
-    ifo.key ^= (us == white ? zobrist::castle(white, clearw) : zobrist::castle(black, clearb));
-    ifo.repkey ^= (us == white ? zobrist::castle(white, clearw) : zobrist::castle(black, clearb));
+    if ((us == white && can_castle<white>()) ||
+      (us == black && can_castle<black>())) {
+      ifo.cmask &= (us == white ? clearw : clearb);
+      ifo.key ^= (us == white ? zobrist::castle(white, clearw) : zobrist::castle(black, clearb));
+      ifo.repkey ^= (us == white ? zobrist::castle(white, clearw) : zobrist::castle(black, clearb));
+    }
   }
   else if (p == rook) {
-    if (us == white) {
+    if (us == white && can_castle<white>()) {
       if (from == A1) {
         ifo.cmask &= clearwqs;
         ifo.key ^= zobrist::castle(white, clearwqs);
@@ -142,16 +149,16 @@ void position::do_move(const Move& m) {
         ifo.repkey ^= zobrist::castle(white, clearwks);
       }
     }
-    else {
+    else if (us == black && can_castle<black>()){
       if (from == A8) {
         ifo.cmask &= clearbqs;
-        ifo.key ^= zobrist::castle(white, clearbqs);
-        ifo.repkey ^= zobrist::castle(white, clearbqs);
+        ifo.key ^= zobrist::castle(black, clearbqs);
+        ifo.repkey ^= zobrist::castle(black, clearbqs);
       }
       else if (from == H8) {
         ifo.cmask &= clearbks;
-        ifo.key ^= zobrist::castle(white, clearbks);
-        ifo.repkey ^= zobrist::castle(white, clearbks);
+        ifo.key ^= zobrist::castle(black, clearbks);
+        ifo.repkey ^= zobrist::castle(black, clearbks);
       }
     }
   }
@@ -747,6 +754,9 @@ void position::clear() {
   qnodes_searched = 0;
   std::memset(&ifo, 0, sizeof(info));
   ifo = {};
+  ifo.repkey = 0ULL;
+  ifo.key = 0ULL;
+  ifo.pawnkey = 0ULL;
 }
 
 

@@ -206,7 +206,7 @@ double Search::estimate_max_time(position& p, limits& lims) {
 void Search::iterative_deepening(position& p, U16 depth, bool silent) {
   int16 alpha = ninf;
   int16 beta = inf;
-  int16 delta = 75;
+  int16 delta = 65;
   Score eval = ninf;
   
   const unsigned stack_size = 64 + 4;
@@ -381,7 +381,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   }
 
   // 2. probcut - prune at larger depths likely uninteresting moves
-  if (!pv_type &&
+  if (!pv_type && 0 &&
     !in_check &&
     (stack - 1)->curr_move.type != Movetype::quiet &&
     depth > 8 &&
@@ -535,7 +535,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       best_score < alpha &&
       move.type != Movetype::quiet &&
       depth <= 1 &&
-      //moves_searched > 1 &&
+      moves_searched > 1 &&
       p.see(move) < 0) continue;
 
 
@@ -562,7 +562,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       move != stack->killers[1] &&
       move != stack->killers[2] &&
       move != stack->killers[3] &&
-      //!in_check &&
+      !in_check &&
       p.piece_on(Square(move.f)) != pawn &&
       p.piece_on(Square(move.f)) != king &&
       best_score + 250 < alpha &&
@@ -676,20 +676,20 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   for (size_t i = 0; i < deferred; ++i) {
     
     // see pruning
-    /*
-    if (move != ttm &&
-      stack->deferred_moves[i] != stack->killers[0] &&
-      stack->deferred_moves[i] != stack->killers[1] &&
-      stack->deferred_moves[i] != stack->killers[2] &&
-      stack->deferred_moves[i] != stack->killers[3] &&
-      !pv_type &&
-      !in_check &&
-      best_score < alpha &&
-      move.type != Movetype::quiet &&
-      depth <= 1 &&
-      //moves_searched > 1 &&
-      p.see(stack->deferred_moves[i]) < 0) continue;
-      */
+    
+    //if (move != ttm &&
+    //  stack->deferred_moves[i] != stack->killers[0] &&
+    //  stack->deferred_moves[i] != stack->killers[1] &&
+    //  stack->deferred_moves[i] != stack->killers[2] &&
+    //  stack->deferred_moves[i] != stack->killers[3] &&
+    //  !pv_type &&
+    //  !in_check &&
+    //  best_score < alpha &&
+    //  move.type != Movetype::quiet &&
+    //  depth <= 1 &&
+    //  moves_searched > 1 &&
+    //  p.see(stack->deferred_moves[i]) < 0) continue;
+      
 
 
     p.do_move(stack->deferred_moves[i]);
@@ -711,7 +711,19 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       best_score + 250 < alpha &&
       best_score > mated_max_ply &&
       moves_searched > 1) {
+
       reductions += 1; // (depth > 14 ? 2 : 1);
+
+      // reduce with history score
+      if (depth > 8) {
+        int hscore = (p.to_move() == white ?
+          p.history_stats().score<white>(move, (stack - 1)->curr_move, stack->threat_move) :
+          p.history_stats().score<black>(move, (stack - 1)->curr_move, stack->threat_move));
+        if (hscore < 0)
+        {
+          reductions += 1;
+        }
+      }
     }
 
     int16 newdepth = depth + extensions - reductions;
@@ -942,8 +954,8 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
       move != stack->killers[1] &&
       move != stack->killers[2] &&
       move != stack->killers[3] &&
-      !pv_type &&
       */
+      !pv_type &&
       !in_check &&
       //best_score < alpha &&
       //moves_searched > 1 &&
@@ -975,11 +987,11 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
     return Score(Score::mated + root_dist);
   }
 
-  
-  Bound bound = (best_score >= beta ? bound_low :
-    best_score <= alpha ? bound_high : bound_exact);
-  ttable.save(p.key(), qsdepth, U8(bound), stack->ply, best_move, best_score, pv_type);
-  
+  //
+  //Bound bound = (best_score >= beta ? bound_low :
+  //  best_score <= alpha ? bound_high : bound_exact);
+  //ttable.save(p.key(), qsdepth, U8(bound), stack->ply, best_move, best_score, pv_type);
+  //
 
   return best_score;  
 }

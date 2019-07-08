@@ -197,6 +197,7 @@ class position {
   inline Square eps() const { return ifo.eps; }
   inline Color to_move() const { return ifo.stm; }
   inline U64 key() { return ifo.key; }
+  inline U64 repkey() { return ifo.repkey; }
   inline U64 pawnkey() const { return ifo.pawnkey; }
   inline U64 material_key() const { return ifo.mkey; }
   // piece access wrappers
@@ -272,10 +273,16 @@ inline void piece_data::do_quiet(const Color& c, const Piece& p,
   piece_on[t] = p;
   piece_on[f] = no_piece;
   
-  ifo.key ^= (zobrist::piece(f, c, p) | zobrist::piece(t, c, p));
-  ifo.repkey ^= (zobrist::piece(f, c, p) | zobrist::piece(t, c, p));
+  ifo.key = ifo.key ^ zobrist::piece(f, c, p);
+  ifo.key = ifo.key ^ zobrist::piece(t, c, p);
 
-  if (p == Piece::pawn) ifo.pawnkey ^= (zobrist::piece(f, c, p) | zobrist::piece(t, c, p));
+  ifo.repkey = ifo.repkey ^ zobrist::piece(f, c, p);
+  ifo.repkey = ifo.repkey ^ zobrist::piece(t, c, p);
+
+  if (p == Piece::pawn) {
+    ifo.pawnkey = ifo.pawnkey ^ zobrist::piece(f, c, p);
+    ifo.pawnkey = ifo.pawnkey ^ zobrist::piece(t, c, p);
+  }
 }
 
 inline void piece_data::do_cap(const Color& c, const Piece& p,

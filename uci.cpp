@@ -49,6 +49,7 @@ bool uci::parse_command(const std::string& input) {
       
       p.print();
       std::cout << "position hash key: " << p.key() << std::endl;
+      std::cout << "position rep key:" << p.repkey() << std::endl;
     }
     else if (cmd == "d") {
       p.print();
