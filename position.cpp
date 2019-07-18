@@ -474,6 +474,21 @@ int position::see_move(const Move& m) {
   return score;
 }
 
+inline bool is_promotion(const Movetype& mt) {
+  return (mt == promotion ||
+    mt == promotion_q ||
+    mt == promotion_r ||
+    mt == promotion_b ||
+    mt == promotion_n);
+}
+
+inline bool is_cap_promotion(const Movetype& mt) {
+  return (mt == capture_promotion_q ||
+    mt == capture_promotion_r ||
+    mt == capture_promotion_b ||
+    mt == capture_promotion_n);
+}
+
 bool position::is_legal_hashmove(const Move& m) {
 
   Movetype mt = Movetype(m.type);
@@ -486,20 +501,20 @@ bool position::is_legal_hashmove(const Move& m) {
   Color them = Color(us ^ 1);
   Square eks = king_square(them);
   bool slider = (p == rook || p == bishop || p == queen);
+  bool ispromotion = is_promotion(mt);
+  bool iscappromotion = is_cap_promotion(mt);
 
+  if (p == Piece::no_piece) return false;
   if (f == t) return false;
   if (t == eks) return false;
   if (color_on(t) == us) return false;
   if (color_on(f) != us) return false;
-  if ((mt == ep || mt == quiet || mt == promotion) && color_on(t) != Color::no_color) return false;
+  if ((mt == ep || mt == quiet || ispromotion) && color_on(t) != Color::no_color) return false;
   if (mt == ep && piece_on(t) != Piece::no_piece) return false;
 
-  if ((mt == capture ||
-    mt == capture_promotion_q ||
-    mt == capture_promotion_r ||
-    mt == capture_promotion_b ||
-    mt == capture_promotion_n) &&
+  if ((mt == capture || iscappromotion) &&
     (color_on(t) != them || piece_on(t) == Piece::no_piece)) return false;
+
   if (mt == ep && t != ifo.eps) return false;
   
   if (!is_legal(m)) return false;
@@ -584,6 +599,7 @@ bool position::is_legal_hashmove(const Move& m) {
   return true;
 }
 
+
 bool position::is_legal(const Move& m) {
   Square f = Square(m.f);
   Square t = Square(m.t);
@@ -594,19 +610,21 @@ bool position::is_legal(const Move& m) {
   Color them = Color(us ^ 1);
   Square eks = king_square(them);
   auto pc = pcs.bitmap[them];
+  bool ispromotion = is_promotion(mt);
+  bool iscappromotion = is_cap_promotion(mt);
 
   // basic checks on hash moves
+  if (p == Piece::no_piece) return false;
   if (f == t) return false;
   if (t == eks) return false;
   if (color_on(t) == us) return false;
   if (color_on(f) != us) return false;
-  if ((mt == ep || mt == quiet || mt == promotion) && color_on(t) != Color::no_color) return false;
+  if ((mt == ep || mt == quiet || ispromotion) && color_on(t) != Color::no_color) return false;
 
-  if ((mt == capture ||
-    mt == capture_promotion_q ||
-    mt == capture_promotion_r ||
-    mt == capture_promotion_b ||
-    mt == capture_promotion_n) &&
+  if ((ispromotion || iscappromotion) && p != pawn) return false;
+
+
+  if ((mt == capture || iscappromotion) && 
     (color_on(t) != them || piece_on(t) == Piece::no_piece)) return false;
   
   // pinned
@@ -626,19 +644,23 @@ bool position::is_legal(const Move& m) {
   if (mt == castle_ks || mt == castle_qs) {
     
     if (in_check()) return false;
-    
+    if (piece_on(us == white ? E1 : E8) != king) return false;
+
     Square s1 = no_square;
     Square s2 = no_square;
     
     if (mt == castle_ks) {
       s1 = (us == white ? F1 : F8);
       s2 = (us == white ? G1 : G8);
+      if (piece_on(us == white ? F1 : F8) != no_piece) return false;
+      if (piece_on(us == white ? G1 : G8) != no_piece) return false;
       if (piece_on(us == white ? H1 : H8) != rook) return false;
     }
     else if (mt == castle_qs) {
       s1 = (us == white ? D1 : D8);
       s2 = (us == white ? C1 : C8);
       if (piece_on(us == white ? B1 : B8) != no_piece) return false;
+      if (piece_on(us == white ? C1 : C8) != no_piece) return false;
       if (piece_on(us == white ? A1 : A8) != rook) return false;
     }
     
@@ -646,7 +668,7 @@ bool position::is_legal(const Move& m) {
 
     
     if (is_attacked(s1, us, them, all_pieces()) ||
-	is_attacked(s2, us, them, all_pieces())) return false;
+      is_attacked(s2, us, them, all_pieces())) return false;
 
     return true;
   }

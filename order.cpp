@@ -67,6 +67,10 @@ int move_history::score<white>(const Move& m, const Move& previous, const Move& 
   int score = history[white][m.f][m.t];
   if (counters[previous.f][previous.t] == m) score += counter_move_bonus;
   if (m.f == threat.t) score += threat_evasion_bonus;
+  if (m.type == promotion_q) score += 81; // ordering material values - pawn value
+  if (m.type == promotion_r) score += 38;
+  if (m.type == promotion_b) score += 25;
+  if (m.type == promotion_n) score += 20;
   return score;
 }
 
@@ -75,6 +79,10 @@ int move_history::score<black>(const Move& m, const Move& previous, const Move& 
   int score = history[black][m.f][m.t];
   if (counters[previous.f][previous.t] == m) score += counter_move_bonus;
   if (m.f == threat.t) score += threat_evasion_bonus;
+  if (m.type == promotion_q) score += 81; // ordering material values - pawn value
+  if (m.type == promotion_r) score += 38;
+  if (m.type == promotion_b) score += 25;
+  if (m.type == promotion_n) score += 20;
   return score;
 }
 
@@ -185,9 +193,14 @@ bool move_order::next_move<main0>(position& pos, Move& m, const Move& previous, 
         Piece pf = pos.piece_on(Square((*moves)[i].f));
         
         Score sc = ((*moves)[i].type == Movetype::ep) ? Score(0) :
+          //Score(pos.see((*moves)[i]));
           Score(mvals[pt] - mvals[pf]);
 
-        //Score sc = Score(pos.see((*moves)[i]));
+        // promotions
+        if (m.type == capture_promotion_q) sc = Score(sc + 81); // ordering material values - pawn value
+        if (m.type == capture_promotion_r) sc = Score(sc + 38);
+        if (m.type == capture_promotion_b) sc = Score(sc + 25);
+        if (m.type == capture_promotion_n) sc = Score(sc + 20);
         
         list.emplace_back(scored_move((*moves)[i], sc));
       }
@@ -251,7 +264,6 @@ bool move_order::next_move<main0>(position& pos, Move& m, const Move& previous, 
         
         Score sc = Score(ss((*moves)[i], previous, threat));
         
-
 
         list.emplace_back(scored_move((*moves)[i], sc));
         
@@ -336,7 +348,12 @@ bool move_order::next_move<qsearch>(position& pos, Move& m, const Move& previous
         Score sc = ((*moves)[i].type == Movetype::ep) ? Score(0) :
           Score(mvals[pt] - mvals[pf]);
         
-	
+        // promotions
+        if (m.type == capture_promotion_q) sc = Score(sc + 81); // ordering material values - pawn value
+        if (m.type == capture_promotion_r) sc = Score(sc + 38);
+        if (m.type == capture_promotion_b) sc = Score(sc + 25);
+        if (m.type == capture_promotion_n) sc = Score(sc + 20);
+
         list.emplace_back(scored_move((*moves)[i], sc));
       }
       

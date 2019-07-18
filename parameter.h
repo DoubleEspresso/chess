@@ -122,8 +122,8 @@ struct parameters {
   const float semi_open_pawn_penalty = 1.0f;
 
   // move ordering
-  const float counter_move_bonus = 27.0f; // 5
-  const float threat_evasion_bonus = 27.0f; // 2
+  const float counter_move_bonus = 100.0f; // 5
+  const float threat_evasion_bonus = 100.0f; // 2
 
   const float pawn_lever_score[64] =
   {

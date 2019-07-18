@@ -135,7 +135,7 @@ namespace {
     score += (eval_king<white>(p, ei) - eval_king<black>(p, ei));
     score += (eval_space<white>(p, ei) - eval_space<black>(p, ei));
     score += (eval_center<white>(p, ei) - eval_center<black>(p, ei));
-    //score += (eval_pawns<white>(p, ei) - eval_pawn_levers<black>(p, ei));
+    score += (eval_pawn_levers<white>(p, ei) - eval_pawn_levers<black>(p, ei));
 
     return p.to_move() == white ? score : -score;
   }
@@ -452,8 +452,10 @@ namespace {
     float attacker_score = 0.0f;
 
     for (Square s = *kings; s != no_square; s = *++kings) {
-      score += p.params.sq_score_scaling[king] * square_score<c>(king, s);
 
+      if (!ei.me->is_endgame()) {
+        score += p.params.sq_score_scaling[king] * square_score<c>(king, s);
+      }
 
       // mobility      
       U64 mvs = ei.kmask[c] & ei.empty;
@@ -468,7 +470,7 @@ namespace {
         for (int j = 1; j < 5; ++j) {
           num_attackers += ei.kattackers[them][j];
         }
-        attacker_score += p.params.attacker_weight[std::min((int)num_attackers, 4)];
+        attacker_score += 2*p.params.attacker_weight[std::min((int)num_attackers, 4)];
 
         score -= attacker_score;
 
@@ -477,11 +479,12 @@ namespace {
       }
 
       // pawns around king bonus
+      /*
       U64 pawn_shelter = ei.pe->king[c] & ei.kmask[c];
       int n = 0;
       if (pawn_shelter) n = std::min(3, bits::count(pawn_shelter));
-      score += p.params.king_shelter[n];
-
+      score += 2 * p.params.king_shelter[n];
+      */
 
       // reward for castling
       if (!p.has_castled<c>()) score -= p.params.uncastled_penalty;

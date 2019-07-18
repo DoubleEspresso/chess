@@ -32,7 +32,7 @@ struct search_bounds {
 volatile bool slaves_start;
 std::condition_variable cv;
 search_bounds sb;
-unsigned thread_depth = 133;
+unsigned thread_depth = 100;
 volatile double elapsed = 0;
 unsigned prob_cut_tries = 0;
 unsigned prob_cut_successes = 0;
@@ -213,8 +213,8 @@ void Search::iterative_deepening(position& p, U16 depth, bool silent) {
   node stack[stack_size];
   std::memset(stack, 0, sizeof(node) * stack_size);
   
-  //for (unsigned id = 1 + p.id(); id <= depth; ++id) {
-  for (unsigned id = 1; id <= depth; ++id) {
+  for (unsigned id = 1 + p.id(); id <= depth; ++id) {
+  //for (unsigned id = 1; id <= depth; ++id) {
 
     if (UCI_SIGNALS.stop) break;
 
@@ -240,7 +240,7 @@ void Search::iterative_deepening(position& p, U16 depth, bool silent) {
         if (id == depth) UCI_SIGNALS.stop = true;
       }
       
-      //if (UCI_SIGNALS.stop) break;
+      if (UCI_SIGNALS.stop) break;
 
       if (eval <= alpha) {
         delta += delta;
@@ -313,7 +313,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   // forward pruning
   const bool forward_prune = (!in_check &&
     !pv_type &&
-    (stack-1)->curr_move.type == Movetype::quiet &&
+    (stack - 1)->curr_move.type == Movetype::quiet &&
     !stack->null_search &&
     abs(alpha - beta) == 1 && // only prune in null windows (same condition as !pv_node)
     static_eval != ninf);
@@ -380,11 +380,12 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     }
   }
 
+
   // 2. probcut - prune at larger depths likely uninteresting moves
   if (!pv_type && 0 &&
     !in_check &&
     (stack - 1)->curr_move.type != Movetype::quiet &&
-    depth > 8 &&
+    //depth > 8 &&
     static_eval != ninf &&
     !stack->null_search &&
     //static_eval < mate_max_ply &&
@@ -572,7 +573,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       reductions += 1; // (depth > 14 ? 2 : 1);
 
       // reduce with history score
-      if (depth > 8) {
+      //if (depth > 8) {
         int hscore = (p.to_move() == white ?
           p.history_stats().score<white>(move, (stack - 1)->curr_move, stack->threat_move) :
           p.history_stats().score<black>(move, (stack - 1)->curr_move, stack->threat_move));
@@ -580,7 +581,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
         {
           reductions += 1;
         }
-      }
+      //}
 
     }
 
@@ -660,7 +661,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 	    alpha >= sb.alpha && alpha < beta &&
 	    beta <= sb.beta) {
 	  sb.alpha = alpha;
-	  sb.beta = beta;paw
+	  sb.beta = beta;
 	  sb.best_score = best_score;
 	  sb.depth = depth;
 	}
@@ -673,7 +674,8 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     
     
   // re-try deferred moves (already passed legality check)
-  for (size_t i = 0; i < deferred; ++i) {
+  //deferred = 0;
+  for (size_t i = 0; i < deferred; ++i) { // deferred; ++i) {
     
     // see pruning
     
@@ -987,7 +989,7 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
     return Score(Score::mated + root_dist);
   }
 
-  //
+  
   //Bound bound = (best_score >= beta ? bound_low :
   //  best_score <= alpha ? bound_high : bound_exact);
   //ttable.save(p.key(), qsdepth, U8(bound), stack->ply, best_move, best_score, pv_type);
