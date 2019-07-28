@@ -107,11 +107,11 @@ struct parameters {
   std::vector<float> king_safe_sqs{ -4.0f, -2.0f, -1.0f, 0.0f, 0.0f, 1.0f, 2.0f, 4.0f };
   float uncastled_penalty = 5.0f;
   const float connected_rook_bonus = 1.0f;
-  const float doubled_bishop_bonus = 2.0f;
+  const float doubled_bishop_bonus = 4.0f;
   const float open_file_bonus = 1.0f;
   const float bishop_open_center_bonus = 1.0f;
-  const float bishop_color_complex_bonus = 1.0f;
-  const float bishop_penalty_pawns_same_color = 0.0f;
+  const float bishop_color_complex_penalty = 1.0f;
+  const float bishop_penalty_pawns_same_color = 1.0f;
   const float rook_7th_bonus = 2.0f;
 
   // pawn params

@@ -127,7 +127,7 @@ namespace {
       }
     }
 
-    //score += (eval_color<white>(p, ei) - eval_color<black>(p, ei));
+    score += (eval_color<white>(p, ei) - eval_color<black>(p, ei));
     score += (eval_knights<white>(p, ei) - eval_knights<black>(p, ei));
     score += (eval_bishops<white>(p, ei) - eval_bishops<black>(p, ei));
     score += (eval_rooks<white>(p, ei) - eval_rooks<black>(p, ei));
@@ -220,6 +220,7 @@ namespace {
     U64 edark_sq_pawns = ei.black_pawns[them];
     U64 fdark_sq_pawns = ei.black_pawns[c];
     U64 equeen_sq = ei.queen_sqs[them];
+    U64 center_pawns = ei.central_pawns[c];
 
     for (Square s = *bishops; s != no_square; s = *++bishops) {
       score += p.params.sq_score_scaling[bishop] * square_score<c>(bishop, s);
@@ -236,8 +237,11 @@ namespace {
       if ((bitboards::squares[s] & p.pinned<c>())) mscore /= p.params.pinned_scaling[bishop];
       score += mscore;
 
-      // closed center
-      //if (!ei.closed_center) score += p.params.bishop_open_center_bonus;
+      // open center bonus
+      //if (bits::count(center_pawns) <= 0)
+      //{
+      //  score += p.params.bishop_open_center_bonus;
+      //}
 
       // outpost bonus
       if ((bitboards::squares[s] & ei.pawn_holes[them])) {
@@ -470,7 +474,7 @@ namespace {
         for (int j = 1; j < 5; ++j) {
           num_attackers += ei.kattackers[them][j];
         }
-        attacker_score += 2*p.params.attacker_weight[std::min((int)num_attackers, 4)];
+        attacker_score += 2 * p.params.attacker_weight[std::min((int)num_attackers, 4)];
 
         score -= attacker_score;
 
@@ -519,7 +523,7 @@ namespace {
       bitboards::col[Col::E] | bitboards::col[Col::F]);
 
 
-    score += bits::count(space) / 2.0f;
+    score += 0.5 * bits::count(space);
 
 
     return score;
@@ -530,8 +534,53 @@ namespace {
     float score = 0;
     U64 pawns = p.get_pieces<c, pawn>();
 
+    if (ei.me->is_endgame()) return score;
+
+
     ei.white_pawns[c] = pawns & bitboards::colored_sqs[white];
     ei.black_pawns[c] = pawns & bitboards::colored_sqs[black];
+
+    int wpawns_num = 0;
+    int bpawns_num = 0;
+    
+    if (ei.white_pawns[c] != 0ULL) wpawns_num = bits::count(ei.white_pawns[c]);
+    if (ei.black_pawns[c] != 0ULL) bpawns_num = bits::count(ei.black_pawns[c]);
+    int tot_pawns = wpawns_num + bpawns_num;
+
+    U64 fbishops = p.get_pieces<c, bishop>(); 
+    U64 ebishops = (c == white ? p.get_pieces<black, bishop>() : p.get_pieces<white, bishop>());
+    bool f_wbishop = (fbishops & bitboards::colored_sqs[white]) != 0ULL;
+    bool f_bbishop = (fbishops & bitboards::colored_sqs[black]) != 0ULL;
+
+    bool e_wbishop = (ebishops & bitboards::colored_sqs[white]) != 0ULL;
+    bool e_bbishop = (ebishops & bitboards::colored_sqs[black]) != 0ULL;
+
+    // king shelter pawns
+    //U64 pawn_shelter = ei.pe->king[c] & ei.kmask[c];
+
+    // penalize if we cannot challenge enemy bishop
+    if (wpawns_num <= 2 && tot_pawns > 4 && e_wbishop && !f_wbishop)
+    {
+      score -= p.params.bishop_color_complex_penalty;
+    }
+
+    if (bpawns_num <= 2 && tot_pawns > 4 && e_bbishop && !f_bbishop)
+    {
+      score -= p.params.bishop_color_complex_penalty;
+    }
+    
+
+    // penalize if we have too many pawns matching our bishop
+    //if (wpawns_num >= 5 && f_wbishop)
+    //{
+    //  score -= p.params.bishop_penalty_pawns_same_color;
+    //}
+
+    //if (bpawns_num >= 5 && f_bbishop)
+    //{
+    //  score -= p.params.bishop_penalty_pawns_same_color;
+    //}
+
 
     return score;
   }

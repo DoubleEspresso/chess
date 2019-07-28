@@ -820,12 +820,14 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   return best_score;
 }
 
+const std::vector<float> material_vals{ 100.0f, 300.0f, 315.0f, 480.0f, 910.0f };
 
 template<Nodetype type>
 Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * stack) {
 
   if (UCI_SIGNALS.stop) { return Score::draw; }
   
+
   Score best_score = Score::ninf;
   Move best_move = {};
   best_move.type = Movetype::no_type;
@@ -863,7 +865,7 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
   // stand pat
   if (!in_check) {
     best_score = (Score)std::lround(eval::evaluate(p));
-    //if (best_score + 975 < alpha) return best_score;
+    if (best_score + 975 < alpha) return best_score;
     if (best_score >= beta) return best_score;
     if (alpha < best_score) alpha = best_score;
   }
@@ -949,7 +951,7 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
 
 
     // see pruning
-    if (
+    if ( 
       /*
       move != ttm &&
       move != stack->killers[0] &&
@@ -957,12 +959,27 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
       move != stack->killers[2] &&
       move != stack->killers[3] &&
       */
-      !pv_type &&
+      //!pv_type &&
       !in_check &&
       //best_score < alpha &&
       //moves_searched > 1 &&
       p.see(move) < 0) continue;
-    
+
+
+    // qsearch futility pruning
+    int idx = int(p.piece_on(Square(move.t)));
+    float capture_score = (move.type == capture ? material_vals[idx] :
+      move.type == ep ? material_vals[0] :
+      move.type == capture_promotion_q ? material_vals[idx] + material_vals[queen] :
+      move.type == capture_promotion_r ? material_vals[idx] + material_vals[rook] :
+      move.type == capture_promotion_b ? material_vals[idx] + material_vals[bishop] :
+      move.type == capture_promotion_n ? material_vals[idx] + material_vals[knight] : 0);
+    int margin = 250;
+    if (!in_check && capture_score > 0 && (best_score + capture_score + margin < alpha))
+    {
+      //return Score(alpha); 
+      continue;
+    }
     
     p.do_move(move);
     p.adjust_qnodes(1);

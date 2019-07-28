@@ -351,14 +351,15 @@ int position::see_move(const Move& m) {
     inline bool operator<(const SeePiece& o) const { return score < o.score; }
     inline bool operator>(const SeePiece& o) const { return score > o.score; }
   };
-  
+  Square bks = king_square(black);
+  Square wks = king_square(white);
   Square to = Square(m.t);
   Square from = Square(m.f);
   U64 pieces = all_pieces();
   U64 attackers = 0ULL;
 
-  U64 white_bb = get_pieces<white>();
-  U64 black_bb = get_pieces<black>();
+  U64 white_bb = get_pieces<white>() ^ pinned<white>();
+  U64 black_bb = get_pieces<black>() ^ pinned<black>();
 
   std::vector<SeePiece> black_list;
   std::vector<SeePiece> white_list;
@@ -368,6 +369,12 @@ int position::see_move(const Move& m) {
     U64 a = attackers_of(to, pieces) & pieces;
     if (a) {
       pieces ^= a;
+
+      if (is_attacked(wks, white, black, pieces) || is_attacked(bks, black, white, pieces))
+      {
+        return 0; // let search handle discovered checking sequences
+      }
+
       attackers |= a;
     }
     else break;
@@ -448,6 +455,7 @@ int position::see_move(const Move& m) {
     
     color = Color(color ^ 1);
     int vv = mvals[victim];
+
 
 
     if (vv < av || victim == king) {
