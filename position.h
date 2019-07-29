@@ -140,7 +140,7 @@ class position {
 
   // utilities
   bool is_attacked(const Square& s, const Color& us, const Color& them, U64 m = 0ULL);
-  U64 attackers_of(const Square& s, const Color& c);
+  U64 attackers_of2(const Square& s, const Color& c) const;
   U64 attackers_of(const Square& s, const U64& bb);
   U64 checkers() const { return ifo.checkers; }
   bool in_check() const;

@@ -97,7 +97,7 @@ void position::setup(std::istringstream& fen) {
   ifo.ks[stm] = pcs.king_sq[stm];  
   ifo.incheck = is_attacked(ifo.ks[stm], stm, Color(stm^1));
   
-  ifo.checkers = (in_check() ? attackers_of(ifo.ks[stm], Color(stm^1)) : 0ULL);
+  ifo.checkers = (in_check() ? attackers_of2(ifo.ks[stm], Color(stm ^ 1)) : 0ULL);
   ifo.pinned[stm] = pinned();
 }
 
@@ -227,7 +227,7 @@ void position::do_move(const Move& m) {
   ifo.repkey ^= zobrist::stm(ifo.stm);
   
   ifo.incheck = is_attacked(king_square(), ifo.stm, us);
-  ifo.checkers = (ifo.incheck ? attackers_of(king_square(), Color(ifo.stm^1)) : 0ULL);
+  ifo.checkers = (ifo.incheck ? attackers_of2(king_square(), Color(ifo.stm^1)) : 0ULL);
   ifo.pinned[ifo.stm] = pinned();
   ++nodes_searched;
 }
@@ -749,7 +749,7 @@ U64 position::attackers_of(const Square& s, const U64& m) {
 	  (qattck & (p(white, queen) | p(black, queen))));
 }
 
-U64 position::attackers_of(const Square& s, const Color& c) {
+U64 position::attackers_of2(const Square& s, const Color& c) const {
   // attackers of square "s" by color "c"
   U64 m = all_pieces();
   auto p = pcs.bitmap[c];

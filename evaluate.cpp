@@ -28,6 +28,7 @@ namespace {
   template<Color c> float eval_center(const position& p, einfo& ei);
   template<Color c> float eval_color(const position& p, einfo& ei);
   template<Color c> float eval_pawn_levers(const position& p, einfo& ei);
+  template<Color c> float eval_passed_pawns(const position& p, einfo& ei);
   //template<Color c> float eval_material(const position&p, info& ei);
 
   template<Color c> float eval_kpk(const position& p, einfo& ei);
@@ -132,10 +133,11 @@ namespace {
     score += (eval_bishops<white>(p, ei) - eval_bishops<black>(p, ei));
     score += (eval_rooks<white>(p, ei) - eval_rooks<black>(p, ei));
     score += (eval_queens<white>(p, ei) - eval_queens<black>(p, ei));
-    score += (eval_king<white>(p, ei) - eval_king<black>(p, ei));
+    score += (eval_king<white>(p, ei) - eval_king<black>(p, ei));   
     score += (eval_space<white>(p, ei) - eval_space<black>(p, ei));
     score += (eval_center<white>(p, ei) - eval_center<black>(p, ei));
     score += (eval_pawn_levers<white>(p, ei) - eval_pawn_levers<black>(p, ei));
+    score += (eval_passed_pawns<white>(p, ei) - eval_passed_pawns<black>(p, ei));
 
     return p.to_move() == white ? score : -score;
   }
@@ -609,6 +611,53 @@ namespace {
       // 0.25f * p.params.pawn_lever_score[to];
     }
     return score;
+  }
+
+
+  template<Color c> float eval_passed_pawns(const position& p, einfo& ei)
+  {
+    float score = 0;
+    U64 passers = ei.pe->passed[c];
+    if (passers == 0ULL) {
+      return score;
+    }
+
+    while (passers)
+    {
+      Square f = Square(bits::pop_lsb(passers));      
+      int row_dist = (c == white ? 7 - util::row(f) : util::row(f));
+      
+      if (row_dist > 3) {
+        score += p.params.passed_pawn_bonus;
+        continue;
+      }
+
+
+      Square front = (c == white ? Square(f + 8) : Square(f - 8));
+
+      // 1. is next square blocked?
+      if (p.piece_on(front) == Piece::no_piece) {
+        score += 1;
+      }
+
+      // 2. is next square attacked?
+      U64 our_attackers = 0ULL;
+      
+      if (util::on_board(front)) our_attackers = p.attackers_of2(front, c);
+
+      if (our_attackers != 0ULL) {
+        score += 3 * bits::count(our_attackers);
+      }
+
+      // 3. bonus for closer to promotion
+      score += (
+        row_dist == 3 ? 45 :
+        row_dist == 2 ? 90 :
+        row_dist == 1 ? 180 : 0);
+    }
+
+    return score;
+
   }
 
   ////////////////////////////////////////////////////////////////////////////////
