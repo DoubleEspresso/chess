@@ -66,7 +66,7 @@ namespace {
     return 0.0f + 2.22f * log(n + 1); // max of ~20
   }
 
-  float do_eval(const position& p) {
+  float do_eval(const position& p, const float& lazy_margin) {
 
 
     float score = 0;
@@ -108,6 +108,13 @@ namespace {
     score += ei.me->score;
     score += (p.to_move() == white ? p.params.tempo : -p.params.tempo);
 
+    // early return on lazy margin (try #1)
+    if (lazy_margin > 0 && abs(score) >= lazy_margin)
+    {
+      return p.to_move() == white ? score : -score;
+    }
+
+
     // pure endgame evaluation    
     if (ei.me->is_endgame()) {
       EndgameType t = ei.me->endgame;
@@ -134,10 +141,17 @@ namespace {
     score += (eval_rooks<white>(p, ei) - eval_rooks<black>(p, ei));
     score += (eval_queens<white>(p, ei) - eval_queens<black>(p, ei));
     score += (eval_king<white>(p, ei) - eval_king<black>(p, ei));   
+    score += (eval_passed_pawns<white>(p, ei) - eval_passed_pawns<black>(p, ei));
+
+    // early return on lazy margin (try #2)
+    //if (lazy_margin > 0 && abs(score) >= lazy_margin)
+    //{
+    //  return p.to_move() == white ? score : -score;
+    //}
+
     score += (eval_space<white>(p, ei) - eval_space<black>(p, ei));
     score += (eval_center<white>(p, ei) - eval_center<black>(p, ei));
     score += (eval_pawn_levers<white>(p, ei) - eval_pawn_levers<black>(p, ei));
-    score += (eval_passed_pawns<white>(p, ei) - eval_passed_pawns<black>(p, ei));
 
     return p.to_move() == white ? score : -score;
   }
@@ -772,5 +786,5 @@ namespace {
 
 
 namespace eval {
-  float evaluate(const position& p) { return do_eval(p); }
+  float evaluate(const position& p, const float& lazy_margin) { return do_eval(p, lazy_margin); }
 }

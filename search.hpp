@@ -73,7 +73,13 @@ inline unsigned reduction(bool pv_node, bool improving, int d, int mc) {
 }
 
 inline float razor_margin(int depth) {
-  return 1810-(530 + 20 * depth);
+  return 450 * (1 - exp((depth - 64.0) / 20.0)); 
+  // 1810 - (530 + 20 * depth);
+}
+
+
+inline float lazy_eval_margin(int depth) { //, bool pv_node, bool improving) {
+  return -1; // 850 * (1 - exp((depth - 64.0) / 20.0));
 }
 
 void Search::start(position& p, limits& lims, bool silent) {
@@ -307,7 +313,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   
   // static evaluation
   Score static_eval = (ttvalue != Score::ninf ?
-    ttvalue : !in_check ? Score(std::lround(eval::evaluate(p))) : Score::ninf);
+    ttvalue : !in_check ? Score(std::lround(eval::evaluate(p, lazy_eval_margin(depth)))) : Score::ninf);
   stack->static_eval = static_eval;
 
   // forward pruning
@@ -319,10 +325,10 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     static_eval != ninf);
 
   // 0. futility pruning (razoring is better)
-  //if ( forward_prune &&
-  //  depth <= 1 &&
-  //  static_eval > mated_max_ply &&
-  //  static_eval + 650 < alpha) return static_eval;
+  if (forward_prune &&
+    depth <= 1 &&
+    static_eval > mated_max_ply &&
+    static_eval + 1350 < alpha) return Score(alpha); //static_eval;
 
   // 0. razoring - prune when losing
   float rm = razor_margin(depth);
@@ -385,7 +391,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   if (!pv_type && 0 &&
     !in_check &&
     (stack - 1)->curr_move.type != Movetype::quiet &&
-    //depth > 8 &&
+    depth > 14 &&
     static_eval != ninf &&
     !stack->null_search &&
     //static_eval < mate_max_ply &&
@@ -570,7 +576,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       best_score > mated_max_ply) { // &&
       //moves_searched > 1
       //) {
-      reductions += 1; // (depth > 14 ? 2 : 1);
+      reductions += 1; // 0.5 * reduction(pv_type, improving, depth, moves_searched);
 
       // reduce with history score
       //if (depth > 8) {
@@ -864,7 +870,7 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
   
   // stand pat
   if (!in_check) {
-    best_score = (Score)std::lround(eval::evaluate(p));
+    best_score = (Score)std::lround(eval::evaluate(p, lazy_eval_margin(1)));
     if (best_score + 975 < alpha) return best_score;
     if (best_score >= beta) return best_score;
     if (alpha < best_score) alpha = best_score;

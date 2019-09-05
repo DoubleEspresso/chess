@@ -199,7 +199,7 @@ inline void Movegen::quiet_promotions(U64& quiets) {
 inline void Movegen::capture_promotions(U64& right_caps, U64& left_caps) {
   if (pawns7 == 0ULL) return;
   
-  right_caps = pawns7 & bitboards::pawnmaskright[us^1];
+  right_caps = pawns7 & bitboards::pawnmaskright[us ^ 1];
   left_caps = pawns7 & bitboards::pawnmaskleft[us ^ 1];
 
   auto sw = (us == white ? shift<NW> : shift<SE>);

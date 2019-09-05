@@ -38,7 +38,7 @@ struct einfo {
 
 namespace eval {
 
-  float evaluate(const position& p);
+  float evaluate(const position& p, const float& lazy_margin);
 
 }
 

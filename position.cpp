@@ -103,7 +103,7 @@ void position::setup(std::istringstream& fen) {
 
 bool position::is_draw() {
 
-  if (ifo.move50 >= 50) return true;  
+  if (ifo.move50 > 50) return true;  
 
   // 3-fold repetition
   U64 kcurrent = ifo.repkey;
@@ -567,11 +567,12 @@ bool position::is_legal_hashmove(const Move& m) {
   }
 
   if (p == king) {
-    if (!util::same_row(f, t) && !util::same_col(f, t) && !util::on_diagonal(f, t)) return false;
+    if (mt == castle_ks && !can_castle_ks()) return false;
+    else if (mt == castle_qs && !can_castle_qs()) return false;
+    else if (!util::same_row(f, t) && !util::same_col(f, t) && !util::on_diagonal(f, t)) return false;
     else if (util::same_row(f, t) && util::col_dist(f, t) != 1) return false;
     else if (util::same_col(f, t) && util::row_dist(f, t) != 1) return false;
     else if (util::on_diagonal(f,t) && (util::row_dist(f,t) != 1 || util::col_dist(f,t) != 1)) return false;
-    
   }
   
   if (slider) {
@@ -657,14 +658,14 @@ bool position::is_legal(const Move& m) {
     Square s1 = no_square;
     Square s2 = no_square;
     
-    if (mt == castle_ks) {
+    if (mt == castle_ks && can_castle_ks()) {
       s1 = (us == white ? F1 : F8);
       s2 = (us == white ? G1 : G8);
       if (piece_on(us == white ? F1 : F8) != no_piece) return false;
       if (piece_on(us == white ? G1 : G8) != no_piece) return false;
       if (piece_on(us == white ? H1 : H8) != rook) return false;
     }
-    else if (mt == castle_qs) {
+    else if (mt == castle_qs && can_castle_qs()) {
       s1 = (us == white ? D1 : D8);
       s2 = (us == white ? C1 : C8);
       if (piece_on(us == white ? B1 : B8) != no_piece) return false;
