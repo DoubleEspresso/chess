@@ -103,7 +103,7 @@ void position::setup(std::istringstream& fen) {
 
 bool position::is_draw() {
 
-  if (ifo.move50 > 50) return true;  
+  if (ifo.move50 > 100) return true;  
 
   // 3-fold repetition
   U64 kcurrent = ifo.repkey;
@@ -117,6 +117,7 @@ bool position::is_draw() {
   return same_count >= 2;
 }
 
+
 void position::do_move(const Move& m) {
   history[hidx++] = ifo;
   const Square from = Square(m.f); 
@@ -129,7 +130,8 @@ void position::do_move(const Move& m) {
   if (p == king) {
     pcs.king_sq[us] = to;
     ifo.ks[us] = to;
-    if ((us == white && can_castle<white>()) ||
+    if (//can_castle_ks() || can_castle_qs()) {
+      (us == white && can_castle<white>()) ||
       (us == black && can_castle<black>())) {
       ifo.cmask &= (us == white ? clearw : clearb);
       ifo.key ^= (us == white ? zobrist::castle(white, clearw) : zobrist::castle(black, clearb));

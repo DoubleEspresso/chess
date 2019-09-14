@@ -107,6 +107,7 @@ namespace {
     score += ei.pe->score;
     score += ei.me->score;
     score += (p.to_move() == white ? p.params.tempo : -p.params.tempo);
+    float pscore = 0;
 
     // early return on lazy margin (try #1)
     if (lazy_margin > 0 && abs(score) >= lazy_margin)
@@ -135,13 +136,14 @@ namespace {
       }
     }
 
-    score += (eval_color<white>(p, ei) - eval_color<black>(p, ei));
-    score += (eval_knights<white>(p, ei) - eval_knights<black>(p, ei));
-    score += (eval_bishops<white>(p, ei) - eval_bishops<black>(p, ei));
-    score += (eval_rooks<white>(p, ei) - eval_rooks<black>(p, ei));
-    score += (eval_queens<white>(p, ei) - eval_queens<black>(p, ei));
-    score += (eval_king<white>(p, ei) - eval_king<black>(p, ei));   
-    score += (eval_passed_pawns<white>(p, ei) - eval_passed_pawns<black>(p, ei));
+    pscore += (eval_color<white>(p, ei) - eval_color<black>(p, ei));
+    pscore += (eval_knights<white>(p, ei) - eval_knights<black>(p, ei));
+    pscore += (eval_bishops<white>(p, ei) - eval_bishops<black>(p, ei));
+    pscore += (eval_rooks<white>(p, ei) - eval_rooks<black>(p, ei));
+    pscore += (eval_queens<white>(p, ei) - eval_queens<black>(p, ei));
+    pscore += (eval_king<white>(p, ei) - eval_king<black>(p, ei));  
+
+    pscore += (eval_passed_pawns<white>(p, ei) - eval_passed_pawns<black>(p, ei));
 
     // early return on lazy margin (try #2)
     //if (lazy_margin > 0 && abs(score) >= lazy_margin)
@@ -149,9 +151,11 @@ namespace {
     //  return p.to_move() == white ? score : -score;
     //}
 
-    score += (eval_space<white>(p, ei) - eval_space<black>(p, ei));
-    score += (eval_center<white>(p, ei) - eval_center<black>(p, ei));
-    score += (eval_pawn_levers<white>(p, ei) - eval_pawn_levers<black>(p, ei));
+    pscore += (eval_space<white>(p, ei) - eval_space<black>(p, ei));
+    pscore += (eval_center<white>(p, ei) - eval_center<black>(p, ei));
+    pscore += (eval_pawn_levers<white>(p, ei) - eval_pawn_levers<black>(p, ei));
+    pscore *= 1.25; // give more weight to positional evaluation
+    score += pscore;
 
     return p.to_move() == white ? score : -score;
   }

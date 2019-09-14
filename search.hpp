@@ -32,7 +32,7 @@ struct search_bounds {
 volatile bool slaves_start;
 std::condition_variable cv;
 search_bounds sb;
-unsigned thread_depth = 100;
+unsigned thread_depth = 800;
 volatile double elapsed = 0;
 unsigned prob_cut_tries = 0;
 unsigned prob_cut_successes = 0;
@@ -79,7 +79,7 @@ inline float razor_margin(int depth) {
 
 
 inline float lazy_eval_margin(int depth) { //, bool pv_node, bool improving) {
-  return -1; // 850 * (1 - exp((depth - 64.0) / 20.0));
+  return -1; // 1450 * (1 - exp((depth - 64.0) / 20.0));
 }
 
 void Search::start(position& p, limits& lims, bool silent) {
@@ -391,10 +391,10 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   if (!pv_type && 0 &&
     !in_check &&
     (stack - 1)->curr_move.type != Movetype::quiet &&
-    depth > 14 &&
+    depth > 16 &&
     static_eval != ninf &&
     !stack->null_search &&
-    //static_eval < mate_max_ply &&
+    static_eval < mate_max_ply &&
     static_eval >= beta) {
     
     prob_cut_tries++;
@@ -558,7 +558,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     stack->curr_move = move;
 
     bool gives_check = p.in_check();
-    int16 extensions = gives_check + in_check;
+    int16 extensions = gives_check;// +in_check;
 
     int16 reductions = 1;
 
@@ -576,7 +576,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       best_score > mated_max_ply) { // &&
       //moves_searched > 1
       //) {
-      reductions += 1; // 0.5 * reduction(pv_type, improving, depth, moves_searched);
+      reductions += 0.5 * reduction(pv_type, improving, depth, moves_searched);
 
       // reduce with history score
       //if (depth > 8) {
@@ -592,7 +592,7 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     }
 
     int16 newdepth = depth + extensions - reductions;
-    
+
     // pvs
     Score score = Score::ninf;
     if (moves_searched < 3) {
