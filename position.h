@@ -115,9 +115,11 @@ class position {
   double elapsed_ms;
   std::string bestmove;
   parameters params; // reference to our tuneable parameters
+  bool debug_search = false;
 
   // setup/clear a position
   void setup(std::istringstream& fen);
+  std::string to_fen();
   void clear();
   void set_piece(const char& p, const Square& s);
   void print() const;

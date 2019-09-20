@@ -1,5 +1,7 @@
 #include <memory>
 #include <condition_variable>
+#include <iostream>
+#include <fstream>
 
 #include "position.h"
 #include "types.h"
@@ -28,7 +30,7 @@ struct search_bounds {
   }
 };
 
-
+std::ofstream debug_file;
 volatile bool slaves_start;
 std::condition_variable cv;
 search_bounds sb;
@@ -98,6 +100,9 @@ void Search::start(position& p, limits& lims, bool silent) {
     prob_cut_successes = 0;
   }
 
+  if (p.debug_search) {
+    debug_file.open("debug.txt");
+  }
   for (unsigned i = 0; i < search_threads.size(); ++i) {
     if (i == 0) { sb.init(); }
     pv.emplace_back(util::make_unique<position>(p));
@@ -153,6 +158,10 @@ void Search::start(position& p, limits& lims, bool silent) {
   }
 
   searching = false;
+
+  if (p.debug_search) {
+    debug_file.close();
+  }
 }
 
 void Search::search_timer(position& p, limits& lims) {
@@ -215,6 +224,12 @@ void Search::iterative_deepening(position& p, U16 depth, bool silent) {
   int16 delta = 65;
   Score eval = ninf;
   
+
+
+  if (p.params.fixed_depth > 0) {
+    depth = p.params.fixed_depth;
+  }
+
   const unsigned stack_size = 64 + 4;
   node stack[stack_size];
   std::memset(stack, 0, sizeof(node) * stack_size);
@@ -315,6 +330,10 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   Score static_eval = (ttvalue != Score::ninf ?
     ttvalue : !in_check ? Score(std::lround(eval::evaluate(p, lazy_eval_margin(depth)))) : Score::ninf);
   stack->static_eval = static_eval;
+
+  if (p.debug_search && ttvalue == Score::ninf && !in_check) {
+    debug_file << p.to_fen() << " eval:" << static_eval << "\n";
+  }
 
   // forward pruning
   const bool forward_prune = (!in_check &&
@@ -870,7 +889,13 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
   
   // stand pat
   if (!in_check) {
+    
     best_score = (Score)std::lround(eval::evaluate(p, lazy_eval_margin(1)));
+
+    if (p.debug_search) {
+      debug_file << p.to_fen() << " eval:" << best_score << "\n";
+    }
+
     if (best_score + 975 < alpha) return best_score;
     if (best_score >= beta) return best_score;
     if (alpha < best_score) alpha = best_score;

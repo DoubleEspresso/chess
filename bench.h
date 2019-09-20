@@ -286,6 +286,7 @@ inline void update_options_file(const position& p) {
   opts->set<float>("king s6", p.params.king_safe_sqs[5]);
   opts->set<float>("king s7", p.params.king_safe_sqs[6]);
   opts->set<float>("king s8", p.params.king_safe_sqs[7]);
+  opts->set<int>("fixed depth", p.params.fixed_depth);
 
   opts->save_param_file();
 }

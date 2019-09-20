@@ -17,6 +17,7 @@ position& position::operator=(const position& p) {
   nodes_searched = p.nodes_searched;
   qnodes_searched = p.qnodes_searched;
   params = p.params;
+  debug_search = p.debug_search;
   return *(this);
 }
 
@@ -100,6 +101,55 @@ void position::setup(std::istringstream& fen) {
   ifo.checkers = (in_check() ? attackers_of2(ifo.ks[stm], Color(stm ^ 1)) : 0ULL);
   ifo.pinned[stm] = pinned();
 }
+
+
+std::string position::to_fen() {
+  std::string fen = "";
+  for (int r = 7; r >= 0; --r) {
+    int empties = 0;
+
+    for (int c = 0; c < 8; ++c) {
+      int s = r * 8 + c;
+      if (piece_on(Square(s)) == no_piece) { ++empties; continue; }
+      if (empties > 0) fen += std::to_string(empties);
+      empties = 0;
+
+      fen += SanPiece[(color_on(Square(s)) == black ?
+        piece_on(Square(s)) + 6 : piece_on(Square(s)))];
+    }
+
+    if (empties > 0) fen += std::to_string(empties);
+    if (r > 0) fen += "/";
+  }
+
+  fen += (to_move() == white ? " w" : " b");
+
+  // castle rights
+  std::string c_str = "";
+  if ((ifo.cmask & wks) == wks) c_str += "K";
+  if ((ifo.cmask & wqs) == wqs) c_str += "Q";
+  if ((ifo.cmask & bks) == bks) c_str += "k";
+  if ((ifo.cmask & bqs) == bqs) c_str += "q";
+  fen += (c_str == "" ? " -" : " " + c_str);
+
+  // ep-square
+  std::string ep_sq = "";
+  if (ifo.eps != no_square) {
+    ep_sq += SanCols[util::col(ifo.eps)] + std::to_string(util::row(ifo.eps) + 1);
+  }
+  fen += (ep_sq == "" ? " -" : " " + ep_sq);
+
+  // move50
+  std::string mv50 = std::to_string(ifo.move50);
+  fen += " " + mv50;
+
+  // half-mvs
+  std::string half_mvs = std::to_string(ifo.hmvs);
+  fen += " " + half_mvs;
+
+  return fen;
+}
+
 
 bool position::is_draw() {
 

@@ -146,7 +146,8 @@ inline void options::set_engine_params() {
     else if (matches(p.first, "king s5")) Parameters.king_safe_sqs[4] = value<float>("king s5");
     else if (matches(p.first, "king s6")) Parameters.king_safe_sqs[5] = value<float>("king s6");
     else if (matches(p.first, "king s7")) Parameters.king_safe_sqs[6] = value<float>("king s7");
-    else if (matches(p.first, "king s8")) Parameters.king_safe_sqs[7] = value<float>("king s8");    
+    else if (matches(p.first, "king s8")) Parameters.king_safe_sqs[7] = value<float>("king s8");
+    else if (matches(p.first, "fixed depth")) Parameters.fixed_depth = value<int>("fixed depth");
   }
 }
 

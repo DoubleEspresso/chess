@@ -54,6 +54,7 @@ bool uci::parse_command(const std::string& input) {
     else if (cmd == "d") {
       p.print();
       std::cout << "position hash key: " << p.key() << std::endl;
+      std::cout << "fen: " << p.to_fen() << std::endl;
     }
     else if (cmd == "eval") {
       p.print();
@@ -62,6 +63,10 @@ bool uci::parse_command(const std::string& input) {
     }
     else if (cmd == "undo") {
       p.undo_move(dbgmove);
+    }
+    else if (cmd == "fdepth" && instream >> cmd) {
+      p.params.fixed_depth = atoi(cmd.c_str());
+      std::cout << "fixed depth search: " << p.params.fixed_depth << std::endl;
     }
     
     else if (cmd == "see" && instream >> cmd) {
@@ -143,6 +148,10 @@ bool uci::parse_command(const std::string& input) {
       Perft perft;
       int depth = atoi(cmd.c_str());
       perft.bench(depth, true);
+    }
+    else if (cmd == "debug") {
+      p.debug_search = !p.debug_search;
+      std::cout << "debugging set to: " << p.debug_search << std::endl;
     }
 
 

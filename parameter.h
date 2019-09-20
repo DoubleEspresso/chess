@@ -68,6 +68,7 @@ struct parameters {
     king_safe_sqs = o.king_safe_sqs;
     uncastled_penalty = o.uncastled_penalty;
     pinned_scaling = o.pinned_scaling;
+    fixed_depth = o.fixed_depth;
     return *this;
   }
 
@@ -124,6 +125,9 @@ struct parameters {
   // move ordering
   const float counter_move_bonus = 100.0f; // 5
   const float threat_evasion_bonus = 100.0f; // 2
+
+  // search params 
+  int fixed_depth = -1;
 
   const float pawn_lever_score[64] =
   {
