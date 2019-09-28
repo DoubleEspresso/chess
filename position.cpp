@@ -99,7 +99,8 @@ void position::setup(std::istringstream& fen) {
   ifo.incheck = is_attacked(ifo.ks[stm], stm, Color(stm^1));
   
   ifo.checkers = (in_check() ? attackers_of2(ifo.ks[stm], Color(stm ^ 1)) : 0ULL);
-  ifo.pinned[stm] = pinned();
+  ifo.pinned[stm] = pinned(stm);
+  ifo.pinned[stm ^ 1] = pinned(Color(stm ^ 1));
 }
 
 
@@ -180,9 +181,9 @@ void position::do_move(const Move& m) {
   if (p == king) {
     pcs.king_sq[us] = to;
     ifo.ks[us] = to;
-    if (//can_castle_ks() || can_castle_qs()) {
-      (us == white && can_castle<white>()) ||
-      (us == black && can_castle<black>())) {
+    if (can_castle_ks() || can_castle_qs()) {
+      //(us == white && can_castle<white>()) ||
+      //(us == black && can_castle<black>())) {
       ifo.cmask &= (us == white ? clearw : clearb);
       ifo.key ^= (us == white ? zobrist::castle(white, clearw) : zobrist::castle(black, clearb));
       ifo.repkey ^= (us == white ? zobrist::castle(white, clearw) : zobrist::castle(black, clearb));
@@ -280,7 +281,8 @@ void position::do_move(const Move& m) {
   
   ifo.incheck = is_attacked(king_square(), ifo.stm, us);
   ifo.checkers = (ifo.incheck ? attackers_of2(king_square(), Color(ifo.stm^1)) : 0ULL);
-  ifo.pinned[ifo.stm] = pinned();
+  ifo.pinned[ifo.stm] = pinned(ifo.stm);
+  ifo.pinned[ifo.stm ^ 1] = pinned(Color(ifo.stm ^ 1));
   ++nodes_searched;
 }
 
@@ -743,24 +745,27 @@ bool position::is_legal(const Move& m) {
   return true;
 }
 
-U64 position::pinned() {
-  const Color us = to_move();
+U64 position::pinned(const Color us) {
   const Color them = Color(us ^ 1);
-  const Square ks = king_square();
+  const Square ks = king_square(us);
   U64 pinned = 0ULL;
-  auto p = pcs.bitmap[them];
-  U64 sliders = ((p[bishop] | p[queen]) & bitboards::battks[ks]) |
-    ((p[rook] | p[queen]) & bitboards::rattks[ks]);
+  U64 bs = pcs.bitmap[them][bishop] | pcs.bitmap[them][queen];
+  U64 rs = pcs.bitmap[them][rook] | pcs.bitmap[them][queen];
 
-  if (sliders == 0ULL) return pinned;
+  U64 sliders = (bs & bitboards::battks[ks]) | (rs & bitboards::rattks[ks]);
+
+  if (sliders == 0ULL) {
+    return pinned;
+  }
+
   do {
     int sq = bits::pop_lsb(sliders);
 
     if (!util::aligned(sq, ks)) continue;
     
     U64 tmp = (bitboards::between[sq][ks] & all_pieces()) ^
-      (bitboards::squares[ks] | bitboards::squares[sq]);
-    
+      (bitboards::squares[ks] | bitboards::squares[sq]);    
+
     if (!bits::more_than_one(tmp)) pinned |= tmp;
     
   } while (sliders);

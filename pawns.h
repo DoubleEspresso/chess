@@ -27,6 +27,8 @@ struct pawn_entry {
   U64 semiopen[2];
   U64 qsidepawns[2];
   U64 ksidepawns[2];
+  int16 center_pawn_count;
+  bool locked_center;
 };
 
 

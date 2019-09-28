@@ -56,6 +56,20 @@ int16 evaluate(const position& p, material_entry& e) {
   std::vector<int> sign{ 1, -1 };
   const std::vector<Piece> pieces{ knight, bishop, rook, queen }; // pawns handled in pawns.cpp
 
+  // pawn count adjustments for the rook and knight
+  // 1. the knight becomes less valuable as pawns dissapear
+  // 2. the rook becomes more valuable as pawns dissapear
+  // 3. adjustment ~6 pts / pawn so that 16*6 = 96 max adjustment
+  {
+    const float pawn_adjustment = 2.0;
+    U64 wpawns = p.get_pieces<white, pawn>();
+    U64 bpawns = p.get_pieces<black, pawn>();
+    int total_pawns = bits::count(wpawns) + bits::count(bpawns);
+    int minor_pawn_adjust = pawn_adjustment * total_pawns;
+    material_vals[knight] -= minor_pawn_adjust;
+    material_vals[rook] += minor_pawn_adjust;
+  }
+
   int16 score = 0;
   unsigned total = 0;
   e.endgame = EndgameType::none;

@@ -34,7 +34,7 @@ std::ofstream debug_file;
 volatile bool slaves_start;
 std::condition_variable cv;
 search_bounds sb;
-unsigned thread_depth = 800;
+unsigned thread_depth = 100;
 volatile double elapsed = 0;
 unsigned prob_cut_tries = 0;
 unsigned prob_cut_successes = 0;
@@ -75,13 +75,12 @@ inline unsigned reduction(bool pv_node, bool improving, int d, int mc) {
 }
 
 inline float razor_margin(int depth) {
-  return 450 * (1 - exp((depth - 64.0) / 20.0)); 
-  // 1810 - (530 + 20 * depth);
+  return 950 * (1 - exp((depth - 64.0) / 20.0));
 }
 
 
 inline float lazy_eval_margin(int depth) { //, bool pv_node, bool improving) {
-  return -1; // 1450 * (1 - exp((depth - 64.0) / 20.0));
+  return 350 * (1 - exp((depth - 64.0) / 20.0));
 }
 
 void Search::start(position& p, limits& lims, bool silent) {
@@ -103,6 +102,7 @@ void Search::start(position& p, limits& lims, bool silent) {
   if (p.debug_search) {
     debug_file.open("debug.txt");
   }
+
   for (unsigned i = 0; i < search_threads.size(); ++i) {
     if (i == 0) { sb.init(); }
     pv.emplace_back(util::make_unique<position>(p));
@@ -162,6 +162,7 @@ void Search::start(position& p, limits& lims, bool silent) {
   if (p.debug_search) {
     debug_file.close();
   }
+
 }
 
 void Search::search_timer(position& p, limits& lims) {
@@ -343,29 +344,39 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     abs(alpha - beta) == 1 && // only prune in null windows (same condition as !pv_node)
     static_eval != ninf);
 
-  // 0. futility pruning (razoring is better)
+  // 0. futility pruning
   if (forward_prune &&
     depth <= 1 &&
     static_eval > mated_max_ply &&
-    static_eval + 1350 < alpha) return Score(alpha); //static_eval;
+    static_eval + 950 < alpha) return Score(alpha); //static_eval;
 
   // 0. razoring - prune when losing
   float rm = razor_margin(depth);
-  if (depth <= 2 &&
+  if (
+    depth <= 2 &&
     forward_prune &&
     ttm.type == no_type &&
-    static_eval + rm <= alpha 
+    static_eval + rm <= alpha// && // +rm <= alpha //&&
+    //(stack-1)->curr_move.type == capture
     //&& !p.pawn_on_7th(p.to_move())
     ) {
     
     if (depth <= 1) {
+      prob_cut_tries++;
       Score v = qsearch<non_pv>(p, alpha, beta, 0, stack);
-      if (v <= alpha) return Score(alpha); // v;
+      if (v <= alpha) {
+        //prob_cut_successes++;
+        return Score(v); 
+      }
     }
     else {
+      prob_cut_tries++;
       int16 ralpha = alpha - rm;
       Score v = qsearch<non_pv>(p, ralpha, ralpha + 1, 0, stack);
-      if (v <= ralpha) return Score(ralpha); // v;
+      if (v <= ralpha) {
+        //prob_cut_successes++;
+        return Score(v); 
+      }
     }
   }
   
@@ -410,17 +421,17 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   if (!pv_type && 0 &&
     !in_check &&
     (stack - 1)->curr_move.type != Movetype::quiet &&
-    depth > 16 &&
+    depth > 9 &&
     static_eval != ninf &&
     !stack->null_search &&
     static_eval < mate_max_ply &&
-    static_eval >= beta) {
+    static_eval - 950 > beta) {
     
     prob_cut_tries++;
     Score s = qsearch<non_pv>(p, beta-1, beta, 0, stack);
-    if (s >=  beta) {
+    if (s >= beta) {
       prob_cut_successes++;
-      return Score(beta);
+      return Score(s); // beta);
     }
   }
 
@@ -526,9 +537,10 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
   move_order mvs(p, ttm, stack->killers);
   Move move;
   Move pre_move = (stack - 1)->curr_move;
+  Move pre_pre_move = (stack - 2)->curr_move;
   bool improving = stack->static_eval - (stack - 2)->static_eval >= 0;
 
-  while (mvs.next_move<search_type::main0>(p, move, pre_move, stack->threat_move)) {
+  while (mvs.next_move<search_type::main0>(p, move, pre_move, pre_pre_move, stack->threat_move)) {
 
     if (UCI_SIGNALS.stop) { return Score::draw; }
 
@@ -566,11 +578,12 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
 
 
     // continue if another thread is already searching this position
-    if (depth > thread_depth && moves_searched > 0 && is_searching(p, move)) {
-      stack->deferred_moves[deferred++] = move;
-      continue;
-    }
-    else set_searching(p, move);
+    // note: uncomment only if smp search
+    //if (depth > thread_depth && moves_searched > 0 && is_searching(p, move)) {
+    //  stack->deferred_moves[deferred++] = move;
+    //  continue;
+    //}
+    //else set_searching(p, move);
     
     p.do_move(move);
     
@@ -600,8 +613,8 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       // reduce with history score
       //if (depth > 8) {
         int hscore = (p.to_move() == white ?
-          p.history_stats().score<white>(move, (stack - 1)->curr_move, stack->threat_move) :
-          p.history_stats().score<black>(move, (stack - 1)->curr_move, stack->threat_move));
+          p.history_stats().score<white>(move, (stack - 1)->curr_move, (stack-2)->curr_move, stack->threat_move) :
+          p.history_stats().score<black>(move, (stack - 1)->curr_move, (stack-2)->curr_move, stack->threat_move));
         if (hscore < 0)
         {
           reductions += 1;
@@ -654,7 +667,8 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
     
     p.undo_move(move);
 
-    unset_searching(p, move);
+    // note: uncomment only if smp search
+    //unset_searching(p, move);
 
 
     if (score > best_score) {
@@ -744,8 +758,8 @@ Score Search::search(position& p, int16 alpha, int16 beta, U16 depth, node * sta
       // reduce with history score
       if (depth > 8) {
         int hscore = (p.to_move() == white ?
-          p.history_stats().score<white>(move, (stack - 1)->curr_move, stack->threat_move) :
-          p.history_stats().score<black>(move, (stack - 1)->curr_move, stack->threat_move));
+          p.history_stats().score<white>(move, (stack - 1)->curr_move, (stack-2)->curr_move, stack->threat_move) :
+          p.history_stats().score<black>(move, (stack - 1)->curr_move, (stack-2)->curr_move, stack->threat_move));
         if (hscore < 0)
         {
           reductions += 1;
@@ -969,8 +983,9 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
   move_order mvs(p, ttm, stack->killers);
   Move move;
   Move pre_move = (stack - 1)->curr_move;
+  Move pre_pre_move = (stack - 2)->curr_move;
 
-  while (mvs.next_move<search_type::qsearch>(p, move, pre_move, stack->threat_move)) {
+  while (mvs.next_move<search_type::qsearch>(p, move, pre_move, pre_pre_move, stack->threat_move)) {
     
 
     if (UCI_SIGNALS.stop) { return Score::draw; }
@@ -979,22 +994,6 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
     if (move.type == Movetype::no_type || !p.is_legal(move)) {
       continue;
     }
-
-
-    // see pruning
-    if ( 
-      /*
-      move != ttm &&
-      move != stack->killers[0] &&
-      move != stack->killers[1] &&
-      move != stack->killers[2] &&
-      move != stack->killers[3] &&
-      */
-      //!pv_type &&
-      !in_check &&
-      //best_score < alpha &&
-      //moves_searched > 1 &&
-      p.see(move) < 0) continue;
 
 
     // qsearch futility pruning
@@ -1011,7 +1010,22 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node * st
       //return Score(alpha); 
       continue;
     }
-    
+
+
+    // see pruning
+    if (
+      //move != ttm &&
+      //move != stack->killers[0] &&
+      //move != stack->killers[1] &&
+      //move != stack->killers[2] &&
+      //move != stack->killers[3] &&
+      //!pv_type &&
+      !in_check &&
+      best_score < alpha &&
+      //moves_searched > 1 &&
+      p.see(move) < 0) continue;
+
+
     p.do_move(move);
     p.adjust_qnodes(1);
     

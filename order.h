@@ -38,7 +38,7 @@ struct move_history {
   
   void clear();
   
-  template<Color c> int score(const Move& m, const Move& previous, const Move& threat);
+  template<Color c> int score(const Move& m, const Move& previous, const Move& followup, const Move& threat);
 };
 
 
@@ -81,7 +81,7 @@ class move_order {
   ~move_order();
 
   template<search_type st>
-  bool next_move(position& pos, Move& m, const Move& previous, const Move& threat);
+  bool next_move(position& pos, Move& m, const Move& previous, const Move& followup, const Move& threat);
   
   void sort();
   bool skip(const Move& m);

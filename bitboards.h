@@ -16,6 +16,9 @@ namespace bitboards {
   extern U64 pattks[2][64]; // step attacks for the pawns
   extern U64 nmask[64]; // step attacks for the knight
   extern U64 kmask[64]; // step attacks for the king
+  extern U64 kchecks[64];
+  extern U64 kflanks[8]; // 3 rows of squares (including king square) for pawn cover detection
+  extern U64 kzone[64];
   extern U64 bmask[64]; // bishop mask (outer board edges are trimmed)
   extern U64 rmask[64]; // rook mask (outer board edges are trimmed)
   extern U64 squares[64];

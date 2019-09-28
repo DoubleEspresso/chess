@@ -29,8 +29,7 @@ namespace {
   template<Color c> float eval_color(const position& p, einfo& ei);
   template<Color c> float eval_pawn_levers(const position& p, einfo& ei);
   template<Color c> float eval_passed_pawns(const position& p, einfo& ei);
-  //template<Color c> float eval_material(const position&p, info& ei);
-
+  template<Color c> float eval_flank_attack(const position&p, einfo& ei);
   template<Color c> float eval_kpk(const position& p, einfo& ei);
   template<Color c> float eval_krrk(const position& p, einfo& ei);
   /*
@@ -51,11 +50,13 @@ namespace {
 
 
   inline float knight_mobility(const unsigned& n) {
-    return -2.0f + 8.33f * log(n + 1); // 7.143f * log(n + 1); // max of ~20
+    return -50.0f * exp(-float(n)*0.5f) + 20.0f;
+    //return -2.0f + 8.33f * log(n + 1); // 7.143f * log(n + 1); // max of ~20
   }
 
-  inline float bishop_mobility(const unsigned& n) {
-    return -2.0f + 8.33f * log(n + 1); //6.25f * log(n + 1); // max of ~20
+  inline float bishop_mobility(const unsigned& n) {    
+    return -50.0f * exp(-float(n)*0.5f) + 20.0f;
+    //return -2.0f + 8.33f * log(n + 1); //6.25f * log(n + 1); // max of ~20
   }
 
   inline float rook_mobility(const unsigned& n) {
@@ -110,7 +111,7 @@ namespace {
     float pscore = 0;
 
     // early return on lazy margin (try #1)
-    if (lazy_margin > 0 && abs(score) >= lazy_margin)
+    if (lazy_margin > 0 && !ei.me->is_endgame() && abs(score) >= lazy_margin)
     {
       return p.to_move() == white ? score : -score;
     }
@@ -143,6 +144,7 @@ namespace {
     pscore += (eval_queens<white>(p, ei) - eval_queens<black>(p, ei));
     pscore += (eval_king<white>(p, ei) - eval_king<black>(p, ei));  
 
+    //pscore += (eval_flank_attack<white>(p, ei) - eval_flank_attack<black>(p, ei));
     pscore += (eval_passed_pawns<white>(p, ei) - eval_passed_pawns<black>(p, ei));
 
     // early return on lazy margin (try #2)
@@ -195,6 +197,12 @@ namespace {
         score += p.params.knight_outpost_bonus[util::col(s)];
       }
 
+      // closed center bonus
+      if (ei.pe->locked_center || ei.pe->center_pawn_count >= 4)
+      {
+        score += p.params.bishop_open_center_bonus;
+      }
+
       // bonus for queen attacks
       U64 qattks = mvs & equeen_sq;
       if (qattks) score += p.params.attk_queen_bonus[knight];
@@ -202,6 +210,7 @@ namespace {
       // attacks      
       U64 attks = (mvs & enemies) & (~pawn_targets);
       U64 pattks = (mvs & pawn_targets);
+
       if (attks) {
         while (attks) {
           score += p.params.attack_scaling[knight] *
@@ -215,6 +224,11 @@ namespace {
       }
 
       // king harassment
+      
+      // safe check bonus - can we move from this square and check the enemy king
+      U64 scheck_bm = mvs & bitboards::kchecks[p.king_square(them)];
+      if (scheck_bm != 0ULL) score += 0.5 * bits::count(scheck_bm);
+
       U64 kattks = mvs & ei.kmask[them];
       if (kattks) {
         ei.kattackers[c][knight]++; // kattackers of "other" king
@@ -222,6 +236,12 @@ namespace {
         score += p.params.knight_king[std::min(2, bits::count(kattks))];
       }
 
+
+      // protected
+      U64 support = p.attackers_of2(s, c);
+      if (support != 0ULL) {
+        score += bits::count(support);
+      }
     }
     return score;
   }
@@ -241,6 +261,10 @@ namespace {
     U64 fdark_sq_pawns = ei.black_pawns[c];
     U64 equeen_sq = ei.queen_sqs[them];
     U64 center_pawns = ei.central_pawns[c];
+    U64 valuable_enemies = (c == white ?
+      p.get_pieces<black, queen>() | p.get_pieces<black, rook>() | p.get_pieces<black, king>() :
+      p.get_pieces<white, queen>() | p.get_pieces<white, rook>() | p.get_pieces<white, king>());
+
 
     for (Square s = *bishops; s != no_square; s = *++bishops) {
       score += p.params.sq_score_scaling[bishop] * square_score<c>(bishop, s);
@@ -249,19 +273,26 @@ namespace {
       if (bitboards::squares[s] & bitboards::colored_sqs[black]) dark_sq = true;
 
 
+      // xray bonus
+      U64 xray = bitboards::battks[s] & valuable_enemies;
+      if (xray) {
+        score += bits::count(xray);
+      }
+
       // mobility      
       U64 mvs = magics::attacks<bishop>(ei.all_pieces, s);
-
       U64 mobility = (mvs & ei.empty) & (~ei.pe->attacks[them]);
       float mscore = p.params.mobility_scaling[bishop] * bishop_mobility(bits::count(mobility));
       if ((bitboards::squares[s] & p.pinned<c>())) mscore /= p.params.pinned_scaling[bishop];
+
       score += mscore;
 
-      // open center bonus
-      //if (bits::count(center_pawns) <= 0)
-      //{
-      //  score += p.params.bishop_open_center_bonus;
-      //}
+
+      // closed center penalty
+      if (ei.pe->locked_center || ei.pe->center_pawn_count >= 4)
+      {
+        score -= p.params.bishop_open_center_bonus;
+      }
 
       // outpost bonus
       if ((bitboards::squares[s] & ei.pawn_holes[them])) {
@@ -270,37 +301,43 @@ namespace {
 
 
       // light-square bishop color bonus
-      //if (light_sq) {
-      //  // case 1: no opposing bishop to challenge ours + pawn color weaknesses
-      //  if (elight_sq_pawns == 0ULL || bits::count(elight_sq_pawns) <= 1) {
-      //    U64 ew_bishop =
-      //      (c == white ? p.get_pieces<black, bishop>() : p.get_pieces<white, bishop>()) &
-      //      bitboards::colored_sqs[white];
-      //    if (ew_bishop == 0ULL) score += p.params.bishop_color_complex_bonus;
-      //  }
-      //  
-      //  // case 2: penalty for too many friendly pawns on light-squares
-      //  //if (flight_sq_pawns != 0ULL && bits::count(flight_sq_pawns) >= 4) {        
-      //  //  score -= p.params.bishop_penalty_pawns_same_color;
-      //  //}
-
-      //}
+      const float same_color_penalty = (ei.me->is_endgame() ? 1.5 : 0.25);
+      if (light_sq) {
+        // case 1: no opposing bishop to challenge ours + pawn color weaknesses
+        //if (elight_sq_pawns == 0ULL || bits::count(elight_sq_pawns) <= 1) {
+        //  U64 ew_bishop =
+        //    (c == white ? p.get_pieces<black, bishop>() : p.get_pieces<white, bishop>()) &
+        //    bitboards::colored_sqs[white];
+        //  if (ew_bishop == 0ULL) score += p.params.bishop_color_complex_bonus;
+        //}
+        
+        // case 2: penalty for too many friendly pawns on light-squares
+        if (flight_sq_pawns != 0ULL) {
+          score -= same_color_penalty * bits::count(flight_sq_pawns);
+        }
+        if (elight_sq_pawns != 0ULL) {
+          score += same_color_penalty * bits::count(elight_sq_pawns);
+        }
+      }
 
       //// dark-square bishop color bonus
-      //if (dark_sq) {
-      //  // case 1: no opposing bishop to challenge ours + pawn color weaknesses
-      //  if (edark_sq_pawns == 0ULL || bits::count(edark_sq_pawns) <= 1) {
-      //    U64 ed_bishop =
-      //      (c == white ? p.get_pieces<black, bishop>() : p.get_pieces<white, bishop>()) &
-      //      bitboards::colored_sqs[black];
-      //    if (ed_bishop == 0ULL) score += p.params.bishop_color_complex_bonus;
-      //  }
+      if (dark_sq) {
+        // case 1: no opposing bishop to challenge ours + pawn color weaknesses
+        //if (edark_sq_pawns == 0ULL || bits::count(edark_sq_pawns) <= 1) {
+        //  U64 ed_bishop =
+        //    (c == white ? p.get_pieces<black, bishop>() : p.get_pieces<white, bishop>()) &
+        //    bitboards::colored_sqs[black];
+        //  if (ed_bishop == 0ULL) score += p.params.bishop_color_complex_bonus;
+        //}
 
-      //  // case 2: penalty for too many friendly pawns on light-squares
-      //  //if (fdark_sq_pawns != 0ULL && bits::count(fdark_sq_pawns) >= 4) {
-      //  //  score -= p.params.bishop_penalty_pawns_same_color;
-      //  //}
-      //}
+        // case 2: penalty for too many friendly pawns on light-squares
+        if (fdark_sq_pawns != 0ULL) {
+          score -= same_color_penalty * bits::count(fdark_sq_pawns);
+        }
+        if (edark_sq_pawns != 0ULL) {
+          score += same_color_penalty * bits::count(fdark_sq_pawns);
+        }
+      }
 
       // bonus for queen attacks
       U64 qattks = mvs & equeen_sq;
@@ -321,13 +358,25 @@ namespace {
       }
 
 
-      // king harassment      
+      // king harassment 
+
+      // safe check bonus - can we move from this square and check the enemy king
+      U64 scheck_bm = mvs & bitboards::kchecks[p.king_square(them)];
+      if (scheck_bm != 0ULL) score += 0.5 * bits::count(scheck_bm);
+        
       U64 kattks = mvs & ei.kmask[them];
       if (kattks) {
         ei.kattackers[c][bishop]++;
         ei.kattk_points[c] |= kattks;
         score += p.params.bishop_king[std::min(2, bits::count(kattks))];
       }
+
+      // protected
+      U64 support = p.attackers_of2(s, c);
+      if (support != 0ULL) {
+        score += bits::count(support);
+      }
+
     }
     if (light_sq && dark_sq) score += p.params.doubled_bishop_bonus;
 
@@ -343,11 +392,21 @@ namespace {
     U64 pawn_targets = ei.weak_pawns[them];
     std::vector<Square> Squares;
     U64 equeen_sq = ei.queen_sqs[them];
+    U64 valuable_enemies = (c == white ?
+      p.get_pieces<black, queen>() | p.get_pieces<black, king>() :
+      p.get_pieces<white, queen>() | p.get_pieces<white, king>());
 
     for (Square s = *rooks; s != no_square; s = *++rooks) {
       score += p.params.sq_score_scaling[rook] * square_score<c>(rook, s);
 
       Squares.push_back(s);
+
+
+      // xray bonus
+      U64 xray = bitboards::rattks[s] & valuable_enemies;
+      if (xray) {
+        score += bits::count(xray);
+      }
 
       // mobility      
       U64 mvs = magics::attacks<rook>(ei.all_pieces, s);
@@ -387,13 +446,24 @@ namespace {
         score += p.params.rook_7th_bonus;
       }
 
-      // king harassment      
+      // king harassment
+      // safe check bonus - can we move from this square and check the enemy king
+      U64 scheck_bm = mvs & bitboards::kchecks[p.king_square(them)];
+      if (scheck_bm != 0ULL) score += 0.5 * bits::count(scheck_bm);
+
       U64 kattks = mvs & ei.kmask[them];
       if (kattks) {
         ei.kattackers[c][rook]++;
         ei.kattk_points[c] |= kattks;
         score += p.params.rook_king[std::min(4, bits::count(kattks))];
       }
+
+      // protected
+      U64 support = p.attackers_of2(s, c);
+      if (support != 0ULL) {
+        score += bits::count(support);
+      }
+
     }
 
     // connected rooks
@@ -455,7 +525,11 @@ namespace {
           p.params.queen_attks[pawn] * bits::count(pattks);
       }
 
-      // king harassment      
+      // king harassment
+      // safe check bonus - can we move from this square and check the enemy king
+      U64 scheck_bm = mvs & bitboards::kchecks[p.king_square(them)];
+      if (scheck_bm != 0ULL) score += 0.5 * bits::count(scheck_bm);
+
       U64 kattks = mvs & ei.kmask[them];
       if (kattks) {
         ei.kattackers[c][queen]++;
@@ -503,18 +577,33 @@ namespace {
       }
 
       // pawns around king bonus
-      /*
-      U64 pawn_shelter = ei.pe->king[c] & ei.kmask[c];
-      int n = 0;
-      if (pawn_shelter) n = std::min(3, bits::count(pawn_shelter));
-      score += 2 * p.params.king_shelter[n];
-      */
+      if (!ei.me->is_endgame()) {
+        U64 pawn_shelter = ei.pe->king[c] & ei.kmask[c];
+        int n = 0;
+        if (pawn_shelter) n = std::min(3, bits::count(pawn_shelter));
+        score += 0.5 * p.params.king_shelter[n];
+
+        // flat penalty for having pawnless flank in middle game
+        U64 kflank = bitboards::kflanks[s] & p.get_pieces<c, pawn>();
+        if (kflank == 0ULL) score -= 2;
+      }
 
       // reward for castling
       if (!p.has_castled<c>()) score -= p.params.uncastled_penalty;
 
 
       // reward having "friends" near the king
+      U64 friends = p.get_pieces<c>() & bitboards::kzone[s];
+      U64 unfriends = (c == white ? p.get_pieces<black>() & bitboards::kzone[s] :
+        p.get_pieces<white>() & bitboards::kzone[s]);
+
+      if (friends != 0ULL) {
+        //bits::print(friends);
+        score += bits::count(friends);
+      }
+      if (unfriends != 0ULL) {
+        score -= bits::count(unfriends);
+      }
 
     }
 
@@ -543,7 +632,7 @@ namespace {
       bitboards::col[Col::E] | bitboards::col[Col::F]);
 
 
-    score += 0.5 * bits::count(space);
+    score += 0.75 * bits::count(space);
 
 
     return score;
@@ -626,8 +715,29 @@ namespace {
     while (pawn_lever_attacks) {
       int to = bits::pop_lsb(pawn_lever_attacks);
       if (c == p.to_move()) score += p.params.pawn_lever_score[to];
-      // 0.25f * p.params.pawn_lever_score[to];
+
     }
+    return score;
+  }
+
+
+  template<Color c> float eval_flank_attack(const position& p, einfo& ei)
+  {
+    float score = 0;
+    if (!ei.pe->locked_center) return score;
+
+    U64 flank_bb = bitboards::col[A] | bitboards::col[B] | bitboards::col[C] |
+      bitboards::col[F] | bitboards::col[G] | bitboards::col[H];
+    U64 their_pawns = (c == white ? p.get_pieces<black, pawn>() : p.get_pieces<white, pawn>());
+
+    U64 flank_attacks = ei.pe->attacks[c] & their_pawns & flank_bb;
+
+    // double-counts the pawn lever attack when the center is closed
+    while (flank_attacks) {
+      int to = bits::pop_lsb(flank_attacks);
+      if (c == p.to_move()) score += p.params.pawn_lever_score[to];
+    }
+
     return score;
   }
 

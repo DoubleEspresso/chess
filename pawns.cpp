@@ -75,31 +75,34 @@ inline bool backward_pawn(const int& row, const int& col, const U64& pawns) {
     if (right != -1) {
       int sq = -1;
       U64 right_pawns = bitboards::col[right] & pawns;
+      bool no_right_pawns = (right_pawns == 0ULL);
       while (right_pawns) {
         int tmp = bits::pop_lsb(right_pawns);
         if (tmp > sq) sq = tmp;
       }
-      right_greater = sq > 0 && util::row(sq) > row;
+      right_greater = sq > 0 && util::row(sq) > row || no_right_pawns;
     }
   }
   else {
     if (left != -1) {
       int sq = 100;
       U64 left_pawns = bitboards::col[left] & pawns;
+      bool no_left_pawns = (left_pawns == 0ULL);
       while (left_pawns) {
         int tmp = bits::pop_lsb(left_pawns);
         if (tmp < sq) sq = tmp;
       }
-      left_greater = sq < 100 && util::row(sq) < row;
+      left_greater = sq < 100 && util::row(sq) < row || no_left_pawns;
     }
     if (right != -1) {
       int sq = 100;
       U64 right_pawns = bitboards::col[right] & pawns;
+      bool no_right_pawns = (right_pawns == 0ULL);
       while (right_pawns) {
         int tmp = bits::pop_lsb(right_pawns);
         if (tmp < sq) sq = tmp;
       }
-      right_greater = sq < 100 && util::row(sq) < row;
+      right_greater = sq < 100 && util::row(sq) < row || no_right_pawns;
     }
   }
 
@@ -127,6 +130,7 @@ int16 evaluate(const position& p, pawn_entry& e) {
   Square ksq = p.king_square(c);
 
   int16 score = 0;
+  U64 locked_bb = 0ULL;
   
   for (Square s = *sqs; s != no_square; s = *++sqs) {
 
@@ -157,13 +161,13 @@ int16 evaluate(const position& p, pawn_entry& e) {
     U64 neighbors_bb = bitboards::neighbor_cols[col] & pawns;
     if (neighbors_bb == 0ULL) {
       e.isolated[c] |= fbb;
-      //score -= p.params.isolated_pawn_penalty;
+      score -= p.params.isolated_pawn_penalty;
     }
 
     // backward
     if (backward_pawn<c>(row, col, pawns)) {
       e.backward[c] |= fbb;
-      //score -= p.params.backward_pawn_penalty;
+      score -= p.params.backward_pawn_penalty;
     }
 
 
@@ -205,11 +209,33 @@ int16 evaluate(const position& p, pawn_entry& e) {
     if (util::col(s) <= Col::D) e.qsidepawns[c] |= fbb;
     else e.ksidepawns[c] |= fbb;
 
+    // .. locked center pawns
+    // count nb of center pawns while computing this too
+    // e.g. french advanced, caro-kahn advanced, 4-pawns attack in KID etc.
+    // favors flank attacks, knights, and small penalties for bishop
+    if ((bitboards::squares[s] & bitboards::big_center_mask)) {
+      Square front_sq = Square(c == white ? s + 8 : s - 8);
+      if (util::on_board(front_sq)) {
+        U64 fbb = bitboards::squares[front_sq];
+        e.center_pawn_count++;
+        if ((epawns & fbb)) {
+          locked_bb |= fbb;
+        }
+
+      }
+    }
+
     // pawn islands
     // pawn chain tips
     // pawn chain bases
     // pawn majorities
   }
   
+  // note : evaluated 2x's when we only need to evaluate once
+  // since it is the same per side - but the performance hit should be small
+  if (bits::count(locked_bb) >= 2) {
+    e.locked_center = true;
+  }
+
   return score;  
 }

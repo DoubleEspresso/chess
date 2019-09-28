@@ -11,6 +11,9 @@ namespace bitboards {
   U64 pawnmaskright[2];
   U64 nmask[64]; // step attacks for the knight
   U64 kmask[64]; // step attacks for the king
+  U64 kchecks[64]; // check mask for king
+  U64 kzone[64]; // large zone around king (for eval)
+  U64 kflanks[8]; // 3 rows of squares (including king square) for pawn cover detection
   U64 rmask[64]; // rook mask (outer board edges are trimmed)
   U64 battks[64];
   U64 rattks[64];
@@ -39,7 +42,14 @@ void bitboards::load() {
       { }, // queen
       { -1, 1, 8, -8, -9, -7, 9, 7 }  // king
     };
-  
+
+  // king zone steps
+  std::vector<int> zsteps = {
+    -1, 1, 8, -8, -9, -7, 9, 7, // normal kmask
+    -2, 2, -2 + 8, -2 - 8, 2 + 8, 2 - 8, -2 - 16, -2 + 16, 2 - 16, 2 + 16,
+    -16, 16, -16 -1, -16+1, 16+1, 16-1
+  }; 
+
   for (Square s = A1; s <= H8; ++s) squares[s] = (1ULL << s);
 
   // row/col masks
@@ -82,6 +92,22 @@ void bitboards::load() {
 
   small_center_mask = squares[C4] | squares[C5] | squares[D4] | squares[D5] | squares[E4] | squares[E5];
   
+  // king flank masks
+  U64 roi = ~(row[0] | row[7]);
+  for (Col c = Col::A; c <= Col::H; ++c) {
+    kflanks[c] = 0ULL;
+
+    int lidx = (c - 1 < 0 ? 0 : c - 1);
+    int ridx = (c + 1 > Col::H ? Col::H : c + 1);
+
+    U64 mask = c <= Col::C || c >= Col::F ?
+      (col[lidx] | col[c] | col[ridx])
+      : (col[lidx - 1] | col[lidx] | col[c] | col[ridx] | col[ridx + 1]);
+    
+    kflanks[c] |= roi & mask;
+
+  }
+
   for (Square s = A1; s <= H8; ++s) {
     
     if ((util::row(s) % 2 == 0) && (s % 2 == 0)) colored_sqs[black] |= squares[s];
@@ -126,6 +152,16 @@ void bitboards::load() {
         util::row_dist(s, to) <= 1) bm |= squares[to];
     }
     kmask[s] = bm;
+
+    // king zone bitboard (for eval)
+    bm = 0ULL;
+    for (auto& step : zsteps) {
+      int to = s + step;
+      if (util::on_board(to) &&
+        util::col_dist(s, to) <= 2 &&
+        util::row_dist(s, to) <= 2) bm |= squares[to];
+    }
+    kzone[s] = bm;
 
     // pawn attack masks for each color
     int pawn_steps[2][2] = { {9, 7}, {-7, -9} };
@@ -191,7 +227,6 @@ void bitboards::load() {
         }
       }
     }
-
     
     // bishop diagonal masks (outer bits trimmed)
     bm = 0ULL;
@@ -216,6 +251,10 @@ void bitboards::load() {
       squares[util::col(s)] | squares[util::col(s) + 56];
     bm ^= trim; 
     rmask[s] = bm;
-  }   
+
+
+    // king check mask
+    kchecks[s] = battks[s] | rattks[s] | nmask[s];
+  }  
 }
 

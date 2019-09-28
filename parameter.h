@@ -116,9 +116,9 @@ struct parameters {
   const float rook_7th_bonus = 2.0f;
 
   // pawn params
-  const float doubled_pawn_penalty = 2.0f;
+  const float doubled_pawn_penalty = 4.0f;
   const float backward_pawn_penalty = 1.0f;
-  const float isolated_pawn_penalty = 1.0f;
+  const float isolated_pawn_penalty = 2.0f;
   const float passed_pawn_bonus = 2.0f;
   const float semi_open_pawn_penalty = 1.0f;
 

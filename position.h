@@ -148,7 +148,7 @@ class position {
   bool in_check() const;
   bool is_legal(const Move& m);
   bool is_legal_hashmove(const Move& m);
-  U64 pinned();
+  U64 pinned(const Color us);
   bool is_draw();
 
   inline bool can_castle_ks() const {

@@ -63,9 +63,10 @@ void move_history::clear() {
 
 
 template<>
-int move_history::score<white>(const Move& m, const Move& previous, const Move& threat) {
+int move_history::score<white>(const Move& m, const Move& previous, const Move& followup, const Move& threat) {
   int score = history[white][m.f][m.t];
   if (counters[previous.f][previous.t] == m) score += counter_move_bonus;
+  if (followup.t == m.f) score -= counter_move_bonus; // moving the same piece multiple times..
   if (m.f == threat.t) score += threat_evasion_bonus;
   if (m.type == promotion_q) score += 81; // ordering material values - pawn value
   if (m.type == promotion_r) score += 38;
@@ -75,9 +76,10 @@ int move_history::score<white>(const Move& m, const Move& previous, const Move& 
 }
 
 template<>
-int move_history::score<black>(const Move& m, const Move& previous, const Move& threat) {
+int move_history::score<black>(const Move& m, const Move& previous, const Move& followup, const Move& threat) {
   int score = history[black][m.f][m.t];
   if (counters[previous.f][previous.t] == m) score += counter_move_bonus;
+  if (followup.t == m.f) score -= counter_move_bonus; // moving the same piece multiple times..
   if (m.f == threat.t) score += threat_evasion_bonus;
   if (m.type == promotion_q) score += 81; // ordering material values - pawn value
   if (m.type == promotion_r) score += 38;
@@ -146,7 +148,7 @@ void move_order::sort() {
 
 
 template<>
-bool move_order::next_move<main0>(position& pos, Move& m, const Move& previous, const Move& threat) {
+bool move_order::next_move<main0>(position& pos, Move& m, const Move& previous, const Move& followup, const Move& threat) {
 
   m = {};
   m.type = Movetype::no_type;
@@ -253,16 +255,16 @@ bool move_order::next_move<main0>(position& pos, Move& m, const Move& previous, 
   case quiets : {
     if (list.size() <= 0) {
       
-      auto ss = [this](const Move& m, const Move& previous, const Move& threat) {
+      auto ss = [this](const Move& m, const Move& previous, const Move& followup, const Move& threat) {
         return Score(to_move == white ?
-          stats->score<white>(m, previous, threat) : stats->score<black>(m, previous, threat)); };
+          stats->score<white>(m, previous, followup, threat) : stats->score<black>(m, previous, followup, threat)); };
       
       moves->generate<quiet, pieces>();
       for (int i = 0; i < moves->size(); ++i) {
 
         if (skip((*moves)[i])) { continue; }
         
-        Score sc = Score(ss((*moves)[i], previous, threat));
+        Score sc = Score(ss((*moves)[i], previous, followup, threat));
         
 
         list.emplace_back(scored_move((*moves)[i], sc));
@@ -291,7 +293,7 @@ bool move_order::next_move<main0>(position& pos, Move& m, const Move& previous, 
 
 
 template<>
-bool move_order::next_move<qsearch>(position& pos, Move& m, const Move& previous, const Move& threat) {
+bool move_order::next_move<qsearch>(position& pos, Move& m, const Move& previous, const Move& followup, const Move& threat) {
   
   m = {};
   m.type = Movetype::no_type;
@@ -410,16 +412,16 @@ bool move_order::next_move<qsearch>(position& pos, Move& m, const Move& previous
   case quiets : {
     if (list.size() <= 0 && incheck) {
       
-      auto ss = [this](const Move& m, const Move& previous, const Move& threat) {
+      auto ss = [this](const Move& m, const Move& previous, const Move& followup, const Move& threat) {
 		  return Score(to_move == white ?
-        stats->score<white>(m, previous, threat) : stats->score<black>(m, previous, threat)); };
+        stats->score<white>(m, previous, followup, threat) : stats->score<black>(m, previous, followup, threat)); };
       
       moves->generate<quiet, pieces>();
       for (int i = 0; i < moves->size(); ++i) {
         
         if (skip((*moves)[i])) continue;
         
-        Score sc = Score(ss((*moves)[i], previous, threat));
+        Score sc = Score(ss((*moves)[i], previous, followup, threat));
         
         list.emplace_back(scored_move((*moves)[i], sc));
 
