@@ -17,6 +17,7 @@ position& position::operator=(const position& p) {
   nodes_searched = p.nodes_searched;
   qnodes_searched = p.qnodes_searched;
   params = p.params;
+  debug_search = p.debug_search;
   return *(this);
 }
 
@@ -50,7 +51,8 @@ void position::setup(std::istringstream& fen) {
   fen >> token;
   ifo.stm = (token == "w" ? Color::white : Color::black);
   ifo.key ^= zobrist::stm(ifo.stm);
-  
+  ifo.repkey ^= zobrist::stm(ifo.stm);
+
   // the castle rights
   fen >> token;  
   ifo.cmask = U16(0);
@@ -58,6 +60,7 @@ void position::setup(std::istringstream& fen) {
     U16 cr = CastleRights.at(c);
     ifo.cmask |= cr;
     ifo.key ^= zobrist::castle(ifo.stm, cr);
+    ifo.repkey ^= zobrist::castle(ifo.stm, cr);
   }
   
 
@@ -73,8 +76,10 @@ void position::setup(std::istringstream& fen) {
 
   if (!util::on_board(ifo.eps)) ifo.eps = Square::no_square;
   
-  if (ifo.eps != Square::no_square) ifo.key ^= zobrist::ep(util::col(ifo.eps));
-  ifo.repkey = ifo.key;
+  if (ifo.eps != Square::no_square) {
+    ifo.key ^= zobrist::ep(util::col(ifo.eps));
+    ifo.repkey ^= zobrist::ep(util::col(ifo.eps));
+  }
 
   // half-moves since last pawn move/capture
   fen >> token;
@@ -93,13 +98,63 @@ void position::setup(std::istringstream& fen) {
   ifo.ks[stm] = pcs.king_sq[stm];  
   ifo.incheck = is_attacked(ifo.ks[stm], stm, Color(stm^1));
   
-  ifo.checkers = (in_check() ? attackers_of(ifo.ks[stm], Color(stm^1)) : 0ULL);
-  ifo.pinned[stm] = pinned();
+  ifo.checkers = (in_check() ? attackers_of2(ifo.ks[stm], Color(stm ^ 1)) : 0ULL);
+  ifo.pinned[stm] = pinned(stm);
+  ifo.pinned[stm ^ 1] = pinned(Color(stm ^ 1));
 }
+
+
+std::string position::to_fen() {
+  std::string fen = "";
+  for (int r = 7; r >= 0; --r) {
+    int empties = 0;
+
+    for (int c = 0; c < 8; ++c) {
+      int s = r * 8 + c;
+      if (piece_on(Square(s)) == no_piece) { ++empties; continue; }
+      if (empties > 0) fen += std::to_string(empties);
+      empties = 0;
+
+      fen += SanPiece[(color_on(Square(s)) == black ?
+        piece_on(Square(s)) + 6 : piece_on(Square(s)))];
+    }
+
+    if (empties > 0) fen += std::to_string(empties);
+    if (r > 0) fen += "/";
+  }
+
+  fen += (to_move() == white ? " w" : " b");
+
+  // castle rights
+  std::string c_str = "";
+  if ((ifo.cmask & wks) == wks) c_str += "K";
+  if ((ifo.cmask & wqs) == wqs) c_str += "Q";
+  if ((ifo.cmask & bks) == bks) c_str += "k";
+  if ((ifo.cmask & bqs) == bqs) c_str += "q";
+  fen += (c_str == "" ? " -" : " " + c_str);
+
+  // ep-square
+  std::string ep_sq = "";
+  if (ifo.eps != no_square) {
+    ep_sq += SanCols[util::col(ifo.eps)] + std::to_string(util::row(ifo.eps) + 1);
+  }
+  fen += (ep_sq == "" ? " -" : " " + ep_sq);
+
+  // move50
+  std::string mv50 = std::to_string(ifo.move50);
+  fen += " " + mv50;
+
+  // half-mvs
+  std::string half_mvs = std::to_string(ifo.hmvs);
+  fen += " " + half_mvs;
+
+  return fen;
+}
+
 
 bool position::is_draw() {
 
-  if (ifo.move50 >= 50) return true;  
+  if (ifo.move50 > 100) return true;  
 
   // 3-fold repetition
   U64 kcurrent = ifo.repkey;
@@ -113,6 +168,7 @@ bool position::is_draw() {
   return same_count >= 2;
 }
 
+
 void position::do_move(const Move& m) {
   history[hidx++] = ifo;
   const Square from = Square(m.f); 
@@ -125,12 +181,16 @@ void position::do_move(const Move& m) {
   if (p == king) {
     pcs.king_sq[us] = to;
     ifo.ks[us] = to;
-    ifo.cmask &= (us == white ? clearw : clearb);
-    ifo.key ^= (us == white ? zobrist::castle(white, clearw) : zobrist::castle(black, clearb));
-    ifo.repkey ^= (us == white ? zobrist::castle(white, clearw) : zobrist::castle(black, clearb));
+    if (can_castle_ks() || can_castle_qs()) {
+      //(us == white && can_castle<white>()) ||
+      //(us == black && can_castle<black>())) {
+      ifo.cmask &= (us == white ? clearw : clearb);
+      ifo.key ^= (us == white ? zobrist::castle(white, clearw) : zobrist::castle(black, clearb));
+      ifo.repkey ^= (us == white ? zobrist::castle(white, clearw) : zobrist::castle(black, clearb));
+    }
   }
   else if (p == rook) {
-    if (us == white) {
+    if (us == white && can_castle<white>()) {
       if (from == A1) {
         ifo.cmask &= clearwqs;
         ifo.key ^= zobrist::castle(white, clearwqs);
@@ -142,16 +202,16 @@ void position::do_move(const Move& m) {
         ifo.repkey ^= zobrist::castle(white, clearwks);
       }
     }
-    else {
+    else if (us == black && can_castle<black>()){
       if (from == A8) {
         ifo.cmask &= clearbqs;
-        ifo.key ^= zobrist::castle(white, clearbqs);
-        ifo.repkey ^= zobrist::castle(white, clearbqs);
+        ifo.key ^= zobrist::castle(black, clearbqs);
+        ifo.repkey ^= zobrist::castle(black, clearbqs);
       }
       else if (from == H8) {
         ifo.cmask &= clearbks;
-        ifo.key ^= zobrist::castle(white, clearbks);
-        ifo.repkey ^= zobrist::castle(white, clearbks);
+        ifo.key ^= zobrist::castle(black, clearbks);
+        ifo.repkey ^= zobrist::castle(black, clearbks);
       }
     }
   }
@@ -220,8 +280,9 @@ void position::do_move(const Move& m) {
   ifo.repkey ^= zobrist::stm(ifo.stm);
   
   ifo.incheck = is_attacked(king_square(), ifo.stm, us);
-  ifo.checkers = (ifo.incheck ? attackers_of(king_square(), Color(ifo.stm^1)) : 0ULL);
-  ifo.pinned[ifo.stm] = pinned();
+  ifo.checkers = (ifo.incheck ? attackers_of2(king_square(), Color(ifo.stm^1)) : 0ULL);
+  ifo.pinned[ifo.stm] = pinned(ifo.stm);
+  ifo.pinned[ifo.stm ^ 1] = pinned(Color(ifo.stm ^ 1));
   ++nodes_searched;
 }
 
@@ -344,14 +405,15 @@ int position::see_move(const Move& m) {
     inline bool operator<(const SeePiece& o) const { return score < o.score; }
     inline bool operator>(const SeePiece& o) const { return score > o.score; }
   };
-  
+  Square bks = king_square(black);
+  Square wks = king_square(white);
   Square to = Square(m.t);
   Square from = Square(m.f);
   U64 pieces = all_pieces();
   U64 attackers = 0ULL;
 
-  U64 white_bb = get_pieces<white>();
-  U64 black_bb = get_pieces<black>();
+  U64 white_bb = get_pieces<white>() ^ pinned<white>();
+  U64 black_bb = get_pieces<black>() ^ pinned<black>();
 
   std::vector<SeePiece> black_list;
   std::vector<SeePiece> white_list;
@@ -361,6 +423,12 @@ int position::see_move(const Move& m) {
     U64 a = attackers_of(to, pieces) & pieces;
     if (a) {
       pieces ^= a;
+
+      if (is_attacked(wks, white, black, pieces) || is_attacked(bks, black, white, pieces))
+      {
+        return 0; // let search handle discovered checking sequences
+      }
+
       attackers |= a;
     }
     else break;
@@ -443,6 +511,7 @@ int position::see_move(const Move& m) {
     int vv = mvals[victim];
 
 
+
     if (vv < av || victim == king) {
       if (attacker == king) {
         if ((color == black && b < black_list.size()) ||
@@ -467,6 +536,21 @@ int position::see_move(const Move& m) {
   return score;
 }
 
+inline bool is_promotion(const Movetype& mt) {
+  return (mt == promotion ||
+    mt == promotion_q ||
+    mt == promotion_r ||
+    mt == promotion_b ||
+    mt == promotion_n);
+}
+
+inline bool is_cap_promotion(const Movetype& mt) {
+  return (mt == capture_promotion_q ||
+    mt == capture_promotion_r ||
+    mt == capture_promotion_b ||
+    mt == capture_promotion_n);
+}
+
 bool position::is_legal_hashmove(const Move& m) {
 
   Movetype mt = Movetype(m.type);
@@ -479,20 +563,20 @@ bool position::is_legal_hashmove(const Move& m) {
   Color them = Color(us ^ 1);
   Square eks = king_square(them);
   bool slider = (p == rook || p == bishop || p == queen);
+  bool ispromotion = is_promotion(mt);
+  bool iscappromotion = is_cap_promotion(mt);
 
+  if (p == Piece::no_piece) return false;
   if (f == t) return false;
   if (t == eks) return false;
   if (color_on(t) == us) return false;
   if (color_on(f) != us) return false;
-  if ((mt == ep || mt == quiet || mt == promotion) && color_on(t) != Color::no_color) return false;
+  if ((mt == ep || mt == quiet || ispromotion) && color_on(t) != Color::no_color) return false;
   if (mt == ep && piece_on(t) != Piece::no_piece) return false;
 
-  if ((mt == capture ||
-    mt == capture_promotion_q ||
-    mt == capture_promotion_r ||
-    mt == capture_promotion_b ||
-    mt == capture_promotion_n) &&
+  if ((mt == capture || iscappromotion) &&
     (color_on(t) != them || piece_on(t) == Piece::no_piece)) return false;
+
   if (mt == ep && t != ifo.eps) return false;
   
   if (!is_legal(m)) return false;
@@ -537,11 +621,12 @@ bool position::is_legal_hashmove(const Move& m) {
   }
 
   if (p == king) {
-    if (!util::same_row(f, t) && !util::same_col(f, t) && !util::on_diagonal(f, t)) return false;
+    if (mt == castle_ks && !can_castle_ks()) return false;
+    else if (mt == castle_qs && !can_castle_qs()) return false;
+    else if (!util::same_row(f, t) && !util::same_col(f, t) && !util::on_diagonal(f, t)) return false;
     else if (util::same_row(f, t) && util::col_dist(f, t) != 1) return false;
     else if (util::same_col(f, t) && util::row_dist(f, t) != 1) return false;
     else if (util::on_diagonal(f,t) && (util::row_dist(f,t) != 1 || util::col_dist(f,t) != 1)) return false;
-    
   }
   
   if (slider) {
@@ -577,6 +662,7 @@ bool position::is_legal_hashmove(const Move& m) {
   return true;
 }
 
+
 bool position::is_legal(const Move& m) {
   Square f = Square(m.f);
   Square t = Square(m.t);
@@ -587,19 +673,21 @@ bool position::is_legal(const Move& m) {
   Color them = Color(us ^ 1);
   Square eks = king_square(them);
   auto pc = pcs.bitmap[them];
+  bool ispromotion = is_promotion(mt);
+  bool iscappromotion = is_cap_promotion(mt);
 
   // basic checks on hash moves
+  if (p == Piece::no_piece) return false;
   if (f == t) return false;
   if (t == eks) return false;
   if (color_on(t) == us) return false;
   if (color_on(f) != us) return false;
-  if ((mt == ep || mt == quiet || mt == promotion) && color_on(t) != Color::no_color) return false;
+  if ((mt == ep || mt == quiet || ispromotion) && color_on(t) != Color::no_color) return false;
 
-  if ((mt == capture ||
-    mt == capture_promotion_q ||
-    mt == capture_promotion_r ||
-    mt == capture_promotion_b ||
-    mt == capture_promotion_n) &&
+  if ((ispromotion || iscappromotion) && p != pawn) return false;
+
+
+  if ((mt == capture || iscappromotion) && 
     (color_on(t) != them || piece_on(t) == Piece::no_piece)) return false;
   
   // pinned
@@ -619,19 +707,23 @@ bool position::is_legal(const Move& m) {
   if (mt == castle_ks || mt == castle_qs) {
     
     if (in_check()) return false;
-    
+    if (piece_on(us == white ? E1 : E8) != king) return false;
+
     Square s1 = no_square;
     Square s2 = no_square;
     
-    if (mt == castle_ks) {
+    if (mt == castle_ks && can_castle_ks()) {
       s1 = (us == white ? F1 : F8);
       s2 = (us == white ? G1 : G8);
+      if (piece_on(us == white ? F1 : F8) != no_piece) return false;
+      if (piece_on(us == white ? G1 : G8) != no_piece) return false;
       if (piece_on(us == white ? H1 : H8) != rook) return false;
     }
-    else if (mt == castle_qs) {
+    else if (mt == castle_qs && can_castle_qs()) {
       s1 = (us == white ? D1 : D8);
       s2 = (us == white ? C1 : C8);
       if (piece_on(us == white ? B1 : B8) != no_piece) return false;
+      if (piece_on(us == white ? C1 : C8) != no_piece) return false;
       if (piece_on(us == white ? A1 : A8) != rook) return false;
     }
     
@@ -639,7 +731,7 @@ bool position::is_legal(const Move& m) {
 
     
     if (is_attacked(s1, us, them, all_pieces()) ||
-	is_attacked(s2, us, them, all_pieces())) return false;
+      is_attacked(s2, us, them, all_pieces())) return false;
 
     return true;
   }
@@ -653,24 +745,27 @@ bool position::is_legal(const Move& m) {
   return true;
 }
 
-U64 position::pinned() {
-  const Color us = to_move();
+U64 position::pinned(const Color us) {
   const Color them = Color(us ^ 1);
-  const Square ks = king_square();
+  const Square ks = king_square(us);
   U64 pinned = 0ULL;
-  auto p = pcs.bitmap[them];
-  U64 sliders = ((p[bishop] | p[queen]) & bitboards::battks[ks]) |
-    ((p[rook] | p[queen]) & bitboards::rattks[ks]);
+  U64 bs = pcs.bitmap[them][bishop] | pcs.bitmap[them][queen];
+  U64 rs = pcs.bitmap[them][rook] | pcs.bitmap[them][queen];
 
-  if (sliders == 0ULL) return pinned;
+  U64 sliders = (bs & bitboards::battks[ks]) | (rs & bitboards::rattks[ks]);
+
+  if (sliders == 0ULL) {
+    return pinned;
+  }
+
   do {
     int sq = bits::pop_lsb(sliders);
 
     if (!util::aligned(sq, ks)) continue;
     
     U64 tmp = (bitboards::between[sq][ks] & all_pieces()) ^
-      (bitboards::squares[ks] | bitboards::squares[sq]);
-    
+      (bitboards::squares[ks] | bitboards::squares[sq]);    
+
     if (!bits::more_than_one(tmp)) pinned |= tmp;
     
   } while (sliders);
@@ -712,7 +807,7 @@ U64 position::attackers_of(const Square& s, const U64& m) {
 	  (qattck & (p(white, queen) | p(black, queen))));
 }
 
-U64 position::attackers_of(const Square& s, const Color& c) {
+U64 position::attackers_of2(const Square& s, const Color& c) const {
   // attackers of square "s" by color "c"
   U64 m = all_pieces();
   auto p = pcs.bitmap[c];
@@ -745,7 +840,11 @@ void position::clear() {
   thread_id = 0;
   nodes_searched = 0;
   qnodes_searched = 0;
+  std::memset(&ifo, 0, sizeof(info));
   ifo = {};
+  ifo.repkey = 0ULL;
+  ifo.key = 0ULL;
+  ifo.pawnkey = 0ULL;
 }
 
 

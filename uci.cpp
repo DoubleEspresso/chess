@@ -49,18 +49,24 @@ bool uci::parse_command(const std::string& input) {
       
       p.print();
       std::cout << "position hash key: " << p.key() << std::endl;
+      std::cout << "position rep key:" << p.repkey() << std::endl;
     }
     else if (cmd == "d") {
       p.print();
       std::cout << "position hash key: " << p.key() << std::endl;
+      std::cout << "fen: " << p.to_fen() << std::endl;
     }
     else if (cmd == "eval") {
       p.print();
       std::cout << "position hash key: " << p.key() << std::endl;
-      std::cout << "evaluation: " << eval::evaluate(p) << std::endl;
+      std::cout << "evaluation: " << eval::evaluate(p, -1) << std::endl;
     }
     else if (cmd == "undo") {
       p.undo_move(dbgmove);
+    }
+    else if (cmd == "fdepth" && instream >> cmd) {
+      p.params.fixed_depth = atoi(cmd.c_str());
+      std::cout << "fixed depth search: " << p.params.fixed_depth << std::endl;
     }
     
     else if (cmd == "see" && instream >> cmd) {
@@ -142,6 +148,10 @@ bool uci::parse_command(const std::string& input) {
       Perft perft;
       int depth = atoi(cmd.c_str());
       perft.bench(depth, true);
+    }
+    else if (cmd == "debug") {
+      p.debug_search = !p.debug_search;
+      std::cout << "debugging set to: " << p.debug_search << std::endl;
     }
 
 
@@ -227,17 +237,17 @@ void uci::load_position(const std::string& pos) {
 std::string uci::move_to_string(const Move& m) {
   std::string fromto = SanSquares[m.f] + SanSquares[m.t];
   Movetype t = Movetype(m.type);
-  
+
   std::string ps = "";
+
   ps = (t == capture_promotion_q ? "q" :
-	t == capture_promotion_r ? "r" :
-	t == capture_promotion_b ? "b" :
-	t == capture_promotion_n ? "n" : "");
-  
-  ps = (t == promotion_q ? "q" :
-	t == promotion_r ? "r" :
-	t == promotion_b ? "b" :
-	t == promotion_n ? "n" : "");
+    t == capture_promotion_r ? "r" :
+    t == capture_promotion_b ? "b" :
+    t == capture_promotion_n ? "n" :
+    t == promotion_q ? "q" :
+    t == promotion_r ? "r" :
+    t == promotion_b ? "b" :
+    t == promotion_n ? "n" : "");
   
   return fromto + ps;
 }

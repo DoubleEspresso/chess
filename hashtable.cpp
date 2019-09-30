@@ -28,6 +28,12 @@ void hash_table::clear() {
 bool hash_table::fetch(const U64& key, hash_data& e) {
   entry * stored = first_entry(key);
   
+  { // prefetch.. ?
+    char * addr = (char*)stored;
+    _mm_prefetch(addr, _MM_HINT_T0);
+    _mm_prefetch(addr + 32, _MM_HINT_T0);
+  }
+
   for (unsigned i = 0; i<cluster_size; ++i, ++stored) {
     if ((stored->pkey ^ stored->dkey) == key) {
       e.decode(stored->dkey);      
@@ -38,34 +44,12 @@ bool hash_table::fetch(const U64& key, hash_data& e) {
   return false;
 }
 
-
-bool hash_table::searching(const U64& key, entry& eo) {
-
-  entry * e = first_entry(key);
-
-  for (unsigned i = 0; i < cluster_size; ++i, ++e) {
-    if ((e->pkey ^ e->dkey) == key) {
-
-      if (e->is_searching()) {
-	eo = *e;
-	return true;
-      }
-    }
-    else if (e->empty()) break;
-  }
-
-  
-  e->dkey ^= search_bit;
-  e->pkey = key ^ e->dkey;
-  eo = *e;
-  return false;
-}
-
 void hash_table::save(const U64& key,
-		      const U8& depth,
-		      const U8& bound,
-		      const Move& m,
-		      const int16& score) {
+  const U8& depth,
+  const U8& bound,
+  const U8& age,
+  const Move& m,
+  const int16& score, const bool& pv_node) {
   
   entry * e, *replace;
 
@@ -73,16 +57,24 @@ void hash_table::save(const U64& key,
 
   for (unsigned i = 0; i < cluster_size; ++i, ++e) {
     
-    if (e->empty() || ((e->pkey) ^ (e->dkey)) == key ) {
+    // empty entry or hash collision
+    if (e->empty()) {
       replace = e;
       break;      
     }
 
-    if (e->depth() > depth) {
-      replace = e;
-    }    
+    // collision handling (depth, age and pv node)
+    else if (((e->pkey) ^ (e->dkey)) == key) {
+      if (age - e->age() > 1) {
+        replace = e;
+      }
+      else if (e->depth() - depth > 0 && pv_node) {
+        replace = e;
+      }
+    }
+  
   }
   
-  replace->encode(depth, bound, m, score);
+  replace->encode(depth, bound, age, m, score);
   replace->pkey = key ^ replace->dkey;
 }

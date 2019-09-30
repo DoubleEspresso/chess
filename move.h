@@ -13,41 +13,8 @@ class position;
 
 enum Dir { N, S, NN, SS, NW, NE, SW, SE, no_dir };
 
-enum Movetype {
-  promotion_q,
-  promotion_r,
-  promotion_b,
-  promotion_n,
-  capture_promotion_q,
-  capture_promotion_r,
-  capture_promotion_b,
-  capture_promotion_n,
-  castle_ks,
-  castle_qs,
-  quiet,
-  capture,
-  ep,
-  castles,
-  pseudo_legal,
-  promotion,
-  capture_promotion,
-  no_type
-};
 
-struct Move {
-  U8 f;
-  U8 t;
-  U8 type;
-  inline void set(const U8& frm, const U8& to, const Movetype& mt) {
-    f = frm; t = to; type = mt;
-  }
-  inline bool operator==(const Move& m) const {
-    return (f == m.f && t == m.t && type == m.type);    
-  }
-  inline bool operator!=(const Move& m) const {
-    return (f != m.f || t != m.t || type != m.type);
-  }
-};
+
 
 class Movegen {
   int last;

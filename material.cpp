@@ -56,6 +56,20 @@ int16 evaluate(const position& p, material_entry& e) {
   std::vector<int> sign{ 1, -1 };
   const std::vector<Piece> pieces{ knight, bishop, rook, queen }; // pawns handled in pawns.cpp
 
+  // pawn count adjustments for the rook and knight
+  // 1. the knight becomes less valuable as pawns dissapear
+  // 2. the rook becomes more valuable as pawns dissapear
+  // 3. adjustment ~6 pts / pawn so that 16*6 = 96 max adjustment
+  {
+    const float pawn_adjustment = 2.0;
+    U64 wpawns = p.get_pieces<white, pawn>();
+    U64 bpawns = p.get_pieces<black, pawn>();
+    int total_pawns = bits::count(wpawns) + bits::count(bpawns);
+    int minor_pawn_adjust = pawn_adjustment * total_pawns;
+    material_vals[knight] -= minor_pawn_adjust;
+    material_vals[rook] += minor_pawn_adjust;
+  }
+
   int16 score = 0;
   unsigned total = 0;
   e.endgame = EndgameType::none;
@@ -73,16 +87,19 @@ int16 evaluate(const position& p, material_entry& e) {
   // see types.h for enumeration of different endgame types
   if (total <= 2) {
     U8 endgame_encoding = U8(0);
-
+    int count = 0;
+    // see types.h for encoding notes
     for (const auto& piece : pieces) {
       int i = int(piece - 1);
       if (e.number[piece] == 2) {
         // two pieces of the same type
         endgame_encoding |= (U8(1) << i);
-        endgame_encoding |= (U8(1) << (4 + i));
+        endgame_encoding |= (U8(1) << 4 + i);
       }
       else if (e.number[piece] == 1) {
-        endgame_encoding |= (U8(1) << i);
+        endgame_encoding |= count == 0 ? (U8(1) << i) : 
+          (U8(1) << (4 + i));
+        ++count;
       }
     }
     e.endgame = EndgameType(endgame_encoding);

@@ -12,14 +12,17 @@
 
 #include "types.h"
 
-struct Move;
 class position;
 class Movegen;
 
 
 struct move_history {
-  std::array<std::array<std::array<int, squares>, squares>, colors> history;  
-  
+  std::array<std::array<std::array<int, squares>, squares>, colors> history;
+  std::array<std::array<Move, squares>, squares> counters;
+
+  float counter_move_bonus = 1.0f;
+  float threat_evasion_bonus = 1.0f;
+
   move_history() { clear(); }
     
   move_history& operator=(const move_history& mh);
@@ -35,8 +38,7 @@ struct move_history {
   
   void clear();
   
-  template<Color c>
-  int score(const Move& m);
+  template<Color c> int score(const Move& m, const Move& previous, const Move& followup, const Move& threat);
 };
 
 
@@ -79,7 +81,7 @@ class move_order {
   ~move_order();
 
   template<search_type st>
-  bool next_move(position& pos, Move& m);
+  bool next_move(position& pos, Move& m, const Move& previous, const Move& followup, const Move& threat);
   
   void sort();
   bool skip(const Move& m);

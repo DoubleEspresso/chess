@@ -14,30 +14,28 @@ struct entry {
   
   U64 pkey;  // zobrist hashing
   U64 dkey;  // 17 bit val, 8 bit depth, 8 bit bound, 8 bit f, 8 bit t, 8 bit type
-
   
   inline bool empty() { return pkey == 0ULL && dkey == 0ULL; }
-  inline bool is_searching() { return (dkey & search_bit) == search_bit; }
+
   inline void encode(const U8& depth,
-		     const U8& bound,
-		     const Move& m,
-		     const int16& score) {
+    const U8& bound,
+    const U8& age,
+    const Move& m,
+    const int16& score) {
     dkey = 0ULL;
     dkey |= U64(m.f); // 8 bits;
     dkey |= (U64(m.t) << 8); // 8 bits
-    dkey |= (U64(m.type) << 16); // 12 bits
-    dkey |= (U64(bound) << 28); // 8 bits;
-    dkey |= (U64(depth+1) << 36); // 8 bits
-    dkey |= (U64(score < 0 ? -score : score) << 44); // 16 bits
-    dkey |= (U64(score < 0 ? 1ULL : 0ULL) << 60);    
+    dkey |= (U64(m.type) << 16); // 8 bits
+    dkey |= (U64(bound) << 26); // 4 bits;
+    dkey |= (U64(depth + 1) << 30); // 8 bits
+    dkey |= (U64(score < 0 ? -score : score) << 38); // 16 bits
+    dkey |= (U64(score < 0 ? 1ULL : 0ULL) << 54);   // 1 bit
+    dkey |= (U64(age) << 55); // 9 bits .. 
   }
   
-  inline void unset_searching(const U64& key) {
-    dkey ^= search_bit;
-    pkey = key ^ dkey;
-  }
-
-  inline U8 depth() { return U8(dkey & 0xFF000000000); }
+  inline U8 depth() { return U8((dkey & 0xFF0000000) >> 30); }
+  inline U8 bound() { return U8((dkey & 0xF000000) >> 26); }
+  inline U8 age() { return U8((dkey & 0x7F80000000000000 >> 55)); }
 };
 
 
@@ -46,6 +44,7 @@ enum Bound { bound_low, bound_high, bound_exact, no_bound };
 struct hash_data {
   char depth;
   U8 bound;
+  U8 age;
   int16 score;
   U16 pkey;
   U16 dkey;
@@ -55,13 +54,14 @@ struct hash_data {
     
     U8 f = U8(dkey & 0xFF);
     U8 t = U8((dkey & 0xFF00) >> 8);
-    Movetype type = Movetype((dkey & 0x3FF0000) >> 16);
-    bound = U8((dkey & 0xFF0000000) >> 28);
-    depth = U8((dkey & 0xFF000000000) >> 36);
-    score = int16((dkey & 0xFFFF00000000000) >> 44);
-    
-    int sign = int(dkey & (1ULL << 62));
+    Movetype type = Movetype((dkey & 0xFF0000) >> 16);
+    bound = U8((dkey & 0xF000000) >> 26);
+    depth = U8((dkey & 0xFF0000000) >> 30);
+    score = int16((dkey & 0xFFFF000000000) >> 38);    
+    int sign = int(dkey & (1ULL << 54));
     score = (sign == 1 ? -score : score);
+    age = U8(dkey & 0x7F80000000000000 >> 55);
+
     move.set(f, t, type);
   }  
 };
@@ -93,10 +93,10 @@ class hash_table {
   void save(const U64& key,
 	    const U8& depth,
 	    const U8& bound,
+      const U8& age, 
 	    const Move& m,
-	    const int16& score);
+	    const int16& score, const bool& pv_node);
   bool fetch(const U64& key, hash_data& e);
-  bool searching(const U64& key, entry& eo);
   inline entry * first_entry(const U64& key);
   void clear();
 };

@@ -115,9 +115,11 @@ class position {
   double elapsed_ms;
   std::string bestmove;
   parameters params; // reference to our tuneable parameters
+  bool debug_search = false;
 
   // setup/clear a position
   void setup(std::istringstream& fen);
+  std::string to_fen();
   void clear();
   void set_piece(const char& p, const Square& s);
   void print() const;
@@ -140,13 +142,13 @@ class position {
 
   // utilities
   bool is_attacked(const Square& s, const Color& us, const Color& them, U64 m = 0ULL);
-  U64 attackers_of(const Square& s, const Color& c);
+  U64 attackers_of2(const Square& s, const Color& c) const;
   U64 attackers_of(const Square& s, const U64& bb);
   U64 checkers() const { return ifo.checkers; }
   bool in_check() const;
   bool is_legal(const Move& m);
   bool is_legal_hashmove(const Move& m);
-  U64 pinned();
+  U64 pinned(const Color us);
   bool is_draw();
 
   inline bool can_castle_ks() const {
@@ -178,11 +180,26 @@ class position {
   template<Color c>
   inline U64 pinned() const { return ifo.pinned[c];  }
 
+  // evaluation/search related
+  inline bool pawn_on_7th(const Color& c) const {
+    return (c == white ? (get_pieces<white, pawn>() & bitboards::row[Row::r7]) != 0ULL :
+      (get_pieces<black, pawn>() & bitboards::row[Row::r2]) != 0ULL);
+  }
+
+  template<Color c>
+  inline bool non_pawn_material() const {
+    return ((get_pieces<c, knight>() |
+      get_pieces<c, bishop>() |
+      get_pieces<c, rook>() |
+      get_pieces<c, queen>()) != 0ULL);
+  }
+
 
   // position info access wrappers
   inline Square eps() const { return ifo.eps; }
   inline Color to_move() const { return ifo.stm; }
   inline U64 key() { return ifo.key; }
+  inline U64 repkey() { return ifo.repkey; }
   inline U64 pawnkey() const { return ifo.pawnkey; }
   inline U64 material_key() const { return ifo.mkey; }
   // piece access wrappers
@@ -258,10 +275,16 @@ inline void piece_data::do_quiet(const Color& c, const Piece& p,
   piece_on[t] = p;
   piece_on[f] = no_piece;
   
-  ifo.key ^= (zobrist::piece(f, c, p) | zobrist::piece(t, c, p));
-  ifo.repkey ^= (zobrist::piece(f, c, p) | zobrist::piece(t, c, p));
+  ifo.key = ifo.key ^ zobrist::piece(f, c, p);
+  ifo.key = ifo.key ^ zobrist::piece(t, c, p);
 
-  if (p == Piece::pawn) ifo.pawnkey ^= (zobrist::piece(f, c, p) | zobrist::piece(t, c, p));
+  ifo.repkey = ifo.repkey ^ zobrist::piece(f, c, p);
+  ifo.repkey = ifo.repkey ^ zobrist::piece(t, c, p);
+
+  if (p == Piece::pawn) {
+    ifo.pawnkey = ifo.pawnkey ^ zobrist::piece(f, c, p);
+    ifo.pawnkey = ifo.pawnkey ^ zobrist::piece(t, c, p);
+  }
 }
 
 inline void piece_data::do_cap(const Color& c, const Piece& p,
@@ -343,10 +366,10 @@ inline void piece_data::add_piece(const Color& c, const Piece& p, const Square& 
   piece_on[s] = p;
   piece_idx[c][p][s] = number_of[c][p];
   color_on[s] = c;
-  ifo.key |= zobrist::piece(s, c, p);
-  ifo.mkey |= zobrist::piece(s, c, p);
-  ifo.repkey |= zobrist::piece(s, c, p);
-  if (p == Piece::pawn) ifo.pawnkey |= zobrist::piece(s, c, p);
+  ifo.key ^= zobrist::piece(s, c, p);
+  ifo.mkey ^= zobrist::piece(s, c, p);
+  ifo.repkey ^= zobrist::piece(s, c, p);
+  if (p == Piece::pawn) ifo.pawnkey ^= zobrist::piece(s, c, p);
 }
 
 inline void piece_data::set(const Color& c, const Piece& p, const Square& s, info& ifo) {
@@ -359,10 +382,10 @@ inline void piece_data::set(const Color& c, const Piece& p, const Square& s, inf
   piece_on[s] = p;
   if (p == Piece::king) king_sq[c] = s;
 
-  ifo.key |= zobrist::piece(s, c, p);
-  ifo.mkey |= zobrist::piece(s, c, p);
-  ifo.repkey |= zobrist::piece(s, c, p);
-  if (p == Piece::pawn) ifo.pawnkey |= zobrist::piece(s, c, p);
+  ifo.key ^= zobrist::piece(s, c, p);
+  ifo.mkey ^= zobrist::piece(s, c, p);
+  ifo.repkey ^= zobrist::piece(s, c, p);
+  if (p == Piece::pawn) ifo.pawnkey ^= zobrist::piece(s, c, p);
 }
 
 #endif
