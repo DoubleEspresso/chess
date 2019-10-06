@@ -50,8 +50,8 @@ class options {
     else opts[key] = vs;
   }
 
-  bool read_param_file(); // const std::string& filename);
-  bool save_param_file();
+  bool read_param_file(std::string& filename);
+  bool save_param_file(std::string& filename);
   void set_engine_params();
 };
 
@@ -72,10 +72,15 @@ inline void options::load_args(int argc, char * argv[]) {
 }
 
 
-inline bool options::read_param_file() {// const std::string& filename) {
+inline bool options::read_param_file(std::string& filename) {
   std::string line("");
-  std::string filename = value<std::string>("param");
-  if (filename == "") filename = "engine.conf";
+
+  if (filename == "") {
+    filename = value<std::string>("param");
+    if (filename == "") {
+      filename = "engine.conf";
+    }
+  }
   else std::cout << "..reading param file " << filename << std::endl;
 
   std::ifstream param_file(filename);
@@ -99,8 +104,16 @@ inline bool options::read_param_file() {// const std::string& filename) {
   return true;
 }
 
-inline bool options::save_param_file() {
-  std::ofstream param_file("engine.conf", std::ofstream::out);
+inline bool options::save_param_file(std::string& filename) {
+
+  if (filename == "") {
+    filename = value<std::string>("param");
+    if (filename == "") {
+      filename = "engine.conf"; // default
+    }
+  }
+
+  std::ofstream param_file(filename, std::ofstream::out);
 
   for (const auto& p : opts) {
     std::string line = p.first + ":" + p.second + "\n";

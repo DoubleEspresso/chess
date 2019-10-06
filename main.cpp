@@ -19,7 +19,7 @@ int main(int argc, char * argv[]) {
 
   greeting();
   
-  opts->read_param_file();
+  opts->read_param_file(opts->value<std::string>("param"));
 
   zobrist::load();
   bitboards::load();  
