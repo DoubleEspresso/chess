@@ -50,7 +50,7 @@ class options {
     else opts[key] = vs;
   }
 
-  bool read_param_file(const std::string& filename);
+  bool read_param_file(); // const std::string& filename);
   bool save_param_file();
   void set_engine_params();
 };
@@ -67,12 +67,17 @@ inline void options::load_args(int argc, char * argv[]) {
     else if (matches(key, "-hashsize")) set(key, val);
     else if (matches(key, "-tune")) set(key, val);
     else if (matches(key, "-bench")) set(key, val);
+    else if (matches(key, "-param")) set(key, val);
   }
 }
 
 
-inline bool options::read_param_file(const std::string& filename) {
+inline bool options::read_param_file() {// const std::string& filename) {
   std::string line("");
+  std::string filename = value<std::string>("param");
+  if (filename == "") filename = "engine.conf";
+  else std::cout << "..reading param file " << filename << std::endl;
+
   std::ifstream param_file(filename);
   auto set = [this](std::string& k, std::string& v) { this->opts.emplace(k, v); };
 

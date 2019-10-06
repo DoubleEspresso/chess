@@ -19,7 +19,7 @@ int main(int argc, char * argv[]) {
 
   greeting();
   
-  opts->read_param_file("engine.conf");
+  opts->read_param_file();
 
   zobrist::load();
   bitboards::load();  
