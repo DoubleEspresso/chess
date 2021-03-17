@@ -20,6 +20,8 @@ THE SOFTWARE.
 -----------------------------------------------------------------------------
 */
 #include "hashtable.h"
+#include <xmmintrin.h>
+#include <mmintrin.h>
 
 hash_table ttable;
 
@@ -54,6 +56,7 @@ bool hash_table::fetch(const U64& key, hash_data& e) {
     _mm_prefetch(addr, _MM_HINT_T0);
     _mm_prefetch(addr + 32, _MM_HINT_T0);
   }
+
 
   for (unsigned i = 0; i < cluster_size; ++i, ++stored) {
     if ((stored->pkey ^ stored->dkey) == key) {
