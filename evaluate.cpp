@@ -1,4 +1,24 @@
-
+/*
+-----------------------------------------------------------------------------
+This source file is part of the Havoc chess engine
+Copyright (c) 2020 Minniesoft
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+-----------------------------------------------------------------------------
+*/
 #include <mutex>
 #include <thread>
 
@@ -45,6 +65,10 @@ namespace {
   template<Color c> float eval_kings(const position& p, info& ei);
   template<Color c> float eval_passers(const position& p, info& ei);
   */
+
+  /*evaluation helpers*/
+  template<Color c> bool trapped_rook(const position& p, einfo& ei, const Square& rs, const int& mobility);
+
 
   std::vector<float> material_vals{ 100.0, 300.0 , 315.0, 480.0, 910.0 };
 
@@ -156,7 +180,7 @@ namespace {
     pscore += (eval_space<white>(p, ei) - eval_space<black>(p, ei));
     pscore += (eval_center<white>(p, ei) - eval_center<black>(p, ei));
     pscore += (eval_pawn_levers<white>(p, ei) - eval_pawn_levers<black>(p, ei));
-    pscore *= 1.25; // give more weight to positional evaluation
+    pscore *= 1.35; // give more weight to positional evaluation
     score += pscore;
 
     return p.to_move() == white ? score : -score;
@@ -181,6 +205,7 @@ namespace {
     U64 enemies = ei.pieces[them];
     U64 pawn_targets = ei.weak_pawns[them];
     U64 equeen_sq = ei.queen_sqs[them];
+    int ks = p.king_square(c);
 
     for (Square s = *knights; s != no_square; s = *++knights) {
       score += p.params.sq_score_scaling[knight] * square_score<c>(knight, s);
@@ -206,6 +231,10 @@ namespace {
       // bonus for queen attacks
       U64 qattks = mvs & equeen_sq;
       if (qattks) score += p.params.attk_queen_bonus[knight];
+
+      // king distance computation
+      int dist = std::max(util::row_dist(s, ks), util::col_dist(s, ks));
+      score -= dist;
 
       // attacks      
       U64 attks = (mvs & enemies) & (~pawn_targets);
@@ -264,7 +293,7 @@ namespace {
     U64 valuable_enemies = (c == white ?
       p.get_pieces<black, queen>() | p.get_pieces<black, rook>() | p.get_pieces<black, king>() :
       p.get_pieces<white, queen>() | p.get_pieces<white, rook>() | p.get_pieces<white, king>());
-
+    int ks = p.king_square(c);
 
     for (Square s = *bishops; s != no_square; s = *++bishops) {
       score += p.params.sq_score_scaling[bishop] * square_score<c>(bishop, s);
@@ -287,6 +316,10 @@ namespace {
 
       score += mscore;
 
+
+      // king distance computation
+      int dist = std::max(util::row_dist(s, ks), util::col_dist(s, ks));
+      score -= dist;
 
       // closed center penalty
       if (ei.pe->locked_center || ei.pe->center_pawn_count >= 4)
@@ -412,9 +445,23 @@ namespace {
       U64 mvs = magics::attacks<rook>(ei.all_pieces, s);
 
       U64 mobility = (mvs & ei.empty) & (~ei.pe->attacks[them]);
-      float mscore = p.params.mobility_scaling[rook] * rook_mobility(bits::count(mobility));
+      int free_sqs = bits::count(mobility);
+      float mscore = p.params.mobility_scaling[rook] * rook_mobility(free_sqs);
       if ((bitboards::squares[s] & p.pinned<c>())) mscore /= p.params.pinned_scaling[rook];
       score += mscore;
+
+      // is our rooked trapped
+      if (trapped_rook<c>(p, ei, s, free_sqs)) {
+
+        //std::cout << "!!DEBUG trapped rook on sq: " << SanSquares[s] << std::endl;
+        
+        score -= p.params.trapped_rook_penalty[ei.me->is_endgame()];
+
+        if (!ei.me->is_endgame() && !p.has_castled<c>()) {
+          score -= 2.0f;
+        }
+
+      }
 
       // bonus for queen attacks
       U64 qattks = mvs & equeen_sq;
@@ -478,7 +525,7 @@ namespace {
         U64 sq_bb = bitboards::squares[Squares[0]] | bitboards::squares[Squares[1]];
         U64 blockers = (between_bb ^ sq_bb) & ei.all_pieces;
 
-        if (!blockers) {
+        if (blockers == 0ULL) {
           score += p.params.connected_rook_bonus;
         }
       }
@@ -541,7 +588,7 @@ namespace {
     return score;
   }
 
-
+	
 
   template<Color c> float eval_king(const position& p, einfo& ei) {
     float score = 0;
@@ -584,12 +631,19 @@ namespace {
         score += 0.5 * p.params.king_shelter[n];
 
         // flat penalty for having pawnless flank in middle game
-        U64 kflank = bitboards::kflanks[s] & p.get_pieces<c, pawn>();
+        U64 kflank = bitboards::kflanks[util::col(s)] & p.get_pieces<c, pawn>();
         if (kflank == 0ULL) score -= 2;
       }
 
-      // reward for castling
-      if (!p.has_castled<c>()) score -= p.params.uncastled_penalty;
+      // malus for king "trapping" rook(s) in corner
+      //if (king_traps_rook<c>()) {
+
+      //}
+
+      //if (!p.has_castled<c>()) score -= 20 * p.params.uncastled_penalty;
+
+
+      // penalty for back rank threats
 
 
       // reward having "friends" near the king
@@ -726,6 +780,8 @@ namespace {
     float score = 0;
     if (!ei.pe->locked_center) return score;
 
+    if (!opposite_side_castling()) return score;
+
     U64 flank_bb = bitboards::col[A] | bitboards::col[B] | bitboards::col[C] |
       bitboards::col[F] | bitboards::col[G] | bitboards::col[H];
     U64 their_pawns = (c == white ? p.get_pieces<black, pawn>() : p.get_pieces<white, pawn>());
@@ -753,9 +809,9 @@ namespace {
     while (passers)
     {
       Square f = Square(bits::pop_lsb(passers));      
-      int row_dist = (c == white ? 7 - util::row(f) : util::row(f));
+      int row_dist = (c == white ? 8 - util::row(f) : util::row(f));
       
-      if (row_dist > 3) {
+      if (row_dist > 3 || row_dist <= 0) {
         score += p.params.passed_pawn_bonus;
         continue;
       }
@@ -785,6 +841,36 @@ namespace {
     }
 
     return score;
+
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // helper functions for evaluation
+  ////////////////////////////////////////////////////////////////////////////////
+
+  template<Color c> bool trapped_rook(const position& p, einfo& ei, const Square& rs, const int& mobility) {
+
+    if (mobility >= 3) return false;
+
+    int ks = p.king_square(c);
+    int kcol = util::col(ks);
+    int rcol = util::col(rs);
+
+    if ((kcol < Col::E) != (rcol < kcol)) return false;
+
+    return true;
+  }
+
+  
+  bool opposite_side_castling(const position& p, einfo& ei)
+  {
+    int kcw = util::col(p.king_square(white));
+    int kcb = util::col(p.king_square(black));
+
+    return !ei.me->is_endgame() && 
+      p.has_castled<white>() &&
+      p.has_castled<black>() &&
+      ((kcw < Col::E) != (kcb < Col::E));
 
   }
 

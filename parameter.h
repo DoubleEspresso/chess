@@ -1,3 +1,24 @@
+/*
+-----------------------------------------------------------------------------
+This source file is part of the Havoc chess engine
+Copyright (c) 2020 Minniesoft
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+-----------------------------------------------------------------------------
+*/
 #pragma once
 #ifndef PARAMETER_H
 #define PARAMETER_H
@@ -88,6 +109,8 @@ struct parameters {
   const float bishop_attks[5] = { 3.0f, 9.0f, 9.45f, 14.4f, 27.3f };
   const float rook_attks[5] = { 1.5f, 4.5f, 4.725f, 7.2f, 13.65f };
   const float queen_attks[5] = { 0.75f, 2.25f, 2.3625f, 3.6f, 6.825f };
+
+  std::vector<float> trapped_rook_penalty{ 1.0f, 2.0f }; // mg, eg
 
   std::vector<float> attk_queen_bonus{ 2.0f, 1.0f, 1.0f, 1.0f, 0.0f };
 

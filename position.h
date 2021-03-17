@@ -1,3 +1,24 @@
+/*
+-----------------------------------------------------------------------------
+This source file is part of the Havoc chess engine
+Copyright (c) 2020 Minniesoft
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+-----------------------------------------------------------------------------
+*/
 #pragma once
 
 #ifndef POSITION_H
@@ -180,10 +201,20 @@ class position {
   template<Color c>
   inline U64 pinned() const { return ifo.pinned[c];  }
 
-  // evaluation/search related
-  inline bool pawn_on_7th(const Color& c) const {
-    return (c == white ? (get_pieces<white, pawn>() & bitboards::row[Row::r7]) != 0ULL :
-      (get_pieces<black, pawn>() & bitboards::row[Row::r2]) != 0ULL);
+  // returns true if there are pawns on the 7th 
+  // rank for either side (hint to search not to aggressively reduce search depth)
+  inline bool pawns_near_promotion() const {
+    return 
+      (get_pieces<white, pawn>() & bitboards::row[Row::r7] != 0ULL) ||
+      (get_pieces<black, pawn>() & bitboards::row[Row::r2] != 0ULL);
+  }
+
+  // returns true if there are pawns on the 7th rank
+  // for the side to move
+  inline bool pawns_on_7th() const
+  {
+    return ifo.stm == white ? (get_pieces<white, pawn>() & bitboards::row[Row::r7] != 0ULL) :
+      (get_pieces<black, pawn>() & bitboards::row[Row::r2] != 0ULL);
   }
 
   template<Color c>
@@ -221,6 +252,8 @@ class position {
   inline void set_nodes_searched(U64 n) { nodes_searched = n;  }
   
   inline void set_qnodes_searched(U64 qn) { qnodes_searched = qn; }
+
+  bool is_promotion(const U8& mt);
 
   inline bool is_master() { return thread_id == 0; }
 
