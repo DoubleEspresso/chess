@@ -1,24 +1,4 @@
-/*
------------------------------------------------------------------------------
-This source file is part of the Havoc chess engine
-Copyright (c) 2020 Minniesoft
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
------------------------------------------------------------------------------
-*/
+
 #pragma once
 #ifndef TYPES_H
 #define TYPES_H
@@ -57,91 +37,102 @@ typedef uint8_t U8;
 #endif
 
 enum Movetype {
-  promotion_q,
-  promotion_r,
-  promotion_b,
-  promotion_n,
-  capture_promotion_q,
-  capture_promotion_r,
-  capture_promotion_b,
-  capture_promotion_n,
-  castle_ks,
-  castle_qs,
-  quiet,
-  capture,
-  ep,
-  castles,
-  pseudo_legal,
-  promotion,
-  capture_promotion,
-  no_type
+	promotion_q,
+	promotion_r,
+	promotion_b,
+	promotion_n,
+	capture_promotion_q,
+	capture_promotion_r,
+	capture_promotion_b,
+	capture_promotion_n,
+	castle_ks,
+	castle_qs,
+	quiet,
+	capture,
+	ep,
+	castles,
+	pseudo_legal,
+	promotion,
+	capture_promotion,
+	no_type
 };
 
 struct Move {
-  U8 f;
-  U8 t;
-  U8 type;
+	U8 f = 0;
+	U8 t = 0;
+	U8 type = Movetype::no_type;
+	Move() {}
+	Move(const Move& m)
+	{
+		f = m.f; t = m.t; type = m.type;
+	}
 
-  inline Move& operator=(const Move& m) {
-    f = m.f; t = m.t; type = m.type;
-    return *this;
-  }
-  inline bool operator==(const Move& m) const {
-    return (f == m.f && t == m.t && type == m.type);
-  }
-  inline bool operator!=(const Move& m) const {
-    return (f != m.f || t != m.t || type != m.type);
-  }
-  inline void set(const U8& frm, const U8& to, const Movetype& mt) {
-    f = frm; t = to; type = mt;
-  }
+	inline Move& operator=(const Move& m) {
+		f = m.f; t = m.t; type = m.type;
+		return *this;
+	}
+	inline bool operator==(const Move& m) const {
+		return (f == m.f && t == m.t && type == m.type);
+	}
+	inline bool operator!=(const Move& m) const {
+		return (f != m.f || t != m.t || type != m.type);
+	}
+	inline void set(const U8& frm, const U8& to, const Movetype& mt) {
+		f = frm; t = to; type = mt;
+	}
 };
+
+
 
 // enums
 enum Piece { pawn, knight, bishop, rook, queen, king, pieces, no_piece };
 enum Color { white, black, colors, no_color };
 enum Square {
-  A1, B1, C1, D1, E1, F1, G1, H1,
-  A2, B2, C2, D2, E2, F2, G2, H2,
-  A3, B3, C3, D3, E3, F3, G3, H3,
-  A4, B4, C4, D4, E4, F4, G4, H4,
-  A5, B5, C5, D5, E5, F5, G5, H5,
-  A6, B6, C6, D6, E6, F6, G6, H6,
-  A7, B7, C7, D7, E7, F7, G7, H7,
-  A8, B8, C8, D8, E8, F8, G8, H8,
-  squares, no_square
+	A1, B1, C1, D1, E1, F1, G1, H1,
+	A2, B2, C2, D2, E2, F2, G2, H2,
+	A3, B3, C3, D3, E3, F3, G3, H3,
+	A4, B4, C4, D4, E4, F4, G4, H4,
+	A5, B5, C5, D5, E5, F5, G5, H5,
+	A6, B6, C6, D6, E6, F6, G6, H6,
+	A7, B7, C7, D7, E7, F7, G7, H7,
+	A8, B8, C8, D8, E8, F8, G8, H8,
+	squares, no_square
 };
 
 enum Row { r1, r2, r3, r4, r5, r6, r7, r8, rows, no_row };
 enum Col { A, B, C, D, E, F, G, H, cols, no_col };
+enum Depth { ZERO=0, MAX_PLY=64 };
 enum Score { inf = 10000, ninf = -10000, mate = inf - 1, mated = ninf + 1, mate_max_ply = mate - 64, mated_max_ply = mated + 64, draw = 0 };
 enum Nodetype { root, pv, non_pv, searching = 128 };
-enum OrderPhase { hash_move, mate_killer1, mate_killer2, good_captures,
-		  killer1, killer2, bad_captures, quiets, end };
+enum OrderPhase { hash_move, mate_killer1, mate_killer2, good_captures, killer1, killer2, bad_captures, quiets, end };
 
 const std::string SanSquares[64] =
-  {
-    "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1",
-    "a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2",
-    "a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3",
-    "a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4",
-    "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5",
-    "a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6",
-    "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7",
-    "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8"
-  };
+{
+	"a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1",
+	"a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2",
+	"a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3",
+	"a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4",
+	"a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5",
+	"a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6",
+	"a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7",
+	"a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8"
+};
 
 /*
 endgame material encoding reference : kxxk where xx is given by the following encodings
-NBRQ  nbrq
+QRBN  qrbn
 0000  0000 (kk)  0
+0000  0001 (n1)  1
+0001  0000 (n2)  16
+0000  0010 (b1)  2
+0010  0000 (b2)  32
 0001  0001 (nn)  17
-0001  0010 (nb)  19
+0001  0010 (nb)  18
 0001  0100 (nr)  20
 0001  1000 (nq)  24
-0010  0001 (bn)  33  
-0010  0010 (bb)  35
-0010  0100 (br)  39
+0010  0001 (bn)  33
+0010  0010 (bb)  34
+0010  0100 (br)  36
 0010  1000 (bq)  40
 0100  0001 (rn)  65
 0100  0010 (rb)  66
@@ -153,24 +144,42 @@ NBRQ  nbrq
 1000  1000 (qq)  136
 */
 enum EndgameType {
-  none = -1,
-  KpK = 0,
-  KnnK = 17,
-  KnbK = 19,
-  KnrK = 20,
-  KnqK = 24,
-  KbnK = 33,
-  KbbK = 35,
-  KbrK = 39,
-  KbqK = 40,
-  KrnK = 65,
-  KrbK = 66,
-  KrrK = 68,
-  KrqK = 72,
-  KqnK = 129,
-  KqbK = 130,
-  KqrK = 132,
-  KqqK = 136
+	none = -1,
+	KpK = 0,
+	KnK = 1,
+	KNK = 16,
+	KbK = 2,
+	KBK = 32,
+	KnnK = 17,
+	KnbK = 18,
+	KnrK = 20,
+	KnqK = 24,
+	KbnK = 33,
+	KbbK = 34,
+	KbrK = 36,
+	KbqK = 40,
+	KrnK = 65,
+	KrbK = 66,
+	KrrK = 68,
+	KrqK = 72,
+	KqnK = 129,
+	KqbK = 130,
+	KqrK = 132,
+	KqqK = 136,
+	Unknown = 137
+};
+
+struct node {
+	U16 ply;
+	bool in_check, null_search, gen_checks;
+	Move curr_move, best_move, threat_move;
+	Move* pv;
+	int selDepth;
+	int capHistory[2][64][6];
+	int bestMoveHistory[2][64][64];
+	/*Move deferred_moves[218];*/
+	Move killers[4];
+	Score static_eval;
 };
 
 // enum type enabled iterators
@@ -180,39 +189,39 @@ template<> struct is_enum<Color> : std::true_type {};
 template<> struct is_enum<Square> : std::true_type {};
 template<> struct is_enum<Row> : std::true_type {};
 template<> struct is_enum<Col> : std::true_type {};
-template<> struct is_enum<OrderPhase> : std::true_type{};
+template<> struct is_enum<OrderPhase> : std::true_type {};
 
-template<typename T, 
-  typename = typename std::enable_if<is_enum<T>::value>::type >
-  int operator++(T& e) {
-  e = T((int)e + 1); return int(e);
+template<typename T,
+	typename = typename std::enable_if<is_enum<T>::value>::type >
+	int operator++(T& e) {
+	e = T((int)e + 1); return int(e);
 }
 
-template<typename T, 
-  typename = typename std::enable_if<is_enum<T>::value>::type >
-  int operator--(T& e) {
-  e = T((int)e - 1); return int(e);
-}  
+template<typename T,
+	typename = typename std::enable_if<is_enum<T>::value>::type >
+	int operator--(T& e) {
+	e = T((int)e - 1); return int(e);
+}
 
 
 template<typename T1, typename T2,
-  typename = typename std::enable_if<is_enum<T1>::value>::type >
-  T1& operator-=(T1& lhs, const T2& rhs) {
-  lhs = T1(lhs - rhs); return lhs;
+	typename = typename std::enable_if<is_enum<T1>::value>::type >
+	T1& operator-=(T1& lhs, const T2& rhs) {
+	lhs = T1(lhs - rhs); return lhs;
 }
 
 template<typename T1, typename T2,
-  typename = typename std::enable_if<is_enum<T1>::value>::type >
-  T1& operator+=(T1& lhs, const T2& rhs) {
-  lhs = T1(lhs + rhs); return lhs;
+	typename = typename std::enable_if<is_enum<T1>::value>::type >
+	T1& operator+=(T1& lhs, const T2& rhs) {
+	lhs = T1(lhs + rhs); return lhs;
 }
-  
-  
+
+
 // arrays for iteration
-const std::vector<Piece> Pieces { Piece::pawn, Piece::knight, Piece::bishop, Piece::rook, Piece::queen, Piece::king, Piece::pieces, Piece::no_piece };
-const std::vector<Color> Colors { Color::white, Color::black, Color::colors, Color::no_color };
-const std::vector<char> SanPiece{'P','N','B','R','Q','K','p','n','b','r','q','k'};
-const std::vector<char> SanCols{'a','b','c','d','e','f','g','h'};
+const std::vector<Piece> Pieces{ Piece::pawn, Piece::knight, Piece::bishop, Piece::rook, Piece::queen, Piece::king, Piece::pieces, Piece::no_piece };
+const std::vector<Color> Colors{ Color::white, Color::black, Color::colors, Color::no_color };
+const std::vector<char> SanPiece{ 'P','N','B','R','Q','K','p','n','b','r','q','k' };
+const std::vector<char> SanCols{ 'a','b','c','d','e','f','g','h' };
 enum CastleRight { wks = 1, wqs = 2, bks = 4, bqs = 8, cr_none = 0, clearbqs = 7, clearbks = 11, clearwqs = 13, clearwks = 14, clearb = 3, clearw = 12 };
-const std::map<char, U16> CastleRights {{'K', wks}, {'Q', wqs}, {'k', bks}, {'q', bqs}, {'-', 0}, {'\0', 0}, {' ', 0}};
+const std::map<char, U16> CastleRights{ {'K', wks}, {'Q', wqs}, {'k', bks}, {'q', bqs}, {'-', 0}, {'\0', 0}, {' ', 0} };
 #endif

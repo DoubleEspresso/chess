@@ -1,6 +1,10 @@
 #visual studio related
 *.filters
+*.iobj
+*.ipdb
+*.ipch
 *.obj
+*.db
 *.o
 *.exe
 *.ilk
@@ -17,4 +21,7 @@
 
 
 #directories
-x64\
+x64/*
+log/*
+packages/*
+.vs/*

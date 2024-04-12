@@ -1,467 +1,379 @@
-/*
------------------------------------------------------------------------------
-This source file is part of the Havoc chess engine
-Copyright (c) 2020 Minniesoft
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
------------------------------------------------------------------------------
-*/
 #include "order.h"
 #include "move.h"
 #include "position.h"
+#include "utils.h"
+#include "uci.h"
+#include "squares.h"
+#include "material.h"
+#include "evaluate.h"
 
-move_history& move_history::operator=(const move_history& mh) {  
-  std::copy(std::begin(mh.history), std::end(mh.history), std::begin(history));
-  std::copy(std::begin(mh.counters), std::end(mh.counters), std::begin(counters));
-  return (*this);
-}
-
-void move_history::update(const position& p,
-			  const Move& m,
-			  const Move& previous,
-			  const int16& depth,
-			  const Score& eval,
-			  const std::vector<Move>& quiets,
-			  Move * killers) {
-  
-  const Color c = p.to_move();
-  int score = pow(depth, 2);
-  
-  if (m.type == Movetype::quiet) {
-
-    history[c][m.f][m.t] += score;
-    counters[previous.f][previous.t] = m;
-
-    if (eval >= Score::mate_max_ply &&
-      m != killers[0] &&
-      m != killers[1] &&
-      m != killers[2]) {
-      killers[3] = killers[2];
-      killers[2] = m;
-    }
-    else if (eval < Score::mate_max_ply &&
-      m != killers[2] &&
-      m != killers[3] &&
-      m != killers[0]) {
-      killers[1] = killers[0];
-      killers[0] = m;
-    }
-    
-  }
-
-  if (previous.type == Movetype::quiet) {
-    history[c ^ 1][previous.f][previous.t] -= score;
-  }  
-  //
-  //for (auto& q : quiets) {
-  //  if (m.f == q.f) continue;
-  //  history[c][q.f][q.t] -= score;
-  //}
-  
-}
+namespace haVoc {
 
 
 
-void move_history::clear() { 
-  for (auto& v : history) { for (auto& w : v) { std::fill(w.begin(), w.end(), 0); } }
-
-  Move empty; empty.set(0, 0, Movetype::no_type);
-  for (auto& v : counters) { std::fill(v.begin(), v.end(), empty); }
-}
+	std::vector<int> mvals{ 10, 30, 33, 48, 91, 200 };
+	bool endgame = false;
 
 
-template<>
-int move_history::score<white>(const Move& m, const Move& previous, const Move& followup, const Move& threat) {
-  int score = history[white][m.f][m.t];
-  if (counters[previous.f][previous.t] == m) score += counter_move_bonus;
-  if (followup.t == m.f) score -= counter_move_bonus; // moving the same piece multiple times..
-  if (m.f == threat.t) score += threat_evasion_bonus;
-  if (m.type == promotion_q) score += 81; // ordering material values - pawn value
-  if (m.type == promotion_r) score += 38;
-  if (m.type == promotion_b) score += 25;
-  if (m.type == promotion_n) score += 20;
-  return score;
-}
+	//---------------- Sorting lambdas ---------------//
+	Score score_captures(const position& p, const Move& m, const Move& prev, const Move& followup, const Move& threat, node* stack) {
+		Score s = Score(p.see(m));
+		s = Score(s + stack->bestMoveHistory[p.to_move()][m.f][m.t]);
+		return s;
+	}
 
-template<>
-int move_history::score<black>(const Move& m, const Move& previous, const Move& followup, const Move& threat) {
-  int score = history[black][m.f][m.t];
-  if (counters[previous.f][previous.t] == m) score += counter_move_bonus;
-  if (followup.t == m.f) score -= counter_move_bonus; // moving the same piece multiple times..
-  if (m.f == threat.t) score += threat_evasion_bonus;
-  if (m.type == promotion_q) score += 81; // ordering material values - pawn value
-  if (m.type == promotion_r) score += 38;
-  if (m.type == promotion_b) score += 25;
-  if (m.type == promotion_n) score += 20;
-  return score;
-}
+	Score score_qcaptures(const position& p, const Move& m, const Move& prev, const Move& followup, const Move& threat, node* stack) {
+		Score s = Score(p.see(m));
+		return s;
+	}
 
+	Score score_quiets(const position& p, const Move& m, const Move& prev, const Move& followup, const Move& threat, node* stack) {
+		auto tomove = p.to_move();
+		auto stats = p.history_stats();
+		Score s = Score(tomove == white ?
+			stats->score(m, white, prev, followup, threat) : stats->score(m, black, prev, followup, threat));	
+		s = Score(s + stack->bestMoveHistory[tomove][m.f][m.t]);
 
-
-scored_move& scored_move::operator=(const scored_move& o) { m = o.m; s = o.s; return (*this); }
+		// Use a LUT to order quiet moves without any history data
+		if (s == Score::draw) {
+			auto piece = p.piece_on(Square(m.f));
+			auto ss = (p.to_move() == white ?
+				square_score<white>(piece, Square(m.t)) - square_score<white>(piece, Square(m.f)) :
+				square_score<black>(piece, Square(m.t)) - square_score<black>(piece, Square(m.f)));
+			ss *= 10;
+			s = Score((int)ss + s);
+		}
+		s = std::max(Score::ninf, s);
+		return s;
+	}
 
 
 
-move_order::move_order(position& p,
-		       Move& hashmv,
-		       Move * kill) :
-  phase(hash_move), hashmove(&hashmv),
-  killers(kill), to_move(p.to_move()), incheck(p.in_check()) {
-  
-  if (!p.is_legal_hashmove(hashmv)) { hashmove->f = Square(0); hashmove->t = Square(0); hashmove->type = Movetype::no_type; }
-  
-  stats = &(p.history_stats());
-  stats->counter_move_bonus = p.params.counter_move_bonus;
-  stats->threat_evasion_bonus = p.params.threat_evasion_bonus;
-  moves = new Movegen(p);
-  list.clear();
-}
+	//-------------- Move history impl ----------------//
+	Movehistory& Movehistory::operator=(const Movehistory& mh) {
+		std::copy(std::begin(mh.history), std::end(mh.history), std::begin(history));
+		std::copy(std::begin(mh.counters), std::end(mh.counters), std::begin(counters));
+		return (*this);
+	}
 
-move_order::~move_order() {
-  if (moves) { delete moves; moves = 0; }
-}
+	void Movehistory::update(const position& p,
+		const Move& m,
+		const Move& previous,
+		const int16& depth,
+		const Score& eval,
+		const std::vector<Move>& quiets,
+		Move* killers) {
 
+		const Color c = p.to_move();
+		int score = pow(depth, 2);
+		if (m.type == Movetype::quiet) {
+			history[c][m.f][m.t] += score;
+			counters[previous.f][previous.t] = m;
+			if (eval < Score::mate_max_ply &&
+				m != killers[2] &&
+				m != killers[3] &&
+				m != killers[0]) {
+				killers[1] = killers[0];
+				killers[0] = m;
+			}
+			for (auto& q : quiets) {
+				if (m.f == q.f) continue;
+				history[c][q.f][q.t] -= score;
+			}
+		}
 
-bool move_order::skip(const Move& m) {
-  if (m.type == Movetype::no_type) return true;
-  
-  if (m == *hashmove) return true;
+		// mate killers
+		if (eval >= Score::mate_max_ply &&
+			m != killers[0] &&
+			m != killers[1] &&
+			m != killers[2]) {
+			killers[3] = killers[2];
+			killers[2] = m;
+		}
+	}
 
-  
-  if ((m == killers[0] || m == killers[1] ||
-       m == killers[2] || m == killers[3]))
-    return true;
-  
+	void Movehistory::clear() {
+		for (auto& v : history) { for (auto& w : v) { std::fill(w.begin(), w.end(), 0); } }
 
-  return false;
-}
+		Move empty; empty.set(0, 0, Movetype::no_type);
+		for (auto& v : counters) { std::fill(v.begin(), v.end(), empty); }
+	}
 
-void move_order::sort() {
-  unsigned N = list.size();  
-  scored_move key({}, Score(0));
-  int j;
+	int Movehistory::score(const Move& m,
+		const Color& c,
+		const Move& previous,
+		const Move& followup,
+		const Move& threat) const {
+		int score = history[c][m.f][m.t];
+		if (counters[previous.f][previous.t] == m)
+			score += counter_move_bonus;
+		if (followup.type != Movetype::no_type && followup.f == m.t && followup.t == m.f)
+			score -= counter_move_bonus;
 
-  for (unsigned i = 1; i < N; ++i) {
-    key = list[i]; 
-    j = i-1;  
-    while (j >= 0 && list[j] > key) {
-      list[j+1] = list[j];
-      --j;
-    }
-    list[j+1] = key; 
-  }
+		return score;
+	}
 
-}
-
-
-
-template<>
-bool move_order::next_move<main0>(position& pos, Move& m, const Move& previous, const Move& followup, const Move& threat) {
-
-  m = {};
-  m.type = Movetype::no_type;
-  std::vector<int> mvals { 10, 30, 35, 48, 91, 200 };
-  
-  switch (phase) {
-    
-  case hash_move: {
-    if (hashmove->type != Movetype::no_type) {
-      m = *hashmove;
-    }
-    ++phase;
-    break;
-  }
-
-    
-  case mate_killer1 : {
-    if (pos.is_legal_hashmove(killers[2]) &&
-      killers[2] != *hashmove) {
-      m = killers[2];
-    }
-    ++phase; break;
-  }
-                      
-    
-  case mate_killer2: {
-    if (pos.is_legal_hashmove(killers[3])) {
-      if (killers[3] != *hashmove && killers[3] != killers[2])
-        m = killers[3];
-    }
-    ++phase; break;
-  }
-
-    
-  case good_captures: {
-    if (list.size() <= 0) {
-      
-      moves->generate<capture, pieces>();
-      for (int i = 0; i < moves->size(); ++i) {
-        
-        if (skip((*moves)[i])) continue;
-        
-        Piece pt = pos.piece_on(Square((*moves)[i].t));
-        Piece pf = pos.piece_on(Square((*moves)[i].f));
-        
-        Score sc = ((*moves)[i].type == Movetype::ep) ? Score(0) :
-          //Score(pos.see((*moves)[i]));
-          Score(mvals[pt] - mvals[pf]);
-
-        // promotions
-        if (m.type == capture_promotion_q) sc = Score(sc + 81); // ordering material values - pawn value
-        if (m.type == capture_promotion_r) sc = Score(sc + 38);
-        if (m.type == capture_promotion_b) sc = Score(sc + 25);
-        if (m.type == capture_promotion_n) sc = Score(sc + 20);
-        
-        list.emplace_back(scored_move((*moves)[i], sc));
-      }
-      
-      sort();
-      
-      if (list.size() <= 0) { ++phase; }
-    }
-    else {
-      if (list.back().s >= Score(0)) {
-        m = list.back().m;
-        list.pop_back();
-      }
-
-      if (list.size() > 0 && list.back().s < Score(0)) { ++phase; }
-      if (list.size() <= 0) { moves->reset(); ++phase; }      
-    }    
-    break;
-  }
-
-
-  case killer1 : {
-    if (pos.is_legal_hashmove(killers[0])) {
-      if (killers[0] != *hashmove)
-        m = killers[0];
-    }
-    ++phase; break;
-  }
-                 
-                 
-  case killer2: {
-    if (pos.is_legal_hashmove(killers[1])) {
-      if ((killers[1] != *hashmove) && killers[1] != killers[0])
-        m = killers[1];
-    }
-    ++phase; break;
-  }
-    
-    
-  case bad_captures: {
-    if (list.size() <= 0) { moves->reset(); ++phase; return true; }
-    else {
-      m = list.back().m;
-      list.pop_back();
-    }
-    break;
-  }
-    
-
-  case quiets : {
-    if (list.size() <= 0) {
-      
-      auto ss = [this](const Move& m, const Move& previous, const Move& followup, const Move& threat) {
-        return Score(to_move == white ?
-          stats->score<white>(m, previous, followup, threat) : stats->score<black>(m, previous, followup, threat)); };
-      
-      moves->generate<quiet, pieces>();
-      for (int i = 0; i < moves->size(); ++i) {
-
-        if (skip((*moves)[i])) { continue; }
-        
-        Score sc = Score(ss((*moves)[i], previous, followup, threat));
-        
-
-        list.emplace_back(scored_move((*moves)[i], sc));
-        
-      }
-      sort();
-    }
-
-    if (list.size() <= 0) { moves->reset(); ++phase; }
-    else {
-      m = list.back().m;
-      list.pop_back();
-      if (list.size() <= 0) { moves->reset(); ++phase; return true; } 
-    }
-    break;
-  }
-    
-  case end : { return false; }
-    
-  } // end switch
-  
-  return phase != OrderPhase::end;
-}
+	//---------------- Scored move impl ---------------//
+	ScoredMove& ScoredMove::operator=(const ScoredMove& o) {
+		this->m = o.m;
+		this->s = o.s;
+		return *this;
+	}
 
 
 
+	//---------------- Scored moves array ---------------//
+	void ScoredMoves::load_and_score(const position& p, Movegen* moves, const std::vector<Move>& filters, const Move& previous, const Move& followup, const Move& threat, node* stack, ScoreFunc score_lambda)
+	{
+		m_start = m_end = 0;
+		for (int i = 0; i < moves->size(); ++i) {
+			
+			auto m = (*moves)[i];
 
-template<>
-bool move_order::next_move<qsearch>(position& pos, Move& m, const Move& previous, const Move& followup, const Move& threat) {
-  
-  m = {};
-  m.type = Movetype::no_type;
-  std::vector<int> mvals { 10, 30, 35, 48, 91, 200 };
-  
-  switch (phase) {
-    
-  case hash_move: {
-    if (incheck ||
-      hashmove->type == Movetype::capture ||
-      hashmove->type == Movetype::ep ||
-      hashmove->type == Movetype::capture_promotion_q ||
-      hashmove->type == Movetype::capture_promotion_r ||
-      hashmove->type == Movetype::capture_promotion_b ||
-      hashmove->type == Movetype::capture_promotion_n) {
-      m = *hashmove;
-    }
-    ++phase;
-    break;
-  }
+			// skip hash moves and killers
+			if (m == filters[0] || m == filters[1] || m == filters[2] ||
+				m == filters[3] || m == filters[4])
+				continue;
 
-                  
-  case mate_killer1 : {    
-    if (pos.is_legal_hashmove(killers[2]) &&
-      killers[2] != *hashmove) {
-      m = killers[2];
-    }    
-    ++phase; break;
-  }
-    
+			Score sc = score_lambda(p, m, previous, followup, threat, stack);
+			m_moves.emplace_back(ScoredMove(m, sc));
+		}
+	}
 
-  case mate_killer2 : {    
-    if (pos.is_legal_hashmove(killers[3])) {
-      if (killers[3] != *hashmove && killers[3] != killers[2])
-        m = killers[3];
-    }    
-    ++phase; break;
-  }
-  
-    
-  case good_captures : {
-    if (list.size() <= 0) {
-      
-      moves->generate<capture, pieces>();
-      for (int i = 0; i < moves->size(); ++i) {
+	void ScoredMoves::sort(const Score& cutoff)
+	{
+		unsigned N = m_moves.size();
+		ScoredMove key;
+		int j;
+		for (unsigned i = m_start + 1; i < N; ++i) {
+			key = m_moves[i];
+			j = i - 1;
+
+			while (j >= 0 && m_moves[j] < key ) {
+				m_moves[j + 1] = m_moves[j];
+				--j;
+			}
+			m_moves[j + 1] = key;
+		}
+		create_chunk(cutoff);
+	}
+
+	void ScoredMoves::create_chunk(const Score& cutoff) {
+		m_start = m_end;
+		for (int i = m_start; i < m_moves.size(); ++i) {
+			if (m_moves[i].s >= cutoff)
+				m_end++;
+		}
+	}
+
+
 	
-        if (skip((*moves)[i])) continue;
-	
-        Piece pt = pos.piece_on(Square((*moves)[i].t));
-        Piece pf = pos.piece_on(Square((*moves)[i].f));
+	//---------------- Moveorder impl ---------------//
+	Moveorder::Moveorder() { }
 
-        //Score sc = Score(pos.see((*moves)[i]));
+	Moveorder::Moveorder(position& p, Move& hashmove, node* stack) {
+		m_incheck = p.in_check();
 		
-        Score sc = ((*moves)[i].type == Movetype::ep) ? Score(0) :
-          Score(mvals[pt] - mvals[pf]);
-        
-        // promotions
-        if (m.type == capture_promotion_q) sc = Score(sc + 81); // ordering material values - pawn value
-        if (m.type == capture_promotion_r) sc = Score(sc + 38);
-        if (m.type == capture_promotion_b) sc = Score(sc + 25);
-        if (m.type == capture_promotion_n) sc = Score(sc + 20);
+		// TODO: FIXME
+		//einfo ei = {};
+		//ei.me = mtable.fetch(p);
+		m_isendgame = false; // ei.me->is_endgame();
+		endgame = m_isendgame;
+		m_stack = stack;
+		m_movegen = std::make_shared<Movegen>(p);
+		filters = { hashmove, stack->killers[0], stack->killers[1], stack->killers[2], stack->killers[3] };
+		
+	}
 
-        list.emplace_back(scored_move((*moves)[i], sc));
-      }
-      
-      sort();
-      
-      
-      if (list.size() <= 0) { ++phase; }
-    }
-    else {
-      if (list.back().s >= Score(0)) {
-        m = list.back().m;
-        list.pop_back();
-      }
-      
-      if (list.size() > 0 && list.back().s < Score(0)) { ++phase; }
-      if (list.size() <= 0) { moves->reset(); ++phase; }
-    }
-    
-    break;
-  }
+	Moveorder::Moveorder(position& p, Move& hashmove, node* stack, bool debug) {
+		//einfo ei = {};
+		//ei.me = mtable.fetch(p);
+		m_isendgame = false;
+		endgame = m_isendgame;
+		m_stack = stack;
+		m_movegen = std::make_shared<Movegen>(p);
+		filters = { hashmove, stack->killers[0], stack->killers[1], stack->killers[2], stack->killers[3] };
+		m_debug = true;
+	}
 
-    
-  case killer1 : {   
-    if (incheck && pos.is_legal_hashmove(killers[0])) {
-      if (killers[0].f != hashmove->f || killers[0].t != hashmove->t)
-        m = killers[0];
-    }
-    ++phase;
-    break;    
-  }
-    
-    
-  case killer2 : {
-    if (incheck && pos.is_legal_hashmove(killers[1])) {
-      if ((killers[1].f != hashmove->f || killers[1].t != hashmove->t) &&
-        (killers[1].f != killers[0].f || killers[1].t != killers[0].t))
-        m = killers[1];
-    }
-    ++phase;
-    break;
-  }   
+	bool Moveorder::next_move(position& pos, Move& m, const Move& previous, const Move& followup, const Move& threat, bool skipQuiets) {
+		m = {};
+		switch (m_phase) {
+		case HashMove:
+			if (filters[0].type != Movetype::no_type)
+				m = filters[0];
+			break;
+		case MateKiller1:
+			if (filters[3] != filters[0])
+				m = filters[3];
+			break;
+		case MateKiller2:
+			if (filters[4] != filters[0] && filters[4] != filters[3])
+				m = filters[4];
+			break;
+		case Killer1:
+			if (filters[1] != filters[0])
+				m = filters[1];
+			break;
+		case Killer2:
+			if ((filters[2] != filters[0]) && filters[2] != filters[1])
+				m = filters[2];
+			break;
+		case InitCaptures:
+			m_movegen->reset();
+			m_movegen->generate<capture, pieces>();
+			m_captures = std::make_shared<ScoredMoves>(pos, m_movegen.get(), filters, previous, followup, threat, m_stack, score_captures,  Score::draw);
+			break;
+		case GoodCaptures:
+		case BadCaptures:
+			if (!m_captures->end()) {
+				m = m_captures->front().m;
+				m_captures->operator++();
+			}
+			break;
+		case InitQuiets:
+			if (!skipQuiets) {
+				m_movegen->reset();
+				m_movegen->generate<quiet, pieces>();
+				m_quiets = std::make_shared<ScoredMoves>(pos, m_movegen.get(), filters, previous, followup, threat, m_stack, score_quiets, Score::draw);
+			}
+			else
+				m_quiets = std::make_shared<ScoredMoves>();
+			break;
+		case GoodQuiets:
+		case BadQuiets:
+			if (skipQuiets) {
+				m_quiets->skip_rest();
+			}
+			else if (!m_quiets->end()) {
+				m = m_quiets->front().m;
+				m_quiets->operator++();
+			}
+			break;
+		case End:
+			return false;
+		}
+		next_phase();
+		return true;  
+	}
 
-    
-  case bad_captures: {
-    if (list.size() <= 0) { moves->reset(); ++phase; return true; }
-    else {
-      m = list.back().m;
-      list.pop_back();
-    }
-    break;
-  }
 
-    
-  case quiets : {
-    if (list.size() <= 0 && incheck) {
-      
-      auto ss = [this](const Move& m, const Move& previous, const Move& followup, const Move& threat) {
-		  return Score(to_move == white ?
-        stats->score<white>(m, previous, followup, threat) : stats->score<black>(m, previous, followup, threat)); };
-      
-      moves->generate<quiet, pieces>();
-      for (int i = 0; i < moves->size(); ++i) {
-        
-        if (skip((*moves)[i])) continue;
-        
-        Score sc = Score(ss((*moves)[i], previous, followup, threat));
-        
-        list.emplace_back(scored_move((*moves)[i], sc));
+	void Moveorder::next_phase() {
+		if ((m_phase == HashMove) ||
+				(m_phase == MateKiller1) ||
+				(m_phase == MateKiller2) ||
+				(m_phase == Killer1) ||
+				(m_phase == Killer2) ||
+				(m_phase == InitCaptures) ||
+				(m_phase == InitQuiets))
+			m_phase = Phase(m_phase + 1);
+		else if ((m_phase == GoodCaptures || m_phase == BadCaptures) && m_captures->end())
+		{
+			m_captures->create_chunk(Score::ninf); // mark bad captures
+			m_phase = Phase(m_phase + 1);
+		}
+		else if ((m_phase == GoodQuiets || m_phase == BadQuiets) && m_quiets->end())
+		{
+			m_quiets->create_chunk(Score::ninf); // mark bad quiet moves
+			m_phase = Phase(m_phase + 1);
+		}
+	}
 
-      }
-      sort();
-    }
 
-    if (list.size() <= 0) { moves->reset(); ++phase; }
-    else {
-      m = list.back().m;
-      list.pop_back();
-      if (list.size() <= 0) { moves->reset(); ++phase; return true; } 
-    }
-    break;
-  }
 
-  case end : { return false; }
-    
-  } // end switch
-  
-  return phase != OrderPhase::end;
+
+	//---------------- QMoveorder impl ---------------//
+	QMoveorder::QMoveorder() { }
+
+	QMoveorder::QMoveorder(position& p, Move& hashmove, node* stack) : Moveorder(p, hashmove, stack) { }
+
+
+	bool QMoveorder::next_move(position& pos, Move& m, const Move& previous, const Move& followup, const Move& threat, bool skipQuiets) {
+		m = {};
+		switch (m_phase) {
+		case HashMove:
+			if (valid_qmove(filters[0]) && filters[0].type != Movetype::no_type)
+				m = filters[0];
+			break;
+		case MateKiller1:
+			if (valid_qmove(filters[3]) && filters[3] != filters[0])
+				m = filters[3];
+			break;
+		case MateKiller2:
+			if (valid_qmove(filters[4]) && filters[4] != filters[0] && filters[4] != filters[3])
+				m = filters[4];
+			break;
+		case Killer1:
+			if (valid_qmove(filters[1]) && filters[1] != filters[0])
+				m = filters[1];
+			break;
+		case Killer2:
+			if (valid_qmove(filters[2]) && (filters[2] != filters[0]) && filters[2] != filters[1])
+				m = filters[2];
+			break;
+		case InitCaptures:
+			m_movegen->reset();
+			m_movegen->generate<capture, pieces>();
+			m_captures = std::make_shared<ScoredMoves>(pos, m_movegen.get(), filters, previous, followup, threat, m_stack, score_qcaptures, Score::draw);
+			break;
+		case GoodCaptures:
+		case BadCaptures:
+			if (m_captures.get() && !m_captures->end()) {
+				m = m_captures->front().m;
+				m_captures->operator++();
+			}
+			break;
+		case InitQuiets:
+			if (m_incheck && !skipQuiets) {
+				m_movegen->reset();
+				m_movegen->generate<quiet, pieces>();
+				m_quiets = std::make_shared<ScoredMoves>(pos, m_movegen.get(), filters, previous, followup, threat, m_stack, score_quiets, Score::draw);
+			}
+			else 
+				m_quiets = std::make_shared<ScoredMoves>();
+			break;
+		case GoodQuiets:
+		case BadQuiets:
+			if (skipQuiets)
+				break;
+			if (!m_quiets->end()) {
+				m = m_quiets->front().m;
+				m_quiets->operator++();
+			}
+			break;
+		case End:
+			return false;
+		}
+		next_phase();
+		return true;
+	}
+
+	void QMoveorder::next_phase() {
+		if ((m_phase == HashMove) ||
+			(m_phase == MateKiller1) ||
+			(m_phase == MateKiller2) ||
+			(m_phase == Killer1) ||
+			(m_phase == Killer2) ||
+			(m_phase == InitCaptures) ||
+			(m_phase == InitQuiets))
+			m_phase = Phase(m_phase + 1);
+		else if ((m_phase == GoodCaptures || m_phase == BadCaptures) && m_captures->end()) {
+			m_captures->create_chunk(Score::ninf); // mark bad captures
+			m_phase = Phase(m_phase + 1);
+		}
+		else if ((m_phase == GoodQuiets || m_phase == BadQuiets) && m_quiets->end()) {
+			m_quiets->create_chunk(Score::ninf); // mark bad quiet moves
+			m_phase = Phase(m_phase + 1);
+		}
+	}
+
+	bool QMoveorder::valid_qmove(const Move& m) {
+		return m_incheck ||
+			m.type == Movetype::capture ||
+			m.type == Movetype::ep ||
+			m.type == Movetype::capture_promotion_q ||
+			m.type == Movetype::capture_promotion_r ||
+			m.type == Movetype::capture_promotion_b ||
+			m.type == Movetype::capture_promotion_n;
+	}
 }
