@@ -1,77 +1,70 @@
+/*
+-----------------------------------------------------------------------------
+This source file is part of the Havoc chess engine
+Copyright (c) 2020 Minniesoft
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+-----------------------------------------------------------------------------
+*/
 #pragma once
-#ifndef SBC_EVALUATE_H
-#define SBC_EVALUATE_H
 
-#include "board.h"
-#include "material.h"
+#ifndef EVALUATE_H
+#define EVALUATE_H
+
+#include "types.h"
+#include "utils.h"
 #include "pawns.h"
-#include "definitions.h"
+#include "material.h"
+#include "parameter.h"
+#include "utils.h"
 
-#include <vector>
-#ifdef DEBUG
-#include <cassert>
-#endif
+struct endgame_info {
+  bool evaluated_fence;
+  bool is_fence;
+};
 
-namespace Eval
-{
-  struct Scores {
-    Scores() {};
-    int material_sc;
-    int pawn_sc;
-    int knight_sc[2];
-    int bishop_sc[2];
-    int rook_sc[2];
-    int queen_sc[2];
-    int king_sc[2];
-    int threat_sc[2];
-    int safety_sc[2];
-    int mobility_sc[2];
-    int space_sc[2];
-    int center_sc[2];
-    int tempo_sc[2];
-    int squares_sc[2];
-    int time;
-  };
+struct einfo {
+  pawn_entry * pe;
+  material_entry * me;
+  endgame_info endgame;
+  U64 pawn_holes[2];
+  U64 all_pieces;
+  U64 pieces[2];
+  U64 weak_pawns[2];
+  U64 empty;
+  U64 kmask[2];
+  U64 kattk_points[2];
+  U64 central_pawns[2];
+  U64 queen_sqs[2];
+  U64 white_pawns[2];
+  U64 black_pawns[2];
 
-  struct KingSafety {
-    U64 attackedSquareBB;
-    int attackScore[6]; // pawn, knight, bishop, rook, queen, king
-    int numAttackers;
-    int kingRingAttackers[2][2][6];
-  };
+  bool closed_center;
+  unsigned kattackers[2][5];  
+};
 
-  struct CenterControl {
-    U64 attackedSquareBB;
-    int attackScore[5]; // pawn, knight, bishop, rook, queen
-    int numAttackers;
-    int numPawns;
-  };
 
-  struct EvalInfo {
-    EvalInfo() {};
-    int stm;
-    GamePhase phase;
-    U64 pieces[2];
-    U64 weak_enemies[2]; // those pieces which are not defended by a pawn
-    U64 all_pieces;
-    U64 empty;
-    U64 pawns[2];
-    U64 all_pawns;
-    U64 pinned[2];
-    U64 backrank[2];
-    int kingsq[2];
-    int pinners[2][64];
-    int tempoBonus;
-    int do_trace;
-    int endgame_eval;
-    bool RooksOpenFile[2]; // back rank weaknesses
-    MaterialEntry * me;
-    PawnEntry * pe;
-    KingSafety ks[2];
-    CenterControl center[2];
-    Scores s;
-  };
-  extern int evaluate(Board& b);
+namespace eval {
+
+  float evaluate(const position& p, const float& lazy_margin);
+
 }
 
-#endif 
+namespace eval {
+  extern parameters Parameters;
+}
+
+#endif

@@ -1,191 +1,262 @@
-#include <string.h>
+/*
+-----------------------------------------------------------------------------
+This source file is part of the Havoc chess engine
+Copyright (c) 2020 Minniesoft
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+-----------------------------------------------------------------------------
+*/
+#include <vector>
 
 #include "pawns.h"
-#include "globals.h"
+#include "types.h"
 #include "utils.h"
+#include "bitboards.h"
+#include "squares.h"
+#include "evaluate.h"
 
-using namespace Globals;
+pawn_table ptable;
 
-PawnTable pawnTable;
+template<Color c>
+int16 evaluate(const position& p, pawn_entry& e);
 
-namespace Penalty {
-  float doubledPawn[2] = { -8.0, -12.0 };
-  float shelterPawn[2] = { 4.0, 1.0 };
-  float isolatedPawn[2] = { -5.0,-10.0 };
-  float backwardPawn[2] = { -5.0,-1.0 };
-  float backwardOpen[2] = { -8.0, -4.0 };
-  float chainPawn[2] = { 4.0, 8.0 };
-  float passedPawn[2] = { 10.0, 20.0 };
-  float semiOpen[2] = { -1.0, -1.0 };
+inline size_t pow2(size_t x) {
+  return x <= 2 ? x : pow2(x >> 1) << 1;
 }
 
-// sz for 16 pawns distributed among 48 sqrs. ~ 454,253,679 elts
-// sps we only need to store .1% of that ~454254 ~7 mb
-PawnTable::PawnTable() : table(0) {
+pawn_table::pawn_table() : sz_mb(0), count(0) {
   init();
 }
 
-PawnTable::~PawnTable() {
-  if (table) {
-    printf("..deleted pawn hash table\n");
-    delete[] table;
-  }
+
+
+void pawn_table::init() {
+  sz_mb = 10 * 1024; // todo : input mb parameter
+  count = 1024 * sz_mb / sizeof(pawn_entry);
+  count = pow2(count);
+  count = (count < 1024 ? 1024 : count);
+  entries = std::unique_ptr<pawn_entry[]>(new pawn_entry[count]());
+  clear();
 }
 
-bool PawnTable::init() {
-  sz_kb = 10 * 1024;// opts["PawnHashKB"]; // 4mb
-  nb_elts = 1024 * sz_kb / sizeof(PawnEntry);
-  nb_elts = nearest_power_of_2(nb_elts);
-  nb_elts = nb_elts <= 256 ? 256 : nb_elts;
 
-  if (nb_elts < 256) {
-    printf("..[PawnTable] failed to set nb of pawn hash table elements, abort. \n");
-    return false;
-  }
 
-  if (!table && (table = new PawnEntry[nb_elts]()) == 0) {
-    printf("..[PawnTable] alloc failed\n");
-    return false;
-  }
-  return true;
+void pawn_table::clear() {
+  memset(entries.get(), 0, count * sizeof(pawn_entry));
 }
 
-void PawnTable::clear() {
-  memset(table, 0, nb_elts * sizeof(PawnEntry));
-}
 
-/*
-  basic scheme:
-  1. bonus for passed pawns
-  2. penalty for doubled, isolated, and backward
-  3. connected - pawn chain bonus
-  4. king safety structures - shelter bonus
-  5. TODO: check this eval 5k2/3p4/2p2p2/1p1nn3/4N3/3N1P2/2P3PP/3K4
-*/
-PawnEntry * PawnTable::get(Board& b, GamePhase gp) {
-  U64 k = b.pawn_key();
-  int idx = k & (nb_elts - 1);
-  if (table[idx].key == k) {
-      return &table[idx];
-    }
+
+pawn_entry * pawn_table::fetch(const position& p) {
+  U64 k = p.pawnkey();
+  unsigned idx = k & (count - 1);
+  if (entries[idx].key == k) {
+    return &entries[idx];
+  }
   else {
-      table[idx].key = k;
-      table[idx].value = eval(b, WHITE, gp, idx) - eval(b, BLACK, gp, idx);
-      return &table[idx];
-    }
+    std::memset(&entries[idx], 0, sizeof(pawn_entry));
+    entries[idx].key = k;
+    entries[idx].score = evaluate<white>(p, entries[idx]) - evaluate<black>(p, entries[idx]);
+    return &entries[idx];
+  }
 }
 
-int PawnTable::eval(Board& b, Color c, GamePhase gp, int idx) {
-  float base = 0.0;
-  U64 our_pawns = (c == WHITE ? b.get_pieces(WHITE, PAWN) : b.get_pieces(BLACK, PAWN));
-  U64 their_pawns = (c == WHITE ? b.get_pieces(BLACK, PAWN) : b.get_pieces(WHITE, PAWN));
-  U64 all_pawns = our_pawns | their_pawns;
-  Color them = (c == WHITE ? BLACK : WHITE);
-  table[idx].passedPawns[c] = 0ULL;
-  table[idx].isolatedPawns[c] = 0ULL;
-  table[idx].doubledPawns[c] = 0ULL;
-  table[idx].backwardPawns[c] = 0ULL;
-  table[idx].attacks[c] = 0ULL;
-  table[idx].kingPawns[c] = 0ULL;
-  table[idx].chainPawns[c] = 0ULL;
-  table[idx].undefended[c] = 0ULL;
-  table[idx].chainBase[c] = 0ULL;
-  table[idx].darkSquarePawns[c] = 0ULL;
-  table[idx].lightSquarePawns[c] = 0ULL;
-  
-  int *sqs = b.sq_of<PAWN>(c);
-  for (int from = *++sqs; from != SQUARE_NONE; from = *++sqs) {
-    U64 fbb = SquareBB[from];
-    
-      // store the pawn attack bitmap
-      table[idx].attacks[c] |= PawnAttacksBB[c][from];
 
-      // king shelter pawn
-      if (PseudoAttacksBB(KING, b.sq_of<KING>(c)[1]) & fbb) {
-	table[idx].kingPawns[c] |= fbb;
-	//std::cout << " .. dbg shelter " << std::endl;
-	base += Penalty::shelterPawn[gp];
-      }
+template<Color c>
+inline bool backward_pawn(const int& row, const int& col, const U64& pawns) { 
+  int left = col - 1 < Col::A ? -1 : col - 1;
+  int right = col + 1 > Col::H ? -1 : col + 1;
+  bool left_greater = false;
+  bool right_greater = false;
 
-      // passed pawns
-      U64 tmp = PassedPawnBB[c][from] & their_pawns;
-      if (empty(tmp)) {
-	table[idx].passedPawns[c] |= fbb;
-	//std::cout << " .. dbg passed " << std::endl;
-	base += Penalty::passedPawn[gp];
+  if (c == white) {
+    if (left != -1) {
+      int sq = -1;
+      U64 left_pawns = bitboards::col[left] & pawns;
+      while (left_pawns) {
+        int tmp = bits::pop_lsb(left_pawns);
+        if (tmp > sq) sq = tmp;
       }
-
-      // isolated pawns		
-      tmp = NeighborColsBB[COL(from)] & our_pawns;
-      if (empty(tmp)) {
-	table[idx].isolatedPawns[c] |= fbb;
-	//std::cout << " .. dbg isolated " << std::endl;
-	base += Penalty::isolatedPawn[gp];
-      }
-
-      // backward pawns      
-      if (count(tmp) >= 2) {
-	int sq1 = pop_lsb(tmp);
-	int sq2 = pop_lsb(tmp);
-	if ((c == WHITE ? ROW(sq1) >= ROW(from) && ROW(sq2) >= ROW(from) :
-	     ROW(sq1) <= ROW(from) && ROW(sq2) <= ROW(from))) {
-	  table[idx].backwardPawns[c] |= fbb;
-	  U64 isopen = ColBB[COL(from)] & all_pawns;
-	  if (count(isopen) == 1)
-	    //std::cout << " .. dbg backward " << std::endl;
-	    base += Penalty::backwardOpen[gp];
-	}
-      }
-
-      // backward pawns with one neighbor instead of 2
-      if (count(tmp) == 1) {
-	int sq1 = pop_lsb(tmp);
-	if ((c == WHITE ? ROW(sq1) >= ROW(from) : ROW(sq1) <= ROW(from))) {
-	  table[idx].backwardPawns[c] |= fbb;
-	  //std::cout << " .. dbg backward 1 neighbor" << std::endl;
-	  base += Penalty::backwardPawn[gp];
-	}
-      }
-
-      // light/dark square pawns
-      tmp = ColoredSquaresBB[WHITE] & fbb;
-      if (tmp) {
-	table[idx].lightSquarePawns[c] |= tmp;
-      }
-      tmp = ColoredSquaresBB[BLACK] & fbb;
-      if (tmp) {
-	table[idx].darkSquarePawns[c] |= tmp;
-      } 
-
-      // doubled pawns
-      tmp = ColBB[COL(from)] & our_pawns;
-      if (more_than_one(tmp)) {
-	table[idx].doubledPawns[c] |= tmp;
-	base += Penalty::doubledPawn[gp];
-
-	// ..and isolated
-	tmp = NeighborColsBB[COL(from)] & our_pawns;
-	//std::cout << " .. dbg double isolated" << std::endl;
-	if (empty(tmp)) base += Penalty::isolatedPawn[gp];
-      }
-
-      // pawns on open files      
-      tmp = ColBB[COL(from)] & all_pawns;
-      if (count(tmp) == 1) {
-	U64 ourpawn = ColBB[COL(from)] & our_pawns;
-	if (!empty(ourpawn)) {
-	  //std::cout << " .. dbg open file" << std::endl;
-	  base += Penalty::semiOpen[gp];
-	}
-      }
-      
-      // chain pawns (track chain-base)
-      tmp = PawnAttacksBB[them][from] & our_pawns;
-      if (!empty(tmp)) {
-	table[idx].chainPawns[c] |= (tmp | fbb);
-      }
-      else table[idx].chainBase[c] |= fbb;      
+      left_greater = sq > 0 && util::row(sq) > row;
     }
-  //std::cout << "base = " << base << std::endl;
-  return (int)(0.65 * base); 
+
+    if (right != -1) {
+      int sq = -1;
+      U64 right_pawns = bitboards::col[right] & pawns;
+      bool no_right_pawns = (right_pawns == 0ULL);
+      while (right_pawns) {
+        int tmp = bits::pop_lsb(right_pawns);
+        if (tmp > sq) sq = tmp;
+      }
+      right_greater = sq > 0 && util::row(sq) > row || no_right_pawns;
+    }
+  }
+  else {
+    if (left != -1) {
+      int sq = 100;
+      U64 left_pawns = bitboards::col[left] & pawns;
+      bool no_left_pawns = (left_pawns == 0ULL);
+      while (left_pawns) {
+        int tmp = bits::pop_lsb(left_pawns);
+        if (tmp < sq) sq = tmp;
+      }
+      left_greater = sq < 100 && util::row(sq) < row || no_left_pawns;
+    }
+    if (right != -1) {
+      int sq = 100;
+      U64 right_pawns = bitboards::col[right] & pawns;
+      bool no_right_pawns = (right_pawns == 0ULL);
+      while (right_pawns) {
+        int tmp = bits::pop_lsb(right_pawns);
+        if (tmp < sq) sq = tmp;
+      }
+      right_greater = sq < 100 && util::row(sq) < row || no_right_pawns;
+    }
+  }
+
+  return (left == -1 && right_greater) ||
+    (right == -1 && left_greater) ||
+    (left_greater && right_greater);
+}
+
+template<Color c>
+int16 evaluate(const position& p, pawn_entry& e) {
+
+  // sq score scale factors by column
+  std::vector<float> pawn_scaling { 0.86f, 0.90f, 0.95f, 1.00f, 1.00f, 0.95f, 0.90f, 0.86f };
+  std::vector<float> material_vals { 100.0f, 300.0f, 315.0f, 480.0f, 910.0f };
+  
+  Color them = Color(c ^ 1);
+
+  U64 pawns = p.get_pieces<c, pawn>(); 
+  U64 epawns = them == white ?
+    p.get_pieces<white, pawn>() :
+    p.get_pieces<black, pawn>();
+  
+  Square * sqs = p.squares_of<c, pawn>();
+
+  Square ksq = p.king_square(c);
+
+  int16 score = 0;
+  U64 locked_bb = 0ULL;
+  
+  for (Square s = *sqs; s != no_square; s = *++sqs) {
+
+    U64 fbb = bitboards::squares[s];
+    int row = util::row(s);
+    int col = util::col(s);
+
+    score += p.params.sq_score_scaling[pawn] * square_score<c>(pawn, Square(s));
+    score += pawn_scaling[col] * material_vals[pawn];
+
+    
+    // pawn attacks
+    e.attacks[c] |= bitboards::pattks[c][s];
+
+    // king shelter
+    if ((bitboards::kmask[ksq] & fbb)) {
+      e.king[c] |= fbb;
+    }
+    
+    // passed pawns
+    U64 mask = bitboards::passpawn_mask[c][s] & epawns;  
+    if (mask == 0ULL) { 
+      e.passed[c] |= fbb; 
+      e.score += p.params.passed_pawn_bonus;
+    }
+
+    // isolated pawns
+    U64 neighbors_bb = bitboards::neighbor_cols[col] & pawns;
+    if (neighbors_bb == 0ULL) {
+      e.isolated[c] |= fbb;
+      score -= p.params.isolated_pawn_penalty;
+    }
+
+    // backward
+    if (backward_pawn<c>(row, col, pawns)) {
+      e.backward[c] |= fbb;
+      score -= p.params.backward_pawn_penalty;
+    }
+
+
+
+    // pawns by square color
+    U64 wsq = bitboards::colored_sqs[white] & fbb;
+    if (wsq) e.light[c] |= fbb;
+    U64 bsq = bitboards::colored_sqs[black] & fbb;
+    if (bsq) e.dark[c] |= fbb;
+
+    // doubled pawns
+    U64 doubled = bitboards::col[col] & pawns;
+    if (bits::more_than_one(doubled)) {
+      e.doubled[c] |= doubled;
+      if (e.isolated[c] & doubled) {
+        score -= 2 * p.params.doubled_pawn_penalty;
+
+      }
+      else score -= p.params.doubled_pawn_penalty;
+
+    }
+
+
+    // semi-open file pawns
+    U64 column = bitboards::col[col];
+    if ((column & epawns) == 0ULL) {
+      e.semiopen[c] |= fbb;
+
+      if ((fbb & e.backward[c])) {
+        score -= 2 * p.params.backward_pawn_penalty;
+      }
+
+      if ((fbb & e.isolated[c])) {
+        score -= 2 * p.params.semi_open_pawn_penalty;
+      }
+    }
+
+    // track king/queen side pawn configurations
+    if (util::col(s) <= Col::D) e.qsidepawns[c] |= fbb;
+    else e.ksidepawns[c] |= fbb;
+
+    // .. locked center pawns
+    // count nb of center pawns while computing this too
+    // e.g. french advanced, caro-kahn advanced, 4-pawns attack in KID etc.
+    // favors flank attacks, knights, and small penalties for bishop
+    if ((bitboards::squares[s] & bitboards::big_center_mask)) {
+      Square front_sq = Square(c == white ? s + 8 : s - 8);
+      if (util::on_board(front_sq)) {
+        U64 fbb = bitboards::squares[front_sq];
+        e.center_pawn_count++;
+        if ((epawns & fbb)) {
+          locked_bb |= fbb;
+        }
+
+      }
+    }
+
+    // pawn islands
+    // pawn chain tips
+    // pawn chain bases
+    // pawn majorities
+  }
+  
+  // note : evaluated 2x's when we only need to evaluate once
+  // since it is the same per side - but the performance hit should be small
+  if (bits::count(locked_bb) >= 2) {
+    e.locked_center = true;
+  }
+
+  return score;  
 }

@@ -1,0 +1,32 @@
+##########################################################
+## CC compiler options
+
+CC=g++
+CC_FLAGS= -Wall -pedantic -O3 -fomit-frame-pointer -fstrict-aliasing -ffast-math -std=c++11 -mavx
+CC_LIBS=-lpthread
+
+ifeq ($(DBG),true)
+     CC_FLAGS += -g -ggdb
+endif
+
+##########################################################
+## Sources
+
+SRC_DIR = .
+OBJ_DIR = .
+INC_DIR = .
+CC_SRCS = main.cpp magics.cpp bitboards.cpp position.cpp evaluate.cpp hashtable.cpp uci.cpp zobrist.cpp order.cpp pawns.cpp material.cpp pgn.cpp
+
+
+EXE = chess.exe
+
+CC_OBJS = $(CC_SRCS:%.cpp=%.o)
+OBJS = $(CC_OBJS)
+LINK = $(CC_LIBS)
+
+$(EXE) : $(OBJS)
+	$(CC) $(CC_FLAGS) $(OBJS) -o $@ $(LINK)
+
+$(OBJ_DIR)/%.o : %.cpp
+	$(CC) $(CC_FLAGS) -c $< -o $@
+

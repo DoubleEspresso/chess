@@ -1,86 +1,104 @@
-#include <string.h>
-
+/*
+-----------------------------------------------------------------------------
+This source file is part of the Havoc chess engine
+Copyright (c) 2020 Minniesoft
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+-----------------------------------------------------------------------------
+*/
 #include "hashtable.h"
-#include "opts.h"
+#include <xmmintrin.h>
+#include <mmintrin.h>
 
-HashTable hashTable;
+hash_table ttable;
 
-HashTable::HashTable() : entry(0) { }
-
-HashTable::~HashTable() {
-  if (entry) {
-    printf("..deleting TableEntry pointer\n");
-    delete[] entry; entry = 0;
-  }
-}
-void HashTable::clear() {
-  memset(entry, 0, sizeof(HashCluster) * clusterCount);
+inline size_t pow2(size_t x) {
+  return x <= 2 ? x : pow2(x >> 1) << 1;
 }
 
-bool HashTable::init()
-{
-  clusterCount = 0;
-  sz_kb = options["hash table size mb"] * 1024;
-  if (sz_kb > 0) clusterCount = 1024 * sz_kb / sizeof(HashCluster);
 
-  clusterCount = nearest_power_of_2(clusterCount);
-  clusterCount = clusterCount <= 256 ? 256 : clusterCount;
 
-  if (!entry && (entry = new HashCluster[clusterCount]())) {
-    //printf("..initialized main hash table: size %3.1f kb, %lu elts.\n", float(clusterCount)*float(sizeof(HashCluster)) / float(1024.0), clusterCount);
-  }
-  else {
-    printf("..[HashTable] alloc failed\n");
-    return false;
-  }
+hash_table::hash_table() : sz_mb(0), cluster_count(0) {
+  sz_mb = 3 * 128 * 1024;
+  cluster_count = 1024 * sz_mb / sizeof(hash_cluster);
+  cluster_count = pow2(cluster_count);
+  if (cluster_count < 1024) cluster_count = 1024;
+  entries = std::unique_ptr<hash_cluster[]>(new hash_cluster[cluster_count]());
   clear();
-  return true;
+
 }
 
-bool HashTable::fetch(U64 key, TableEntry& ein) {
-  TableEntry * e = first_entry(key);
-  U16 key16 = key >> 48;
 
-  for (unsigned i = 0; i < ClusterSize; ++i, ++e) {
-    if ((e->pkey > 0) && (((e->pkey) ^ (e->dkey)) == key16)) {
-      ein = *e;
+void hash_table::clear() {
+  memset(entries.get(), 0, sizeof(hash_cluster)*cluster_count);
+}
+
+
+
+bool hash_table::fetch(const U64& key, hash_data& e) {
+  entry * stored = first_entry(key);
+
+  { // prefetch.. ?
+    char * addr = (char*)stored;
+    _mm_prefetch(addr, _MM_HINT_T0);
+    _mm_prefetch(addr + 32, _MM_HINT_T0);
+  }
+
+
+  for (unsigned i = 0; i < cluster_size; ++i, ++stored) {
+    if ((stored->pkey ^ stored->dkey) == key) {
+      e.decode(stored->dkey);
       return true;
     }
   }
+
   return false;
 }
 
-void HashTable::store(U64 key, U64 data, U8 depth, Bound bound, U16 m, int score, int static_value, bool pv_node) {
-  TableEntry * e, *replace;
-  U16 key16 = key >> 48;
-  U16 data16 = data >> 48;
+void hash_table::save(const U64& key,
+  const U8& depth,
+  const U8& bound,
+  const U8& age,
+  const Move& m,
+  const int16& score, const bool& pv_node) {
+
+  entry * e, *replace;
 
   e = replace = first_entry(key);
 
-  for (unsigned i = 0; i < ClusterSize; ++i, ++e) {
-    // empty entry or found collision
-    if ((!e->pkey) || (((e->pkey) ^ (e->dkey)) == key16)) {
-      if (!m)
-	m = e->move;
+  for (unsigned i = 0; i < cluster_size; ++i, ++e) {
 
-      // update replace pointer, and break
+    // empty entry or hash collision
+    if (e->empty()) {
       replace = e;
       break;
     }
 
-    // replacement strategy for each cluster -- needs work
-    if (e->depth > depth || (pv_node && !e->pvNode) ||
-        (e->bound != BOUND_EXACT && bound == BOUND_EXACT))
-      replace = e;
+    // collision handling (depth, age and pv node)
+    else if (((e->pkey) ^ (e->dkey)) == key) {
+      if (age - e->age() > 1) {
+        replace = e;
+      }
+      else if (e->depth() - depth > 0 && pv_node) {
+        replace = e;
+      }
+    }
+
   }
 
-  replace->pkey = key16^data16;
-  replace->dkey = data16;
-  replace->depth = depth + 1; // to adjust negative qsearch depths
-  replace->bound = bound;
-  replace->move = m;
-  replace->value = (int16)score;
-  replace->static_value = (int16)static_value;
-  replace->pvNode = pv_node;
-
+  replace->encode(depth, bound, age, m, score);
+  replace->pkey = key ^ replace->dkey;
 }

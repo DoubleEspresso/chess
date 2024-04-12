@@ -1,95 +1,98 @@
+/*
+-----------------------------------------------------------------------------
+This source file is part of the Havoc chess engine
+Copyright (c) 2020 Minniesoft
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+-----------------------------------------------------------------------------
+*/
 #pragma once
-#ifndef SBC_MOVE_H
-#define SBC_MOVE_H
 
-#include <stdio.h>
+#ifndef MOVE_H
+#define MOVE_H
 
-#include "definitions.h"
+#include <vector>
+#include <array>
+
 #include "types.h"
-#include "globals.h"
+#include "utils.h"
 
-class Board;
+class position;
 
-//---------------------------------------------
-// Move Encoding:
-// We store move information in a 16-bit word, 
-// using the standard 'from'-'to' representation.
-// The 16-bit word is broken down as follows,
-//
-// SET BITS                            DESCRIPTION
-// 0-5                                 from sq (0-63)
-// 6-11                                to sq   (0-63)
-// 12-16                               move data
-// 
-// this leaves bits 12-15 as move_data flags
-// 
-// BIT COMBOS                          DESCRIPTION
-// 11                                  quite move 
-// 12                                  normal capture
-// 13                                  ep capture
-// 14                                  quite move (gives check)
-// PROMOTIONS -- CAPTURES
-// 5                                   p.c. to knight                               
-// 6                                   p.c. to bishop
-// 7                                   p.c. to rook
-// 8                                   p.c. to queen
-// CASTLES
-// 9                                   castle k.s.
-// 10                                  castle q.s.
-// PROMOTIONS -- QUITES
-// 1                                   promotion to knight
-// 2                                   promotion to bishop
-// 3                                   promotion to rook
-// 4                                   promotion to queen
-//---------------------------------------------
+enum Dir { N, S, NN, SS, NW, NE, SW, SE, no_dir };
 
-// movelist structure is used for move array storage 
-// and contains a score used exclusively for move ordering purposes
-struct MoveList {
-  U16 m;
-  int v; // value for move-ordering (search or move generation)
+
+
+
+class Movegen {
+  int last;
+  Move list[218]; // max moves in any chess position
+  Color us, them;
+  U64 rank2, rank7;
+  U64 empty, pawns, pawns2, pawns7;
+  std::vector<U64> bishop_mvs, rook_mvs, queen_mvs;  
+  Square * knights;
+  Square * bishops;
+  Square * rooks;
+  Square * queens;
+  Square * kings;
+  U64 enemies, all_pieces, qtarget, ctarget, check_target, evasion_target;
+  Square eps;
+  bool can_castle_ks, can_castle_qs;
   
-  MoveList() { }
-  MoveList(U16& mv, int val = 0) : m(mv), v(val) { } 
-  ~MoveList() { }
+  // utilities  
+  inline void initialize(const position& p);
+  inline void pawn_caps(U64& left, U64& right, U64& ep_left, U64& ep_right);
+  
+  template<Movetype mt>
+  inline void encode(U64& b, const int& f);
 
-  bool operator()(const MoveList& ML) const { return ML.m == m; }
-  bool operator==(const MoveList& m2) { return m == m2.m; }
-};
-inline bool MLGreater(const MoveList& x, const MoveList& y) { return x.v > y.v; }
+  template<Movetype mt>
+  inline void encode_pawn_pushes(U64& b, const int& dir);
 
-class MoveGenerator {
-  int it, last;
-  MoveList list[MAX_MOVES];
-  int legal_i[MAX_MOVES];
+  inline void pawn_quiets(U64& single, U64& dbl);
+  inline void encode_promotions(U64& b, const int& dir);
+  inline void capture_promotions(U64& right_caps, U64& left_caps);
+  inline void quiet_promotions(U64& quiets);
+  inline void encode_capture_promotions(U64& b, const int& f);
   
  public:
- MoveGenerator() : it(0), last(0) { }
- MoveGenerator(Board &b) : it(0), last(0) { generate(b, LEGAL); }
- MoveGenerator(Board& b, MoveType mt) : it(0), last(0) { generate(b, mt); }
- MoveGenerator(Board& b, MoveType mt, bool legal) : it(0), last(0) {
-    if (legal) generate(b, mt);
-    else generate_pseudo_legal(b, mt);
-  }
-  ~MoveGenerator() { };
+  Movegen() : last(0) {}
+  Movegen(const position& pos) : last(0) { initialize(pos); }
+  Movegen(const Movegen& o) = delete;
+  Movegen(const Movegen&& o) = delete;
+  ~Movegen() {}
   
-  void print_mvlist();
-  inline U64 move_pawns(int c, int d, U64& b);
-  MoveList * generate(Board &b, MoveType mt);
-  template<MoveType> inline void append(U16 m);
-  MoveList operator++() { return list[legal_i[it++]]; }
-  bool end() { return it == last; }
-  U16 move() { return list[legal_i[it]].m; }
-  MoveList& get(int i) { return list[legal_i[i]]; }
-  int size() const { return last; }
-  template<MoveType> void serialize(U64 &b, const U8& from);
-  template<MoveType> void serialize(U64 &b, const Direction& d);
-  template<MoveType> void serialize_promotion(U64 &b, const Direction& d);
-  MoveList * generate_pawn_moves(Board &b, MoveType mt);
-  MoveList * generate_piece_moves(Board &b, MoveType mt);
-  MoveList * generate_evasions(Board& board, MoveType mt);
-  MoveList * generate_qsearch_mvs(Board& b, MoveType mt, bool checksKing);
-  MoveList * generate_pseudo_legal(Board& b, MoveType mt);
-  MoveList * generate_legal_castle_moves(Board& b);
+  Movegen& operator=(const Movegen& o) = delete;
+  Movegen& operator=(const Movegen&& o) = delete;
+  Move& operator[](const int& idx) { return list[idx]; }
+  
+  template<Movetype mt, Piece p>
+  inline void generate();
+
+  template<Piece p>
+  inline void generate();
+  
+  // utilities
+  inline int size() { return last; }    
+  inline void print();
+  inline void print_legal(position& p);
+  inline void reset() { last = 0; }
 };
+
+#include "move.hpp"
+
 #endif

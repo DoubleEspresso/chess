@@ -1,168 +1,106 @@
-#pragma once
-#ifndef HEADWIG_THREADS_H
-#define HEADWIG_THREADS_H
+/*
+-----------------------------------------------------------------------------
+This source file is part of the Havoc chess engine
+Copyright (c) 2020 Minniesoft
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+-----------------------------------------------------------------------------
+*/
+#ifndef THREADPOOL_H
+#define THREADPOOL_H
 
+#include <iostream>
+#include <deque>
+#include <functional>
+#include <thread>
+#include <condition_variable>
+#include <mutex>
 #include <vector>
-#include <bitset>
+#include <atomic>
+#include <cassert>
 
-#include "definitions.h"
-#include "platform.h"
-#include "board.h"
+class Threadpool {
+ private:
+  std::vector< std::thread > workers;
+  std::deque< std::function<void() > > tasks;
+  std::mutex m;
+  std::condition_variable cv_task;
+  std::condition_variable cv_finished;
+  std::atomic_uint busy;
+  std::atomic_uint processed;
+  std::atomic_bool stop;
+  unsigned int num_threads;
+  
+  void thread_func() {
+    while (true) {
+      std::unique_lock<std::mutex> lock(m);
+      cv_task.wait(lock, [this]() { return stop || !tasks.empty(); });
+      if (!tasks.empty()) {
+        ++busy;
+        auto fn = tasks.front();
+        tasks.pop_front();
+        lock.unlock();
+        fn();
+        ++processed;
+        lock.lock();
+        --busy;
+        cv_finished.notify_one();
+      }
+      else if (stop) break;
+    }
+  }
 
-extern U16 BestMoves[2];
-extern U16 PonderMoves[2];
+ public:
+  
+   Threadpool(const unsigned int n = std::thread::hardware_concurrency() - 1) :
+     busy(0), processed(0), stop(false), num_threads(n)
+   {
+     for (unsigned int i = 0; i < n; ++i)
+       workers.emplace_back(std::bind(&Threadpool::thread_func, this));
+   }
+   
+   ~Threadpool() { if (!stop) exit(); }
+  
+   template<class T, typename... Args> void enqueue(T&& f, Args&&... args) {
+     std::unique_lock<std::mutex> lock(m);
+     // args to bind are copied or moved (not passed by reference) .. unless wrapped in std::ref()
+     tasks.emplace_back(std::bind(std::forward<T>(f), std::ref(std::forward<Args>(args))...));
+     cv_task.notify_one();
+   }
+   
+   void clear_tasks() { while (!tasks.empty()) tasks.pop_front();  }
 
-class ThreadPool;
-class ThreadMaster;
-class ThreadTimer;
-class MoveSelect;
-struct Limits;
-struct Node;
+   unsigned int size() { return num_threads; }
+   
+   void wait_finished() {
+     std::unique_lock<std::mutex> lock(m);
+     cv_finished.wait(lock, [this]() { return tasks.empty() && (busy == 0); });
+   }
+   
+  unsigned int get_processed() const { return processed; }
 
-const int SPLITS_PER_THREAD = 8;
-
-extern ThreadPool Threads;
-
-class NativeMutex
-{
-public:
-	NativeMutex()
-	{
-#ifdef _WIN32
-		InitializeCriticalSection(&mutex);
-#else 
-		mutex_init(mutex);
-#endif
-	};
-	~NativeMutex() {};
-
-	void lock() { mutex_lock(mutex); }
-	void unlock() { mutex_unlock(mutex); }
-	MUTEX mutex;
-private:
-	friend struct ConditionVariable;
+  void exit() {
+    std::unique_lock<std::mutex> lock(m);
+    stop = true;
+    cv_task.notify_all();
+    lock.unlock();
+    for (auto& t : workers) t.join();
+  }
 };
 
-
-struct ConditionVariable {
-	ConditionVariable() { thread_cond_init(c); }
-	~ConditionVariable() { cond_destroy(c); }
-
-	void wait(NativeMutex& m) { thread_wait(c, m.mutex); }
-#ifdef __linux
-        void wait_for(NativeMutex& m, timespec& d) { thread_timed_wait(c, m.mutex, d); }
-#elif OSX
-        void wait_for(NativeMutex& m, timespec& d) { thread_timed_wait(c, m.mutex, d); }
-#else
-	void wait_for(NativeMutex& m, int ms) { thread_timed_wait(c, m.mutex, ms); }
-#endif
-	void signal() { thread_signal(c); }
-
-private:
-	CONDITION c;
-};
-
-
-struct SplitBlock
-{
-	const Board * b;
-	volatile bool cut_occurred;
-	volatile U16 bestmove;
-	volatile int alpha;
-	volatile int beta;
-	volatile int besteval;
-	volatile bool allSlavesSearching;
-	volatile int nodes_searched;
-	int depth;
-	SplitBlock* parentSplitBlock;
-	bool cutNode;
-	Node * node;
-
-	NativeMutex split_mutex;
-	MoveSelect * ms;
-	Thread * masterThread;
-	std::bitset<MAX_THREADS> slaves_mask;
-};
-
-class ThreadBase
-{
-public:
-	ThreadBase() { };
-	virtual ~ThreadBase() {};
-
-	virtual void idle_loop() = 0;
-	void notify();
-	void wait_for(volatile const bool& b);
-
-	NativeMutex mutex;
-	ConditionVariable sleep_condition;
-};
-
-class Thread : public ThreadBase
-{
-public:
-	Thread();
-	virtual void idle_loop();
-	bool found_cutoff() const;
-	bool available_to(const Thread* master) const;
-
-	bool split(Board& b, U16* bestmove, Node* node, int alpha, int beta, int* besteval, int depth, MoveSelect* ms, bool cutNode);
-
-	SplitBlock SplitBlocks[SPLITS_PER_THREAD];
-	Board* currBoard;
-	size_t idx;
-	SplitBlock* volatile currSplitBlock;
-	volatile int nb_splits;
-	volatile bool searching;
-	THREAD handle;
-};
-
-class ThreadMaster : public Thread
-{
-public:
-	ThreadMaster() : thinking(true) {};
-	virtual void idle_loop();
-	volatile bool thinking;
-	THREAD handle;
-};
-
-
-class ThreadTimer : Thread
-{
-public:
-	ThreadTimer();
-	void init();
-	virtual void idle_loop();
-	void check_time();
-	double estimate_max_time();
-
-	volatile bool searching, adding_time;
-	volatile double elapsed;
-	Limits * search_limits;
-	NativeMutex tmutex, moretime_mutex;
-	ConditionVariable sleep_condition;
-	ConditionVariable moretime_condition;
-	THREAD handle;
-private:
-	double max, now;
-};
-
-
-class ThreadPool : public std::vector<Thread*>
-{
-public:
-	void init();
-	void exit();
-	ThreadMaster* main() { return static_cast<ThreadMaster*>(at(0)); }
-	Thread* available_slave(const Thread * master) const;
-	void wait_for_search_finished();
-	void start_thinking(const Board &b);
-
-	NativeMutex mutex;
-	ConditionVariable sleep_condition;
-
-};
-
-extern ThreadTimer * timer_thread;
+extern Threadpool search_threads;
 
 #endif

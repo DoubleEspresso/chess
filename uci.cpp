@@ -1,372 +1,275 @@
-#include <cmath>
-#include <stdio.h>
-#include <iostream>
-#include <cstring>
-
+/*
+-----------------------------------------------------------------------------
+This source file is part of the Havoc chess engine
+Copyright (c) 2020 Minniesoft
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+-----------------------------------------------------------------------------
+*/
 #include "uci.h"
-#include "globals.h"
-#include "magic.h"
-#include "bench.h"
-#include "board.h"
 #include "move.h"
+#include "bench.h"
 #include "search.h"
 #include "threads.h"
-#include "evaluate.h"
 #include "hashtable.h"
-#include "pawns.h"
-#include "material.h"
-#include "utils.h"
-#include "opts.h"
-#include "mctree.h" // monte-carlo searching (dbg)
-#include "move2.h"
 
-using namespace UCI;
+position p;
+Move dbgmove;
+Threadpool worker(1);
+signals UCI_SIGNALS;
 
-Board b;
+void uci::loop() {
+  p.params = eval::Parameters;
 
-void UCI::loop()
-{
-  int GAME_FINISHED = 0;
-  std::string user_input;
-  while (!GAME_FINISHED)
-    {
-      while (std::getline(std::cin, user_input))
-        {
-          command(user_input, GAME_FINISHED);
-          if (GAME_FINISHED) break;
-        }
-    }
+  std::string input = "";
+  while (std::getline(std::cin, input)) {
+    if (!parse_command(input)) break;
+  }
 }
 
-void UCI::command(std::string cmd, int& GAME_OVER)
-{
-  std::istringstream uci_instream(cmd);
-  std::string command;
-  while (uci_instream >> std::skipws >> command)
-    {
-      if (command == "d" || command == "print")
-        {
-          b.print();
-          int count = 0;
-          int size = 0;
-          for (MoveGenerator mvs(b); !mvs.end(); ++mvs)
-            {
-              U16 m = mvs.move();
-              std::cout << move_to_string(m) << " ";
-              if (b.is_legal(m)) count++;
-              size++;
-            }
-          std::cout << (b.whos_move() == WHITE ? "\nwhite " : "\nblack ") << "to move" << std::endl;
-          std::cout << "castle state white : (" << (b.can_castle(W_KS) ? "k.side" : "") << (b.can_castle(W_QS) ? " q.side" : "") << ")"
-                    << " black : (" << (b.can_castle(B_KS) ? "k.side" : "") << (b.can_castle(B_QS) ? " q.side" : "") << ")" << std::endl;
-          std::cout << "Zobrist key: " << b.pos_key() << std::endl;
-          std::cout << "Evaluation: " << Eval::evaluate(b) << std::endl;
-          std::cout << "Fen: " << b.to_fen() << std::endl;
-        }
 
-      else if (command == "newmvs") {
-        MoveGenerator2<QUIETS, QUEEN, WHITE> mvs(b);
-        mvs.print();
+bool uci::parse_command(const std::string& input) {
+  std::istringstream instream(input);
+  std::string cmd;
+  bool running = true;
+  
+  while (instream >> std::skipws >> cmd) {
+    std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::tolower);
+  
+    if (cmd == "position" && instream >> cmd) {
+      
+      std::string tmp;
+      if (cmd == "startpos") {
+        getline(instream, tmp);
+        std::istringstream fen(START_FEN);
+        p.setup(fen);
+        load_position(tmp);
       }
-      else if (command == "mc" || command == "mcsearch") {
-        MCTree mc;
-        mc.search(b);
+      else {
+        std::string sfen = "";
+        while ((instream >> cmd) && cmd != "moves") sfen += cmd + " ";
+        getline(instream, tmp);
+        tmp = "moves " + tmp;
+        std::istringstream fen(sfen);
+        p.setup(fen);
+        load_position(tmp);
       }
-      else if (command == "caps" || command == "captures") {
-        for (MoveGenerator mvs(b, CAPTURE); !mvs.end(); ++mvs)
-          {
-            U16 m = mvs.move();
-            std::cout << move_to_string(m) << " ";
-          }
-        std::cout << "" << std::endl;
-      }
-      else if (command == "pseudo_mvs")
-        {
-          int count = 0;
-          int size = 0;
-          printf(".....quiet pseudo legal moves......\n");
-          MoveGenerator mvs; mvs.generate_pseudo_legal(b, QUIET);
-          for (; !mvs.end(); ++mvs)
-            {
-              U16 m = mvs.move();
-              std::string smv = move_to_string(m);
-              std::cout << smv << " ";
-              if (b.is_legal(m)) count++;
-              size++;
-            }
-          printf("\n.....capture pseudo legal moves......\n");
-          MoveGenerator mvs2; mvs2.generate_pseudo_legal(b, CAPTURE);
-          for (; !mvs2.end(); ++mvs2)
-            {
-              U16 m = mvs2.move();
-              std::string smv = move_to_string(m);
-              std::cout << smv << " ";
-              if (b.is_legal(m)) count++;
-              size++;
-            }
-          printf("\n...%d moves total, %d are legal\n", size, count);
-        }
-      else if (command == "bench" && uci_instream >> command)
-        {
-          Benchmark bench(BENCH, atoi(command.c_str()));
-        }
-      else if (command == "xray" && uci_instream >> command)
-        {
-          U64 wxrays = b.xray_attackers(atoi(command.c_str()), WHITE);
-          U64 bxrays = b.xray_attackers(atoi(command.c_str()), BLACK);
-          printf("..white-xrays\n");
-          PrintBits(wxrays);
-          printf("..black-xrays\n");
-          PrintBits(bxrays);
-        }
-      else if (command == "divide" && uci_instream >> command)
-        {
-          Benchmark bench;
-          bench.divide(b, atoi(command.c_str()));
-        }
-      else if (command == "eval")
-        {
-          int score = Eval::evaluate(b);
-          printf("Score = %d\n", score);
-        }
-      else if (command == "popcount" && uci_instream >> command)
-        {
-          Benchmark bench;
-          bench.bench_bitcount(atoi(command.c_str()));
-        }
-      else if (command == "lsb" && uci_instream >> command)
-        {
-          Benchmark bench;
-          bench.bench_lsb(atoi(command.c_str()));
-        }
-      else if (command == "see" && uci_instream >> command)
-        {
-          MoveGenerator mvs(b);
-          U16 move = MOVE_NONE;
-          for (; !mvs.end(); ++mvs)
-            {
-              U16 m = mvs.move();
-              if (move_to_string(m) == command)
-                {
-                  move = m;
-                  break;
-                }
-            }
-          if (move != MOVE_NONE)
-            {
-              int val = b.see_move(move);
-              std::cout << "See score:  " << val << std::endl;
-            }
-          else std::cout << " (dbg) See : error, illegal move." << std::endl;
-        }
+      
+      p.print();
+      std::cout << "position hash key: " << p.key() << std::endl;
+      std::cout << "position rep key:" << p.repkey() << std::endl;
+    }
+    else if (cmd == "d") {
+      p.print();
+      std::cout << "position hash key: " << p.key() << std::endl;
+      std::cout << "fen: " << p.to_fen() << std::endl;
+    }
+    else if (cmd == "eval") {
+      p.print();
+      std::cout << "position hash key: " << p.key() << std::endl;
+      std::cout << "evaluation: " << eval::evaluate(p, -1) << std::endl;
+    }
+    else if (cmd == "undo") {
+      p.undo_move(dbgmove);
+    }
+    else if (cmd == "fdepth" && instream >> cmd) {
+      p.params.fixed_depth = atoi(cmd.c_str());
+      std::cout << "fixed depth search: " << p.params.fixed_depth << std::endl;
+    }
+    
+    else if (cmd == "see" && instream >> cmd) {
+      Movegen mvs(p);
+      mvs.generate<pseudo_legal, pieces>();
+      Move move;
 
-      //-------------- UCI commands ---------------------//
-      else if (command == "uci")
-        {
-          UCI_SIGNALS.stop = true;
-          timer_thread->searching = false;
+      
+      for (int i=0; i<mvs.size(); ++i) {
 
-          hashTable.clear();
-          material.clear();
-          pawnTable.clear();
-          RootMoves.clear();
-
-          std::cout << "id name " << ENGINE_NAME << std::endl;
-          std::cout << "uciok" << std::endl;
-        }
-      else if (command == "isready")
-        {
-          UCI_SIGNALS.stop = true;
-          timer_thread->searching = false;
+        if (!p.is_legal(mvs[i])) continue;
 	
-          hashTable.clear();
-          material.clear();
-          pawnTable.clear();
-          RootMoves.clear();
-
-          std::cout << "readyok" << std::endl;
+        if (move_to_string(mvs[i]) == cmd) {
+          move = mvs[i];
+          break;
         }
-      else if (command == "candidates")
-        {
-          b.print();
-          printf("----discovered candidates for side to move---\n");
-          b.compute_discovered_candidates(b.whos_move());
-          U64 dc = b.discovered_checkers(b.whos_move());
-          U64 db = b.discovered_blockers(b.whos_move());
-          PrintBits(dc); PrintBits(db);
-          printf("----discovered candidates for side *NOT* to move---\n");
-          b.compute_discovered_candidates(b.whos_move() ^ 1);
-          dc = b.discovered_checkers(b.whos_move() ^ 1);
-          db = b.discovered_blockers(b.whos_move() ^ 1);
-          PrintBits(dc); PrintBits(db);
-        }
-      else if (command == "ucinewgame")
-        {
-          UCI_SIGNALS.stop = true;
-          timer_thread->searching = false;
-
-          hashTable.clear();
-          material.clear();
-          pawnTable.clear();
-          RootMoves.clear();
-        }
-      else if (command == "force")
-        {
-          UCI_SIGNALS.stop = true;
-          timer_thread->searching = false;
-        }
-      else if (command == "go")
-        {
-
-          if (!b.has_position()) { printf("..no position loaded\n"); return; }
-          Limits limits;
-          memset(&limits, 0, sizeof(limits));
-
-          while (uci_instream >> command)
-            {
-              if (command == "wtime" && uci_instream >> command) limits.wtime = atoi(command.c_str());
-              else if (command == "btime" && uci_instream >> command) limits.btime = atoi(command.c_str());
-              else if (command == "winc" && uci_instream >> command) limits.winc = atoi(command.c_str());
-              else if (command == "binc" && uci_instream >> command) limits.binc = atoi(command.c_str());
-              else if (command == "movestogo" && uci_instream >> command) limits.movestogo = atoi(command.c_str());
-              else if (command == "nodes" && uci_instream >> command) limits.nodes = atoi(command.c_str());
-              else if (command == "movetime" && uci_instream >> command) limits.movetime = atoi(command.c_str());
-              else if (command == "mate" && uci_instream >> command) limits.mate = atoi(command.c_str());
-              else if (command == "depth" && uci_instream >> command) limits.depth = atoi(command.c_str());
-              else if (command == "infinite") limits.infinite = (command == "infinite" ? true : false);
-              else if (command == "ponder") limits.ponder = atoi(command.c_str());
-            }
-
-          //hashTable.clear();
-          //material.clear();
-          //pawnTable.clear();
-          RootMoves.clear();
-          timer_thread->search_limits = &limits;
-
-	  /*
-	  MCTree * mc = new MCTree(b);
-	  mc->search(4);
-	  if (mc) { delete mc; mc = 0; }
-	  */
-
-          ROOT_BOARD = b;
-          ROOT_DEPTH = (limits.depth == 0 ? MAXDEPTH : limits.depth);
-          ROOT_DEPTH = (ROOT_DEPTH > MAXDEPTH ? MAXDEPTH : ROOT_DEPTH <= 0 ? MAXDEPTH : ROOT_DEPTH);
-          UCI_SIGNALS.stop = false;
-          Threads.start_thinking(ROOT_BOARD);
-        }
-      else if (command == "position" && uci_instream >> command)
-        {
-          std::string tmp;
-
-          if (command == "startpos")
-            {
-              getline(uci_instream, tmp);
-              std::istringstream fen(START_FEN);
-              b.from_fen(fen);
-              load_position(tmp);
-            }
-          else
-            {
-              std::string sfen = "";
-              while ((uci_instream >> command) && command != "moves") sfen += command + " ";
-              getline(uci_instream, tmp);
-              tmp = "moves " + tmp;
-
-              std::istringstream fen(sfen);
-              b.from_fen(fen);
-              load_position(tmp);
-            }
-        }
-      else if (command == "stop" || command == "exit" || command == "quit")
-        {
-          UCI_SIGNALS.stop = true;
-          timer_thread->searching = false;
-          if (command == "exit" || command == "quit") GAME_OVER = 1;
-        }
-      else std::cout << "..unknown command " << command << std::endl;
+	
+      }
+      
+      if (move.type != Movetype::no_type) {
+        int score = p.see_move(move);
+        std::cout << "See score:  " << score << std::endl;
+      }
+      else std::cout << " (dbg) See : error, illegal move." << std::endl;
     }
+    
+    else if (cmd == "domove" && instream >> cmd) {
+      Movegen mvs(p);
+      bool isok = false;
+      mvs.generate<pseudo_legal, pieces>();
+      for (int i = 0; i < mvs.size(); ++i) {
+        if (!p.is_legal(mvs[i])) continue;
+        std::string tmp = SanSquares[mvs[i].f] + SanSquares[mvs[i].t];
+        std::string ps = "";
+        Movetype t = Movetype(mvs[i].type);
+        
+        if (t >= 0 && t < capture_promotion_q) {
+          ps = (t == 0 ? "q" :
+            t == 1 ? "r" :
+            t == 2 ? "b" : "n");
+        }
+        else if (t >= capture_promotion_q && t < castle_ks) {
+          ps = (t == 4 ? "q" :
+            t == 5 ? "r" :
+            t == 6 ? "b" : "n");
+        }
+        tmp += ps;
+	
+        if (tmp == cmd) {
+          dbgmove.set(mvs[i].f, mvs[i].t, Movetype(mvs[i].type));
+          isok = true;
+          break;
+        }
+      }
+      if (isok) {
+        std::cout << "doing mv " << std::endl;
+        p.do_move(dbgmove);
+      }
+      else std::cout << cmd << " is not a legal move" << std::endl;
+    }
+    else if (cmd == "perft" && instream >> cmd) {
+      Perft perft;
+      perft.go(atoi(cmd.c_str()));
+    }
+    else if (cmd == "gen" && instream >> cmd) {
+      Perft perft;
+      U64 xs = U64(atoi(cmd.c_str()));
+      perft.gen(p, xs);
+    }
+    else if (cmd == "divide" && instream >> cmd) {
+      Perft perft;
+      perft.divide(p, atoi(cmd.c_str()));
+    }
+    else if (cmd == "tune") {
+      Perft perft;
+      perft.auto_tune();
+    }
+    else if (cmd == "bench" && instream >> cmd) {
+      Perft perft;
+      int depth = atoi(cmd.c_str());
+      perft.bench(depth, true);
+    }
+    else if (cmd == "debug") {
+      p.debug_search = !p.debug_search;
+      std::cout << "debugging set to: " << p.debug_search << std::endl;
+    }
+
+
+    // game specific uci commands (refactor?)
+    else if (cmd == "isready") {	
+      ttable.clear();
+      std::cout << "readyok" << std::endl;
+    }
+    else if (!Search::searching && cmd == "go") {
+      limits lims;
+      memset(&lims, 0, sizeof(limits));
+
+      while (instream >> cmd)
+      {
+        if (cmd == "wtime" && instream >> cmd) lims.wtime = atoi(cmd.c_str());
+        else if (cmd == "btime" && instream >> cmd) lims.btime = atoi(cmd.c_str());
+        else if (cmd == "winc" && instream >> cmd) lims.winc = atoi(cmd.c_str());
+        else if (cmd == "binc" && instream >> cmd) lims.binc = atoi(cmd.c_str());
+        else if (cmd == "movestogo" && instream >> cmd) lims.movestogo = atoi(cmd.c_str());
+        else if (cmd == "nodes" && instream >> cmd) lims.nodes = atoi(cmd.c_str());
+        else if (cmd == "movetime" && instream >> cmd) lims.movetime = atoi(cmd.c_str());
+        else if (cmd == "mate" && instream >> cmd) lims.mate = atoi(cmd.c_str());
+        else if (cmd == "depth" && instream >> cmd) lims.depth = atoi(cmd.c_str());
+        else if (cmd == "infinite") lims.infinite = (cmd == "infinite" ? true : false);
+        else if (cmd == "ponder") lims.ponder = atoi(cmd.c_str());
+      }
+      bool silent = false;
+      worker.enqueue(Search::start, p, lims, silent);
+    }
+    else if (cmd == "stop") {
+      UCI_SIGNALS.stop = true;
+    }
+    else if (cmd == "moves") {
+      Movegen mvs(p);
+      mvs.generate<pseudo_legal, pieces>();
+      for (int i = 0; i < mvs.size(); ++i) {
+        //if (!p.is_legal(mvs[i])) continue;
+        std::cout << (SanSquares[mvs[i].f] + SanSquares[mvs[i].t]) << " ";
+      }
+      std::cout << std::endl;
+    }
+    else if (cmd == "ucinewgame") {      
+      ttable.clear();      
+    }
+    else if (cmd == "uci") {
+      ttable.clear();
+      std::cout << "id name haVoc" << std::endl;
+      std::cout << "uciok" << std::endl;
+    }
+    
+    else if (cmd == "exit" || cmd == "quit") {
+      running = false;
+      break;
+    }
+    else std::cout << "unknown command: " << cmd << std::endl;
+    
+  }
+  return running;
 }
 
-void UCI::analyze(Board& b)
-{
-  Limits limits;
-  memset(&limits, 0, sizeof(limits));
-  limits.infinite = true;
 
-  //hashTable.clear();
-  material.clear();
-  //pawnTable.clear();
-  RootMoves.clear();
-
-  timer_thread->search_limits = &limits;
-  ROOT_BOARD = b;
-  ROOT_DEPTH = 64;
-  UCI_SIGNALS.stop = false;
-  Threads.start_thinking(ROOT_BOARD);
-  Threads.wait_for_search_finished();
-}
-
-void UCI::load_position(std::string& pos)
-{
+void uci::load_position(const std::string& pos) {
   std::string token;
   std::istringstream ss(pos);
 
   ss >> token; // eat the moves token
-  while (ss >> token)
-    {
-      move_from_string(token);
+  while (ss >> token) {
+    Movegen mvs(p);
+    mvs.generate<pseudo_legal, pieces>();
+    for (int j = 0; j < mvs.size(); ++j) {
+      if (!p.is_legal(mvs[j])) continue;
+      
+      if (move_to_string(mvs[j]) == token) {
+        p.do_move(mvs[j]);
+        break;
+      }
+
     }
+  }
+  
 }
 
-U16 UCI::get_move(std::string& move)
-{
-  MoveGenerator mvs(b);
+std::string uci::move_to_string(const Move& m) {
+  std::string fromto = SanSquares[m.f] + SanSquares[m.t];
+  Movetype t = Movetype(m.type);
 
-  for (; !mvs.end(); ++mvs)
-    {
-      U16 m = mvs.move();
-      if (move_to_string(m) == move)
-        {
-          return m;
-        }
-    }
-  return MOVE_NONE;
-}
-void UCI::move_from_string(std::string& move)
-{
-  MoveGenerator mvs(b);
+  std::string ps = "";
 
-  for (; !mvs.end(); ++mvs)
-    {
-      U16 m = mvs.move();
-      if (move_to_string(m) == move)
-        {
-          BoardData * pd = new BoardData();
-          b.do_move(*pd, m);
-	  //if (pd) { delete pd; pd = 0; }
-          break;
-        }
-    }
+  ps = (t == capture_promotion_q ? "q" :
+    t == capture_promotion_r ? "r" :
+    t == capture_promotion_b ? "b" :
+    t == capture_promotion_n ? "n" :
+    t == promotion_q ? "q" :
+    t == promotion_r ? "r" :
+    t == promotion_b ? "b" :
+    t == promotion_n ? "n" : "");
+  
+  return fromto + ps;
 }
 
-std::string UCI::move_to_string(U16& m)
-{
-  int from = int(m & 0x3f);
-  int to = int((m & 0xfc0) >> 6);
-  int type = get_movetype(m); // int((m & 0xf000) >> 12);
-
-  std::string fromto = SanSquares[from] + SanSquares[to];
-
-  if (type != MOVE_NONE && type <= PROMOTION)
-    {
-      Piece pp = Piece(type);
-      fromto += SanPiece[pp + 6];
-    }
-  else if (type <= PROMOTION_CAP && type > PROMOTION)
-    {
-      Piece pp = Piece(type - 4);
-      fromto += SanPiece[pp + 6];
-    }
-  return fromto;
-}
