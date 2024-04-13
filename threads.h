@@ -27,11 +27,7 @@ public:
 	Workerthread(const Workerthread& o) {
 		_thread = std::thread(o._func);
 	}
-	virtual ~Workerthread() {
-		std::cout << "workerthread dtor" << std::endl;
-		if (_thread.joinable())
-			_thread.join();
-	}
+	virtual ~Workerthread() { }
 
 	std::thread& thread() { return _thread; }
 };
@@ -45,9 +41,7 @@ public:
 public:
 	Searchthread() {}
 	Searchthread(std::function<void()> func) : Workerthread(func) { }
-	~Searchthread() {
-		std::cout << "searchthread dtor" << std::endl;
-	}
+	~Searchthread() { }
 	Searchthread(const Searchthread& o) {
 		pawnTable = o.pawnTable;
 		materialTable = o.materialTable;
