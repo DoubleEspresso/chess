@@ -12,13 +12,20 @@ inline size_t pow2(size_t x) {
 
 
 hash_table::hash_table() : sz_mb(0), cluster_count(0) {
-	sz_mb = 128 * 1024;
-	cluster_count = 1024 * sz_mb / sizeof(hash_cluster);
+	resize(128);
+}
+
+void hash_table::resize(size_t sizeMb) {
+	sz_mb = sizeMb;
+	cluster_count = 1024 * 1024 * sz_mb / sizeof(hash_cluster);
 	cluster_count = pow2(cluster_count);
-	if (cluster_count < 1024) cluster_count = 1024;
+	if (cluster_count < 1024) 
+		cluster_count = 1024;
+	if (entries.get() != nullptr)
+		entries.reset();
+
 	entries = std::unique_ptr<hash_cluster[]>(new hash_cluster[cluster_count]());
 	clear();
-
 }
 
 

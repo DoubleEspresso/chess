@@ -891,7 +891,7 @@ void Search::readout_pv(node* stack, const Rootmoves& mRoots, const Score& eval,
 			<< " score cp " << eval
 			<< " nodes " << nodes
 			<< " tbhits " << hashHits
-			<< " time " << elapsed
-			<< " nps " << (nodes * 1000 / elapsed)
+			<< " time " << (int)elapsed
+			//<< " nps " << (nodes * 1000 / elapsed)
 			<< " pv " << res << std::endl;
 }

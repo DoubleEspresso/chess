@@ -81,6 +81,7 @@ private:
 	size_t sz_mb;
 	size_t cluster_count;
 	std::unique_ptr<hash_cluster[]> entries;
+	void alloc(size_t sizeMb);
 
 public:
 	hash_table();
@@ -100,6 +101,7 @@ public:
 	bool fetch(const U64& key, hash_data& e);
 	inline entry* first_entry(const U64& key);
 	void clear();
+	void resize(size_t sizeMb);
 };
 
 inline entry* hash_table::first_entry(const U64& key) {

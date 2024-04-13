@@ -53,6 +53,27 @@ bool uci::parse_command(const std::string& input) {
 				load_position(tmp);
 			}
 		}
+		else if (cmd == "setoption" && instream >> cmd && instream >> cmd)
+		{
+			if (cmd == "hash" && instream >> cmd && instream >> cmd)
+			{
+				auto sz = atoi(cmd.c_str());
+				opts->set("hashsize", sz);
+				ttable.resize(sz);
+				break;
+			}
+			if (cmd == "clear" && instream >> cmd)
+			{
+				if (cmd == "hash")
+					ttable.clear();
+			}
+			if (cmd == "threads" && instream >> cmd && instream >> cmd)
+			{
+				opts->set("threads", atoi(cmd.c_str()));
+				break;
+			}
+			
+		}
 		else if (cmd == "d") {
 			uci_pos.print();
 			std::cout << "position hash key: " << uci_pos.key() << std::endl;
@@ -183,6 +204,12 @@ bool uci::parse_command(const std::string& input) {
 				else if (cmd == "infinite") lims.infinite = (cmd == "infinite" ? true : false);
 				else if (cmd == "ponder") lims.ponder = atoi(cmd.c_str());
 			}
+
+			// Set search threads
+			int numThreads = std::max(opts->value<int>("threads"), 1);
+			if (numThreads != SearchThreads.num_workers())
+				SearchThreads.init(numThreads);
+
 			bool silent = false;
 			worker.enqueue(Search::start, uci_pos, lims, silent);
 		}
@@ -207,6 +234,9 @@ bool uci::parse_command(const std::string& input) {
 			ttable.clear();
 			uci_pos.clear();
 			std::cout << "id name haVoc" << std::endl;
+			std::cout << "id author M.Glatzmaier" << std::endl;
+			std::cout << "option name Threads type spin default 1 min 1 max 1024" << std::endl;
+			std::cout << "option name Hash type spin default 1024 min 1 max 33554432" << std::endl;
 			std::cout << "uciok" << std::endl;
 		}
 

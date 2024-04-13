@@ -18,18 +18,22 @@
 
 class Workerthread {
 private:
-	std::thread m_thread;
-	std::function<void()> m_func;
+	std::thread _thread;
+	std::function<void()> _func;
 
 public:
 	Workerthread() { }
-	Workerthread(std::function<void()> func) : m_thread(func), m_func(func) { }
+	Workerthread(std::function<void()> func) : _thread(func), _func(func) { }
 	Workerthread(const Workerthread& o) {
-		m_thread = std::thread(o.m_func);
+		_thread = std::thread(o._func);
 	}
-	virtual ~Workerthread() { }
+	virtual ~Workerthread() {
+		std::cout << "workerthread dtor" << std::endl;
+		if (_thread.joinable())
+			_thread.join();
+	}
 
-	std::thread& thread() { return m_thread; }
+	std::thread& thread() { return _thread; }
 };
 
 
@@ -41,6 +45,9 @@ public:
 public:
 	Searchthread() {}
 	Searchthread(std::function<void()> func) : Workerthread(func) { }
+	~Searchthread() {
+		std::cout << "searchthread dtor" << std::endl;
+	}
 	Searchthread(const Searchthread& o) {
 		pawnTable = o.pawnTable;
 		materialTable = o.materialTable;
@@ -102,13 +109,21 @@ public:
 	T* operator[](const int& idx) { return workers[idx]; }
 
 	void init(const int& numThreads) {
+
+		// Clear any existing work..
+		exit();
+		workers.clear();
+
 		busy = 0;
 		processed = 0;
 		stop = false;
 		num_threads = numThreads;
+
 		for (unsigned int i = 0; i < num_threads; ++i)
 			workers.emplace_back(new T(std::bind(&Threadpool<T>::thread_func, this)));
 	}
+
+	size_t num_workers() { return workers.size(); }
 
 	template<class T, typename... Args> void enqueue(T&& f, Args&&... args) {
 		std::unique_lock<std::mutex> lock(m);

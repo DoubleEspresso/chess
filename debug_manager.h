@@ -3,9 +3,9 @@
 #define HAVOC_BOARD_MANAGER_H
 
 
-#include "plog/Log.h"
-#include "plog/Initializers/RollingFileInitializer.h"
-
+//#include "plog/Log.h"
+//#include "plog/Initializers/RollingFileInitializer.h"
+#include <string>
 #include "singleton.h"
 
 
