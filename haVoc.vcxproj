@@ -191,7 +191,6 @@
     <ClInclude Include="singleton.h" />
     <ClInclude Include="squares.h" />
     <ClInclude Include="threads.h" />
-    <ClInclude Include="tuning_manager.h" />
     <ClInclude Include="types.h" />
     <ClInclude Include="uci.h" />
     <ClInclude Include="utils.h" />
@@ -211,19 +210,11 @@
     <ClCompile Include="pgn.cpp" />
     <ClCompile Include="position.cpp" />
     <ClCompile Include="threads.cpp" />
-    <ClCompile Include="tuning_manager.cpp" />
     <ClCompile Include="uci.cpp" />
     <ClCompile Include="xml_eval.cpp" />
     <ClCompile Include="xml_parser.cpp" />
     <!--ClCompile Include="xml_parser.cpp" /> -->
     <ClCompile Include="zobrist.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <CopyFileToFolders Include="engine_config.xml" />
-    <CopyFileToFolders Include="engine_debug_config.xml" />
-  </ItemGroup>
-  <ItemGroup>
-    <Xml Include="engine_tuning_config.xml" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

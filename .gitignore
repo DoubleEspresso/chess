@@ -25,3 +25,5 @@ x64/*
 log/*
 packages/*
 .vs/*
+build/*
+haVoc/*

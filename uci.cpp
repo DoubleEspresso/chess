@@ -5,7 +5,7 @@
 #include "search.h"
 #include "threads.h"
 #include "hashtable.h"
-#include "tuning_manager.h"
+//#include "tuning_manager.h"
 #include "threads.h"
 
 position uci_pos;
@@ -115,10 +115,10 @@ bool uci::parse_command(const std::string& input) {
 			}
 			else std::cout << " (dbg) See : error, illegal move." << std::endl;
 		}
-		else if (cmd == "evaltune") {
-			auto& tm = haVoc::Tuningmanager::instance();
-			tm.tune_evaluation();
-		}
+		//else if (cmd == "evaltune") {
+		//	auto& tm = haVoc::Tuningmanager::instance();
+		//	tm.tune_evaluation();
+		//}
 		else if (cmd == "domove" && instream >> cmd) {
 			Movegen mvs(uci_pos);
 			bool isok = false;
