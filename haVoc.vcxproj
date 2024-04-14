@@ -166,17 +166,10 @@
     <ClInclude Include="bench.h" />
     <ClInclude Include="bitboards.h" />
     <ClInclude Include="bits.h" />
-    <ClInclude Include="board_manager.h" />
-    <ClInclude Include="build.h" />
-    <ClInclude Include="clock_manager.h" />
-    <ClInclude Include="date_time.h" />
-    <ClInclude Include="debug_manager.h" />
     <ClInclude Include="endgame.h" />
     <ClInclude Include="epd.hpp" />
     <ClInclude Include="evaluate.h" />
     <ClInclude Include="xml_eval.h" />
-    <ClInclude Include="game_manager.h" />
-    <ClInclude Include="hardware_manager.h" />
     <ClInclude Include="hashtable.h" />
     <ClInclude Include="info.h" />
     <ClInclude Include="magics.h" />
@@ -185,10 +178,8 @@
     <ClInclude Include="move.h" />
     <ClInclude Include="move.hpp" />
     <ClInclude Include="options.h" />
-    <ClInclude Include="opts_manager.h" />
     <ClInclude Include="order.h" />
     <ClInclude Include="parameter.h" />
-    <ClInclude Include="params_manager.h" />
     <ClInclude Include="pawns.h" />
     <ClInclude Include="pbil.h" />
     <ClInclude Include="pbil.hpp" />
@@ -200,11 +191,9 @@
     <ClInclude Include="singleton.h" />
     <ClInclude Include="squares.h" />
     <ClInclude Include="threads.h" />
-    <ClInclude Include="thread_manager.h" />
     <ClInclude Include="tuning_manager.h" />
     <ClInclude Include="types.h" />
     <ClInclude Include="uci.h" />
-    <ClInclude Include="uci_manager.h" />
     <ClInclude Include="utils.h" />
     <ClInclude Include="xml_parser.h" />
     <ClInclude Include="zobrist.h" />
@@ -212,9 +201,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="bitboards.cpp" />
-    <ClCompile Include="debug_manager.cpp" />
     <ClCompile Include="evaluate.cpp" />
-    <ClCompile Include="game_manager.cpp" />
     <ClCompile Include="hashtable.cpp" />
     <ClCompile Include="haVoc.cpp" />
     <ClCompile Include="magics.cpp" />
@@ -234,7 +221,6 @@
   <ItemGroup>
     <CopyFileToFolders Include="engine_config.xml" />
     <CopyFileToFolders Include="engine_debug_config.xml" />
-    <CopyFileToFolders Include="params_config.xml" />
   </ItemGroup>
   <ItemGroup>
     <Xml Include="engine_tuning_config.xml" />
