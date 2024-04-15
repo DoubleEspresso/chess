@@ -1,3 +1,6 @@
 # haVoc
+A multi-threaded, UCI compliant hobby chess engine, written in C++.
 
-Hobby C++ chess engine
+# Example options
+setoption name threads value 4
+setoption name hash value 1000
