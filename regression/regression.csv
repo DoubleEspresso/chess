@@ -1,3 +1,0 @@
-test,depth, acc, corr, total, avg ms, avg nodes, avg qnodes, avg MNPS,reg-win,reg-loss,reg-draw,reg-tot,diff,err,commit-hash
-WAC,12,0.406667,122,300,1072.94,2.42E+06,692379,2.90339,34,18,28,80,70.44,62.6,bcc97e0577dba8bce33f881bcb64ceb34d269487
-WAC,12,0.403333,121,300,940.4,2.09E+06,638594,2.90523,338,272,390,1000,22.96,16.82,2d3f36cc1851274869b75477acffdf83f57c0355
