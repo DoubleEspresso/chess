@@ -241,6 +241,7 @@ bool uci::parse_command(const std::string& input) {
 			std::cout << "id author M.Glatzmaier" << std::endl;
 			std::cout << "option name Threads type spin default 1 min 1 max 1024" << std::endl;
 			std::cout << "option name Hash type spin default 1024 min 1 max 33554432" << std::endl;
+			std::cout << "option name MultiPV type spin default 1 min 1 max 4" << std::endl;
 			std::cout << "uciok" << std::endl;
 		}
 
