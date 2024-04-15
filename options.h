@@ -80,8 +80,15 @@ inline void options::load_args(int argc, char* argv[]) {
 		}
 	}
 
+	// load defaults
 	if (opts.find("threads") == opts.end())
 		set(std::string("-threads"), std::string("1"));
+
+	if (opts.find("multipv") == opts.end())
+		set(std::string("-multipv"), std::string("1"));
+
+	if (opts.find("hashsize") == opts.end())
+		set(std::string("-hashsize"), std::string("1000"));
 }
 
 

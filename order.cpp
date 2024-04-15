@@ -30,8 +30,7 @@ namespace haVoc {
 	Score score_quiets(const position& p, const Move& m, const Move& prev, const Move& followup, const Move& threat, node* stack) {
 		auto tomove = p.to_move();
 		auto stats = p.history_stats();
-		Score s = Score(tomove == white ?
-			stats->score(m, white, prev, followup, threat) : stats->score(m, black, prev, followup, threat));	
+		auto s = Score(stats->score(m, (Color)(tomove), prev, followup, threat));
 		s = Score(s + stack->bestMoveHistory[tomove][m.f][m.t]);
 
 		// Use a LUT to order quiet moves without any history data

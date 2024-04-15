@@ -868,30 +868,36 @@ void Search::readout_pv(node* stack, const Rootmoves& mRoots, const Score& eval,
 
 	std::unique_lock<std::mutex> lock(search_mtx);
 
-	std::string res = "";
-
-	for (auto& m : mRoots[0].pv) {
-		if (m.f == m.t || m.type == Movetype::no_type)
-			break;
-		res += uci::move_to_string(m) + " ";
-	}
-
 	U64 nodes = 0;
 	for (auto& t : mPositions) {
 		nodes += t->nodes();
 		nodes += t->qnodes();
 	}
 
+	auto numLines = opts->value<int>("multipv");
+
+	for (int i = 0; i < numLines; ++i)
+	{
+		std::string res = "";
+
+
+		for (auto& m : mRoots[i].pv) {
+			if (m.f == m.t || m.type == Movetype::no_type)
+				break;
+			res += uci::move_to_string(m) + " ";
+		}
 
 		std::cout << "info"
 			<< " depth " << depth
 			<< (eval >= beta ? " lowerbound" : eval <= alpha ? " upperbound" : "")
-			<< " seldepth " << mRoots[0].selDepth
-			<< " multipv " << 1
-			<< " score cp " << eval
+			<< " seldepth " << mRoots[i].selDepth
+			<< " multipv " << i
+			<< " score cp " << eval // TODO: support multipv
 			<< " nodes " << nodes
 			<< " tbhits " << hashHits
 			<< " time " << (int)elapsed
 			//<< " nps " << (nodes * 1000 / elapsed)
 			<< " pv " << res << std::endl;
+	}
+
 }

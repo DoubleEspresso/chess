@@ -72,7 +72,11 @@ bool uci::parse_command(const std::string& input) {
 				opts->set("threads", atoi(cmd.c_str()));
 				break;
 			}
-			
+			if (cmd == "multipv" && instream >> cmd && instream >> cmd)
+			{
+				opts->set("multipv", atoi(cmd.c_str()));
+				break;
+			}
 		}
 		else if (cmd == "d") {
 			uci_pos.print();
