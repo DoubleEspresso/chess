@@ -169,7 +169,6 @@
     <ClInclude Include="endgame.h" />
     <ClInclude Include="epd.hpp" />
     <ClInclude Include="evaluate.h" />
-    <ClInclude Include="xml_eval.h" />
     <ClInclude Include="hashtable.h" />
     <ClInclude Include="info.h" />
     <ClInclude Include="magics.h" />
@@ -194,7 +193,6 @@
     <ClInclude Include="types.h" />
     <ClInclude Include="uci.h" />
     <ClInclude Include="utils.h" />
-    <ClInclude Include="xml_parser.h" />
     <ClInclude Include="zobrist.h" />
     <ClInclude Include="zobristrands.h" />
   </ItemGroup>
@@ -211,8 +209,6 @@
     <ClCompile Include="position.cpp" />
     <ClCompile Include="threads.cpp" />
     <ClCompile Include="uci.cpp" />
-    <ClCompile Include="xml_eval.cpp" />
-    <ClCompile Include="xml_parser.cpp" />
     <!--ClCompile Include="xml_parser.cpp" /> -->
     <ClCompile Include="zobrist.cpp" />
   </ItemGroup>
