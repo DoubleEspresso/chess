@@ -103,7 +103,7 @@ struct parameters {
 	std::vector<float> center_influence_bonus{ 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f };
 
 	// king harassment tables
-	const float pawn_king[3] = { 3.0, 4.0, 5.0 };
+	const float pawn_king[3] = { 1.0, 2.0, 3.0 };
 	const float knight_king[3] = { 1.0, 2.0, 3.0 };
 	const float bishop_king[3] = { 1.0, 2.0, 3.0 };
 	const float rook_king[5] = { 1.0, 2.0, 3.0, 3.0, 4.0 };

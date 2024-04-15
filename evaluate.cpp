@@ -51,8 +51,6 @@ namespace {
 	template<Color c> bool trapped_rook(const position& p, einfo& ei, const Square& rs);
 
 
-	std::vector<float> material_vals{ 100.0, 300.0 , 315.0, 480.0, 910.0 };
-
 	/*TODO: Re-evaluate these..*/
 	inline float knight_mobility(const unsigned& n) {
 		return -50.0f * exp(-float(n) * 0.5f) + 20.0f;
@@ -117,8 +115,8 @@ namespace {
 				break;
 			case KnbK:
 			case KbnK:
-				if (noPawns)
-					return Score::draw;
+				//if (noPawns)
+				//	return Score::draw;
 				//score += (eval_knbk<white>(p, ei) - eval_knbk<black>(p, ei));
 				break;
 			case KnnK:
@@ -131,7 +129,7 @@ namespace {
 			}
 		}
 
-		score += (eval_color<white>(p, ei) - eval_color<black>(p, ei));
+		//score += (eval_color<white>(p, ei) - eval_color<black>(p, ei));
 		score += (eval_pawns<white>(p, ei) - eval_pawns<black>(p, ei));
 		score += (eval_knights<white>(p, ei) - eval_knights<black>(p, ei));
 		score += (eval_bishops<white>(p, ei) - eval_bishops<black>(p, ei));
@@ -160,9 +158,8 @@ namespace {
 		if (kattks) {
 			ei.kattackers[c][pawn]++; // kattackers of "other" king
 			ei.kattk_points[c][pawn] |= kattks; // attack points of "other" king
-			score += p.params.knight_king[std::min(2, bits::count(kattks))];
+			score += p.params.pawn_king[std::min(2, bits::count(kattks))];
 		}
-		
 		return score;
 	}
 
@@ -192,6 +189,10 @@ namespace {
 				score += p.params.knight_outpost_bonus[util::col(s)];
 			}
 
+			// Outer rim penalty
+			if (bitboards::edges & bitboards::squares[s])
+				score -= 12;
+
 			// Closed center bonus
 			if (ei.pe->locked_center || ei.pe->center_pawn_count >= 4)
 				score += p.params.bishop_open_center_bonus;
@@ -200,7 +201,6 @@ namespace {
 			U64 center_influence = mvs & bitboards::big_center_mask;
 			if (center_influence != 0ULL) {
 				score += bits::count(center_influence) * p.params.center_influence_bonus[knight];
-
 			}
 
 			// Bonus for queen attacks
@@ -784,7 +784,30 @@ namespace {
 
 
 		// 7. Skewer detection
-		
+		bishopCheckers = bitboards::battks[enemyKing] & ourBishops;
+		auto enemyKnights = (c == white ? p.get_pieces<black, knight>() : p.get_pieces<white, knight>());
+		auto enemyBishops = (c == white ? p.get_pieces<black, bishop>() : p.get_pieces<white, bishop>());
+		auto enemyRooks = (c == white ? p.get_pieces<black, rook>() : p.get_pieces<white, rook>());
+		auto enemyPieces = (enemyKnights | enemyBishops | enemyRooks | enemyQueens);
+		auto enemyKingSq = bitboards::squares[enemyKing];
+		while (bishopCheckers) {
+			auto bishopSq = bits::pop_lsb(bishopCheckers);
+			while (enemyPieces) {
+				auto enemy = bits::pop_lsb(enemyPieces);
+				auto between = bitboards::between[bishopSq][enemy] & (enemyKingSq);
+				if (between && bits::count(between) == 1)
+				{
+					auto pp = p.piece_on(Square(enemy));
+					if (pp == bishop || pp == knight)
+						score += 4;
+					if (pp == rook)
+						score += 6;
+					if (pp == queen)
+						score += 8;
+				}
+			}
+		}
+
 		return score;
 	}
 
