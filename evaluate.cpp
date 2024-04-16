@@ -31,6 +31,7 @@ namespace {
 	template<Color c> float eval_pawn_levers(const position& p, einfo& ei);
 	template<Color c> float eval_passed_pawns(const position& p, einfo& ei);
 	template<Color c> float eval_flank_attack(const position& p, einfo& ei);
+	template<Color c> float eval_weak_squares(const position& p, einfo& ei);
 	template<Color c> float eval_kpk(const position& p, einfo& ei);
 	template<Color c> float eval_krrk(const position& p, einfo& ei);
 	template<Color c> float eval_knbk(const position& p, einfo& ei);
@@ -129,7 +130,6 @@ namespace {
 			}
 		}
 
-		//score += (eval_color<white>(p, ei) - eval_color<black>(p, ei));
 		score += (eval_pawns<white>(p, ei) - eval_pawns<black>(p, ei));
 		score += (eval_knights<white>(p, ei) - eval_knights<black>(p, ei));
 		score += (eval_bishops<white>(p, ei) - eval_bishops<black>(p, ei));
@@ -141,14 +141,39 @@ namespace {
 		if (lazy_margin > 0 && !ei.me->is_endgame() && abs(score) >= lazy_margin)
 			return (p.to_move() == white ? score : -score) + p.params.tempo;
 
+		//score += (eval_weak_squares<white>(p, ei) - eval_weak_squares<black>(p, ei));
 		score += (eval_threats<white>(p, ei) - eval_threats<black>(p, ei));
-		score += (eval_center<white>(p, ei) - eval_center<black>(p, ei));
 		score += (eval_space<white>(p, ei) - eval_space<black>(p, ei));
 
 		return (p.to_move() == white ? score : -score) + p.params.tempo;
 	}
 
 
+	template<Color c> float eval_weak_squares(const position& p, einfo& ei) {
+		float score = 0;
+		Color them = Color(c ^ 1);
+		auto weakSquares = ei.pe->weak_squares[c];
+
+		auto occupiers = (c == black ? 
+			p.get_pieces<black, knight>() | p.get_pieces<black, bishop>() | p.get_pieces<black, rook>() :
+			p.get_pieces<white, knight>() | p.get_pieces<white, bishop>() | p.get_pieces<white, rook>());
+
+		// Bonus for occuping weak squares
+		auto occupied = weakSquares & occupiers;
+		if (occupied) {
+			score += 0.5f * bits::count(occupied);
+		}
+
+		// Bonus for attacking weak squares
+		while (weakSquares) {
+			auto s = bits::pop_lsb(weakSquares);
+			auto attks = p.attackers_of2(Square(s), c);
+			if (attks)
+				score += 0.5f * bits::count(attks);
+		}
+
+		return score;
+	}
 
 	template<Color c> float eval_pawns(const position& p, einfo& ei) {
 		float score = 0;
@@ -160,6 +185,13 @@ namespace {
 			ei.kattk_points[c][pawn] |= kattks; // attack points of "other" king
 			score += p.params.pawn_king[std::min(2, bits::count(kattks))];
 		}
+
+		// pawn chain bases/undefended pawns
+		auto undefended = ei.pe->undefended[c ^ 1];
+		auto baseAttks = pawnAttacks & undefended;
+		if (baseAttks)
+			score += 0.5 * bits::count(baseAttks);
+
 		return score;
 	}
 
@@ -639,7 +671,7 @@ namespace {
 		score += bits::count(center_pawns);
 
 		auto centerTargets = (c == white ? 
-			bitboards::squares[C5] | bitboards::squares[D5] | bitboards::squares[E5] /*| bitboards::squares[F5]*/ : 
+			bitboards::squares[C5] | bitboards::squares[D5] | bitboards::squares[E5] /*| bitboards::squares[F5]*/ :
 			bitboards::squares[C4] | bitboards::squares[D4] | bitboards::squares[E4] /*| bitboards::squares[F4]*/);
 
 		while (centerTargets) {

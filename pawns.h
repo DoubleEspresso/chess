@@ -23,6 +23,7 @@ struct pawn_entry {
 	U64 king[2];
 	U64 attacks[2];
 	U64 undefended[2];
+	U64 weak_squares[2];
 	U64 chaintips[2];
 	U64 chainbases[2];
 	U64 queenside[2];

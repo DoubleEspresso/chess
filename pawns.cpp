@@ -151,6 +151,7 @@ int16 evaluate(const position& p, pawn_entry& e) {
 	for (Square s = *sqs; s != no_square; s = *++sqs) {
 
 		U64 fbb = bitboards::squares[s];
+		U64 front = (c == white ? bitboards::squares[s + 8] : bitboards::squares[s - 8]);
 		int row = util::row(s);
 		int col = util::col(s);
 
@@ -179,6 +180,7 @@ int16 evaluate(const position& p, pawn_entry& e) {
 		if (mask == 0ULL) {
 			e.passed[c] |= fbb;
 			e.score += p.params.passed_pawn_bonus;
+			e.weak_squares[c] |= front;
 		}
 
 		// Track isolated pawns
@@ -186,12 +188,14 @@ int16 evaluate(const position& p, pawn_entry& e) {
 		if (neighbors_bb == 0ULL) {
 			e.isolated[c] |= fbb;
 			score -= p.params.isolated_pawn_penalty;
+			e.weak_squares[c] |= front;
 		}
 
 		// Track backward pawns
 		if (backward_pawn<c>(row, col, pawns)) {
 			e.backward[c] |= fbb;
 			score -= p.params.backward_pawn_penalty;
+			e.weak_squares[c] |= front;
 		}
 
 		// Sort pawns by square color
@@ -219,6 +223,7 @@ int16 evaluate(const position& p, pawn_entry& e) {
 				score -= 2 * p.params.isolated_pawn_penalty;
 			if ((fbb && e.doubled[c]))
 				score -= 2 * p.params.doubled_pawn_penalty;
+			e.weak_squares[c] |= front;
 		}
 
 		// Track king/queen side pawn configurations

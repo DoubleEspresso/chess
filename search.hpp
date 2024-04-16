@@ -390,11 +390,11 @@ Score Search::search(position& pos, int16 alpha, int16 beta, U16 depth, node* st
 	// 0. Define the forward pruning conditions
 	const bool forward_prune =
 		(!in_check &&
-			!pvNode &&
-			(stack - 1)->curr_move.type == Movetype::quiet &&
-			!stack->null_search &&
-			abs(alpha - beta) == 1 && // only prune in null windows (same condition as !pv_node)
-			hasStaticValue);
+		!pvNode &&
+		(stack - 1)->curr_move.type == Movetype::quiet &&
+		!stack->null_search &&
+		abs(alpha - beta) == 1 && // only prune in null windows (same condition as !pv_node)
+		hasStaticValue);
 
 	// 1. Futility pruning
 	//if (forward_prune &&
@@ -715,8 +715,8 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node* sta
 	//	return Score::draw;
 	//}
 
-		hash_data e;
-		e.depth = 0;
+	hash_data e;
+	e.depth = 0;
 	{  // hashtable lookup
 		if (ttable.fetch(p.key(), e)) {
 			ttm = e.move;
@@ -726,7 +726,7 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node* sta
 			if (!pv_type &&
 				e.depth >= depth &&
 				(ttvalue >= beta ? e.bound == bound_low : e.bound == bound_high)) {
-					return ttvalue;
+				return ttvalue;
 			}
 		}
 	}
