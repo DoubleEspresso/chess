@@ -128,19 +128,29 @@ namespace {
 		}
 
 		score += (eval_pawns<white>(p, ei) - eval_pawns<black>(p, ei));
+		//std::cout << "Score.pawnEval=" << score << std::endl;
 		score += (eval_knights<white>(p, ei) - eval_knights<black>(p, ei));
+		//std::cout << "Score.knightEval=" << score << std::endl;
 		score += (eval_bishops<white>(p, ei) - eval_bishops<black>(p, ei));
+		//std::cout << "Score.bishopEval=" << score << std::endl;
 		score += (eval_rooks<white>(p, ei) - eval_rooks<black>(p, ei));
+		//std::cout << "Score.rookEval=" << score << std::endl;
 		score += (eval_queens<white>(p, ei) - eval_queens<black>(p, ei));
+		//std::cout << "Score.queenEval=" << score << std::endl;
 		score += (eval_king<white>(p, ei) - eval_king<black>(p, ei));
+		//std::cout << "Score.kingEval=" << score << std::endl;
 		score += (eval_passed_pawns<white>(p, ei) - eval_passed_pawns<black>(p, ei));
+		//std::cout << "Score.passedPawnEval=" << score << std::endl;
 
 		if (lazy_margin > 0 && !ei.me->is_endgame() && abs(score) >= lazy_margin)
 			return (p.to_move() == white ? score : -score) + p.params.tempo;
 
 		//score += (eval_weak_squares<white>(p, ei) - eval_weak_squares<black>(p, ei));
+		//std::cout << "Score.weakSquareEval=" << score << std::endl;
 		score += (eval_threats<white>(p, ei) - eval_threats<black>(p, ei));
+		//std::cout << "Score.threatEval=" << score << std::endl;
 		score += (eval_space<white>(p, ei) - eval_space<black>(p, ei));
+		//std::cout << "Score.spaceEval=" << score << std::endl;
 
 		return (p.to_move() == white ? score : -score) + p.params.tempo;
 	}
@@ -149,19 +159,45 @@ namespace {
 	template<Color c> float eval_weak_squares(const position& p, einfo& ei) {
 		float score = 0;
 		Color them = Color(c ^ 1);
-		auto weakSquares = ei.pe->weak_squares[c];
+		auto weakSquares = ei.pe->weak_squares[them];
+		auto undefended = weakSquares & (~ei.pe->attacks[them]);
 
-		auto occupiers = (c == black ? 
-			p.get_pieces<black, knight>() | p.get_pieces<black, bishop>() | p.get_pieces<black, rook>() :
-			p.get_pieces<white, knight>() | p.get_pieces<white, bishop>() | p.get_pieces<white, rook>());
+		//std::cout << " \n======Weak squares for c" << c << "========" << std::endl;
+		//bits::print(weakSquares);
+		//bits::print(undefended);
 
-		// Bonus for occuping weak squares
-		auto occupied = weakSquares & occupiers;
-		if (occupied) {
-			score += 2; //0.5f * bits::count(occupied);
-		}
+		// Bonus for attacking weak squares with pawns
+		auto pawnAttks = ei.pe->attacks[c];
+		auto attacked = weakSquares & pawnAttks;
+		if (attacked)
+			score += p.params.square_attks[pawn];
 
-		// Bonus for attacking weak squares
+		// Knights
+		auto kOcc = (c == black ? p.get_pieces<black, knight>() : p.get_pieces<white, knight>()) & undefended;
+		auto knightAttks = ei.piece_attacks[c][knight] & weakSquares;
+		if (knightAttks)
+			score += p.params.square_attks[knight];
+		if (kOcc)
+			score += 2;
+
+		// Bishops
+		auto bOcc = (c == black ? p.get_pieces<black, bishop>() : p.get_pieces<white, bishop>()) & undefended;
+		auto bAttks = ei.piece_attacks[c][bishop] & weakSquares;
+		if (bAttks)
+			score += p.params.square_attks[bishop];
+		if (bOcc)
+			score += 2;
+
+		// Rook attacks
+		auto rAttks = ei.piece_attacks[c][rook] & weakSquares;
+		if (rAttks)
+			score += p.params.square_attks[rook];
+
+		// Queen attacks
+		auto qAttks = ei.piece_attacks[c][queen] & weakSquares;
+		if (qAttks)
+			score += p.params.square_attks[queen];
+
 		//while (weakSquares) {
 		//	auto s = bits::pop_lsb(weakSquares);
 		//	auto attks = p.attackers_of2(Square(s), c);
@@ -169,10 +205,14 @@ namespace {
 		//		score += 1; //0.5f * bits::count(attks);
 		//}
 
+		//std::cout << "Score.WeakSquares=" << score << std::endl;
 		return score;
 	}
 
 	template<Color c> float eval_pawns(const position& p, einfo& ei) {
+
+
+		//std::cout << " \n======eval_pawns for c" << c << "========" << std::endl;
 		float score = 0;
 		// pawn harassment of enemy king
 		auto pawnAttacks = ei.pe->attacks[c];
@@ -188,6 +228,9 @@ namespace {
 		auto baseAttks = pawnAttacks & undefended;
 		if (baseAttks)
 			score += 0.5 * bits::count(baseAttks);
+
+
+		//std::cout << "Score.PawnEval=" << score << std::endl;
 
 		return score;
 	}
@@ -880,6 +923,8 @@ namespace {
 	}
 
 
+	// TODO: 
+	// - king within queening sq?
 	template<Color c> float eval_passed_pawns(const position& p, einfo& ei)
 	{
 		float score = 0;
@@ -887,6 +932,9 @@ namespace {
 		if (passers == 0ULL) {
 			return score;
 		}
+
+		//std::cout << " \n======Weak squares for c" << c << "========" << std::endl;
+		//bits::print(passers);
 
 		while (passers) {
 			Square f = Square(bits::pop_lsb(passers));
@@ -905,21 +953,74 @@ namespace {
 				score += 1;
 			}
 
-			// 2. is next square attacked?
+			// 2. is next square attacked - note: this needs to be dispersed throughout the piece eval (!)
 			U64 our_attackers = 0ULL;
+			U64 their_attackers = 0ULL;
+			auto crudeControl = 0;
 
-			if (util::on_board(front)) 
+			if (util::on_board(front))
+			{
 				our_attackers = p.attackers_of2(front, c);
+				their_attackers = p.attackers_of2(front, Color(c ^ 1));
+				
+			}
 
 			if (our_attackers != 0ULL) {
+				auto count = bits::count(our_attackers);
+				crudeControl += count;
 				score += 3 * bits::count(our_attackers);
 			}
 
-			// 3. bonus for closer to promotion
+			if (their_attackers != 0ULL) {
+				auto count = bits::count(their_attackers);
+				crudeControl -= count;
+				score -= 3 * bits::count(their_attackers);
+			}
+
+			// 3. rooks behind passed pawns
+			auto rooks = (c == white ? p.get_pieces<white, rook>() : p.get_pieces<black, rook>());
+			if (rooks)
+			{
+				while (rooks)
+				{
+
+
+					auto rf = Square(bits::pop_lsb(rooks));
+					if (util::col(rf) == util::col(f))
+					{
+						auto rowDiff = util::row(rf) - util::row(f);
+						auto isBehind = (c == white ? rowDiff < 0 : rowDiff > 0);
+						auto supports = ((bitboards::between[rf][f] & p.all_pieces()) ^ (bitboards::squares[rf] | bitboards::squares[f])) == 0ULL;
+						if (isBehind)
+							score += 1;
+						if (isBehind && supports)
+						{
+							crudeControl += 1;
+							score += 30;
+						}
+					}
+				}
+			}
+
+
+			// 4. bonus for connected passers
+			auto connectedPassed = (bitboards::neighbor_cols[util::col(f)] & ei.pe->passed[c]) != 0ULL;
+			if (connectedPassed)
+				score += 30; // this is counted twice - so sums to 60 if exists.
+
+			// 5. bonus for closer to promotion
 			score += (
 				row_dist == 3 ? 45 :
 				row_dist == 2 ? 90 :
 				row_dist == 1 ? 180 : 0);
+
+			if (crudeControl < 0)
+				score -= (
+					row_dist == 3 ? 30 :
+					row_dist == 2 ? 55 :
+					row_dist == 1 ? 120 : 0);
+
+			//std::cout << "   Score for passed pawn=" << f << "=" << score << " control=" << crudeControl << std::endl;
 		}
 
 		return score;

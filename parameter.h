@@ -82,6 +82,9 @@ struct parameters {
 	// mobility tables
 	std::vector<float> mobility_scaling{ 1.0f, 1.0, 1.0f, 1.0f, 0.25f };
 
+	// square attack table
+	std::vector<float> square_attks { 7.0f, 4.0f, 3.5f, 1.5f, 1.0f }; // pawn, knight, bishop, rook, queen
+
 	// piece attack tables
 	std::vector<float> attack_scaling{ 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
 
