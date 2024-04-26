@@ -114,14 +114,14 @@ int16 evaluate(const position& p, material_entry& e) {
 	if (total_eg == 0)
 		e.endgame = EndgameType::KpK;
 
-	//else if (total_eg == 2 && eg_pieces[white][rook] == 1 && eg_pieces[black][rook] == 1)
-	//	e.endgame = EndgameType::KrrK;
+	else if (total_eg == 2 && eg_pieces[white][rook] == 1 && eg_pieces[black][rook] == 1)
+		e.endgame = EndgameType::KrrK;
 
-	//else if (total_eg == 2 && eg_pieces[white][bishop] == 1 && eg_pieces[black][knight] == 1)
-	//	e.endgame = EndgameType::KbnK;
+	else if (total_eg == 2 && eg_pieces[white][bishop] == 1 && eg_pieces[black][knight] == 1)
+		e.endgame = EndgameType::KbnK;
 
-	//else if (total_eg == 2 && eg_pieces[white][knight] == 1 && eg_pieces[black][bishop] == 1)
-	//	e.endgame = EndgameType::KnbK;
+	else if (total_eg == 2 && eg_pieces[white][knight] == 1 && eg_pieces[black][bishop] == 1)
+		e.endgame = EndgameType::KnbK;
 
 	else if (total_eg == 2 && eg_pieces[white][bishop] == 1 && eg_pieces[black][bishop] == 1)
 		e.endgame = EndgameType::KbbK;
@@ -129,11 +129,11 @@ int16 evaluate(const position& p, material_entry& e) {
 	else if (total_eg == 2 && eg_pieces[white][knight] == 1 && eg_pieces[black][knight] == 1)
 		e.endgame = EndgameType::KnnK;
 
-	else if (total_eg == 1 && (eg_pieces[white][knight] == 1 || eg_pieces[black][knight] == 1))
-		e.endgame = EndgameType::KnK;
-
 	else if (total_eg == 1 && (eg_pieces[white][bishop] == 1 || eg_pieces[black][bishop] == 1))
 		e.endgame = EndgameType::KbK;
+
+	else if (total_eg == 1 && (eg_pieces[white][knight] == 1 || eg_pieces[black][knight] == 1))
+		e.endgame = EndgameType::KnK;
 
 	else if (total_eg <= 2)
 		e.endgame = EndgameType::Unknown;

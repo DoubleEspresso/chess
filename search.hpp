@@ -747,6 +747,13 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node* sta
 		if (best_score >= beta)
 			return best_score;
 
+		// Delta pruning
+		int deltaCut = 910; // queen value
+		if (anyPawnsOn7th)
+			deltaCut += 775;
+		if (best_score < alpha - deltaCut)
+			return Score(alpha);
+
 		// Adjust alpha
 		if (pv_type && alpha < best_score)
 			alpha = best_score;
@@ -790,32 +797,32 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node* sta
 		//auto quietFollowup = (stack - 1)->curr_move.type == Movetype::quiet && isQuiet;
 		//auto captureFollowup = (stack - 1)->curr_move.type == Movetype::capture && isCapture;
 		//auto threatResponse = (stack->threat_move.type != Movetype::no_type && stack->threat_move.f == move.t) && isCapture;
-		//auto dangerousQuietCheck = isQuiet && pos.quiet_gives_dangerous_check(move);
+		//auto dangerousQuietCheck = isQuiet && p.quiet_gives_dangerous_check(move);
 
-		// Qsearch futility pruning
-		int idx = int(p.piece_on(Square(move.t)));
-		float capture_score = (move.type == capture ? material_vals[idx] :
-			move.type == ep ? material_vals[0] :
-			move.type == capture_promotion_q ? material_vals[idx] + material_vals[queen] :
-			move.type == capture_promotion_r ? material_vals[idx] + material_vals[rook] :
-			move.type == capture_promotion_b ? material_vals[idx] + material_vals[bishop] :
-			move.type == capture_promotion_n ? material_vals[idx] + material_vals[knight] : 0);
-		int margin = 200;
-		if (!in_check &&
-			//!advancedPawnPush &&
-			//!isPromotion &&
-			!hashOrKiller &&
-			capture_score > 0 &&
-			(best_score + capture_score + margin < alpha))
-			continue;
+		// Qsearch delta pruning for captures
+		if (!isQuiet && !in_check && !hashOrKiller)
+		{
+			int idx = int(p.piece_on(Square(move.t)));
+			float capture_score = (move.type == capture ? material_vals[idx] :
+				move.type == ep ? material_vals[0] :
+				move.type == capture_promotion_q ? material_vals[idx] + material_vals[queen] :
+				move.type == capture_promotion_r ? material_vals[idx] + material_vals[rook] :
+				move.type == capture_promotion_b ? material_vals[idx] + material_vals[bishop] :
+				move.type == capture_promotion_n ? material_vals[idx] + material_vals[knight] : 0);
+			int margin = 200;
 
-		if (!in_check &&
-			//!isPromotion &&
-			//!advancedPawnPush &&
-			!hashOrKiller &&
-			capture_score > 0 &&
-			(best_score - capture_score - margin > beta))
-			continue;
+			if (//!advancedPawnPush &&
+				//!isPromotion &&
+				capture_score > 0 &&
+				(best_score + capture_score + margin < alpha))
+				continue;
+
+			if (//!isPromotion &&
+				//!advancedPawnPush &&
+				capture_score > 0 &&
+				(best_score - capture_score - margin > beta))
+				continue;
+		}
 
 		if (p.see(move) < 0)
 			continue;

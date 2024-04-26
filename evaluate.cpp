@@ -112,14 +112,11 @@ namespace {
 				score += (eval_kpk<white>(p, ei) - eval_kpk<black>(p, ei));
 				break;
 			case KrrK:
-				score += (eval_krrk<white>(p, ei) - eval_krrk<black>(p, ei));
+				// Not necessarily drawn if no pawns...
+				//score += (eval_krrk<white>(p, ei) - eval_krrk<black>(p, ei));
 				break;
 			case KnbK:
 			case KbnK:
-				//if (noPawns)
-				//	return Score::draw;
-				//score += (eval_knbk<white>(p, ei) - eval_knbk<black>(p, ei));
-				break;
 			case KnnK:
 			case KbbK:
 			case KnK:
@@ -161,16 +158,16 @@ namespace {
 		// Bonus for occuping weak squares
 		auto occupied = weakSquares & occupiers;
 		if (occupied) {
-			score += 0.5f * bits::count(occupied);
+			score += 2; //0.5f * bits::count(occupied);
 		}
 
 		// Bonus for attacking weak squares
-		while (weakSquares) {
-			auto s = bits::pop_lsb(weakSquares);
-			auto attks = p.attackers_of2(Square(s), c);
-			if (attks)
-				score += 0.5f * bits::count(attks);
-		}
+		//while (weakSquares) {
+		//	auto s = bits::pop_lsb(weakSquares);
+		//	auto attks = p.attackers_of2(Square(s), c);
+		//	if (attks)
+		//		score += 1; //0.5f * bits::count(attks);
+		//}
 
 		return score;
 	}
