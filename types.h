@@ -175,7 +175,7 @@ struct node {
 	Move curr_move, best_move, threat_move;
 	Move* pv;
 	int selDepth;
-	int capHistory[2][64][6];
+	int capHistory[2][64][64];
 	int bestMoveHistory[2][64][64];
 	/*Move deferred_moves[218];*/
 	Move killers[4];

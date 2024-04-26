@@ -510,10 +510,10 @@ namespace {
 			U64 mvs = (magics::attacks<bishop>(ei.all_pieces, s) |
 				magics::attacks<rook>(ei.all_pieces, s));
 			ei.piece_attacks[c][queen] |= mvs;
-			U64 mobility = (mvs & ei.empty) & (~ei.pe->attacks[them]);
+			//U64 mobility = (mvs & ei.empty) & (~ei.pe->attacks[them]);
 			//float mscore = p.params.mobility_scaling[queen] * queen_mobility(bits::count(mobility));
 			//if ((bitboards::squares[s] & p.pinned<c>()))
-			//	mscore /= p.params.pinned_scaling[queen];
+			//	mscore = -20;
 			//score += mscore;
 
 			// Weak queen 

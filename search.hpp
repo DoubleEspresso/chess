@@ -400,8 +400,8 @@ Score Search::search(position& pos, int16 alpha, int16 beta, U16 depth, node* st
 	//if (forward_prune &&
 	//	!weHavePawnsOn7th &&
 	//	depth <= 1 &&
-	//	static_eval < mate_max_ply &&
-	//	static_eval - 950 >= beta)
+	//	static_eval > mated_max_ply &&
+	//	static_eval + 1150 < alpha)
 	//	return Score(static_eval);
 
 	// 2. Null move pruning
@@ -449,15 +449,14 @@ Score Search::search(position& pos, int16 alpha, int16 beta, U16 depth, node* st
 	auto to_mv = pos.to_move();
 	int SEE = 0;
 	auto skipQuiets = false;
+	auto rootMoves = root_node && pos.root_moves[0].pv.size() > 4;
 
 	set_searching(pos, {}, pos.id());
 
-	while (mvs.next_move(pos, move, pre_move, pre_pre_move, stack->threat_move, skipQuiets)) {
+	while (mvs.next_move(pos, move, pre_move, pre_pre_move, stack->threat_move, skipQuiets, rootMoves)) {
 
 		if (UCI_SIGNALS.stop)
 			return Score::draw;
-
-
 
 		if (move.type == Movetype::no_type || !pos.is_legal(move))
 			continue;
@@ -552,7 +551,7 @@ Score Search::search(position& pos, int16 alpha, int16 beta, U16 depth, node* st
 		//	bestScore < alpha &&
 		//	!advancedPawnPush &&
 		//	depth <= 1 &&
-		//	pos.see(move) < 0)
+		//	SEE < 0)
 		//	reductions += 1;
 
 		// 8. Movecount pruning from Stockfish
@@ -654,10 +653,11 @@ Score Search::search(position& pos, int16 alpha, int16 beta, U16 depth, node* st
 			}
 		}
 
+
 		// Penalize captures failing to raise alpha
-		//if (score < alpha && move.type == Movetype::capture) {
+		//if (SEE >= 0 && !pv && score < alpha && move.f != move.t && move.type == Movetype::capture) {
 		//	auto capturePenalty = 2 * depth;
-		//	stack->capHistory[to_mv][move.f][pos.piece_on(Square(move.t))] -= capturePenalty;
+		//	stack->capHistory[to_mv][move.f][move.t] -= capturePenalty;
 		//}
 
 	} // end moves loop
@@ -672,6 +672,7 @@ Score Search::search(position& pos, int16 alpha, int16 beta, U16 depth, node* st
 	if (bestScore >= alpha && bestScore < beta && best_move.f != best_move.t) {
 		stack->bestMoveHistory[to_mv][best_move.f][best_move.t] += bestMoveBonus;
 	}
+
 
 
 	if (moves_searched == 0) {
@@ -801,12 +802,16 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node* sta
 			move.type == capture_promotion_n ? material_vals[idx] + material_vals[knight] : 0);
 		int margin = 200;
 		if (!in_check &&
+			//!advancedPawnPush &&
+			//!isPromotion &&
 			!hashOrKiller &&
 			capture_score > 0 &&
 			(best_score + capture_score + margin < alpha))
 			continue;
 
 		if (!in_check &&
+			//!isPromotion &&
+			//!advancedPawnPush &&
 			!hashOrKiller &&
 			capture_score > 0 &&
 			(best_score - capture_score - margin > beta))
@@ -834,10 +839,9 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node* sta
 			}
 
 			if (pv_type && score > alpha) {
-					alpha = score;
+				alpha = score;
 			}
 		}
-
 	}
 
 

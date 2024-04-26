@@ -47,6 +47,8 @@ namespace haVoc {
 			const Move& previous,
 			const Move& followup,
 			const Move& threat) const;
+
+		int score(const Move& m, const Color& c) const;
 	};
 
 	struct ScoredMove {
@@ -98,14 +100,15 @@ namespace haVoc {
 		std::shared_ptr<ScoredMoves> m_captures;
 		std::shared_ptr<ScoredMoves> m_quiets;
 		std::shared_ptr<Movegen> m_movegen;
-		std::vector<Move> filters;
+		std::vector<Move> _killerMoves;
 		node* m_stack;
 
 		bool m_incheck = false;
 		bool m_isendgame = false;
 		bool m_debug = false;
+		int _rootCounter = 0;
 
-		enum Phase { HashMove, MateKiller1, MateKiller2,  InitCaptures, GoodCaptures, Killer1, Killer2,  InitQuiets, GoodQuiets, BadCaptures, BadQuiets, End };
+		enum Phase { HashMove, MateKiller1, MateKiller2, InitCaptures, GoodCaptures, Killer1, Killer2, InitQuiets, GoodQuiets, BadCaptures, BadQuiets, End };
 		Phase m_phase = HashMove;
 
 
@@ -121,7 +124,7 @@ namespace haVoc {
 		Moveorder& operator=(const Moveorder&& o) = delete;
 		virtual ~Moveorder() { }
 
-		virtual bool next_move(position& pos, Move& m, const Move& previous, const Move& followup, const Move& threat, bool skipQuiets);
+		virtual bool next_move(position& pos, Move& m, const Move& previous, const Move& followup, const Move& threat, bool skipQuiets, bool rootMvs);
 	};
 
 
@@ -143,7 +146,7 @@ namespace haVoc {
 		QMoveorder& operator=(const QMoveorder&& o) = delete;
 		~QMoveorder() { }
 
-		bool next_move(position& pos, Move& m, const Move& previous, const Move& followup, const Move& threat, bool skipQuiets) override;
+		bool next_move(position& pos, Move& m, const Move& previous, const Move& followup, const Move& threat, bool skipQuiets, bool rootMoves = false) override;
 	};
 }
 

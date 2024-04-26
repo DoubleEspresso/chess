@@ -98,6 +98,10 @@ namespace haVoc {
 		for (auto& v : counters) { std::fill(v.begin(), v.end(), empty); }
 	}
 
+	int Movehistory::score(const Move& m, const Color& c) const {
+		return history[c][m.f][m.t];
+	}
+
 	int Movehistory::score(const Move& m,
 		const Color& c,
 		const Move& previous,
@@ -180,7 +184,7 @@ namespace haVoc {
 		endgame = m_isendgame;
 		m_stack = stack;
 		m_movegen = std::make_shared<Movegen>(p);
-		filters = { hashmove, stack->killers[0], stack->killers[1], stack->killers[2], stack->killers[3] };
+		_killerMoves = { hashmove, stack->killers[0], stack->killers[1], stack->killers[2], stack->killers[3] };
 		
 	}
 
@@ -191,37 +195,47 @@ namespace haVoc {
 		endgame = m_isendgame;
 		m_stack = stack;
 		m_movegen = std::make_shared<Movegen>(p);
-		filters = { hashmove, stack->killers[0], stack->killers[1], stack->killers[2], stack->killers[3] };
+		_killerMoves = { hashmove, stack->killers[0], stack->killers[1], stack->killers[2], stack->killers[3] };
 		m_debug = true;
 	}
 
-	bool Moveorder::next_move(position& pos, Move& m, const Move& previous, const Move& followup, const Move& threat, bool skipQuiets) {
+	bool Moveorder::next_move(position& pos, Move& m, const Move& previous, const Move& followup, const Move& threat, bool skipQuiets, bool rootMvs) {
 		m = {};
+
+		if (rootMvs)
+		{
+			if (_rootCounter < pos.root_moves.size())
+			{
+				m = pos.root_moves[_rootCounter++].pv[0];
+				return true;
+			}
+			return false;
+		}
+
 		switch (m_phase) {
 		case HashMove:
-			if (filters[0].type != Movetype::no_type)
-				m = filters[0];
+				m = _killerMoves[0];
 			break;
 		case MateKiller1:
-			if (filters[3] != filters[0])
-				m = filters[3];
+			if (_killerMoves[3] != _killerMoves[0])
+				m = _killerMoves[3];
 			break;
 		case MateKiller2:
-			if (filters[4] != filters[0] && filters[4] != filters[3])
-				m = filters[4];
+			if (_killerMoves[4] != _killerMoves[0]) // && _killerMoves[4] != _killerMoves[3])
+				m = _killerMoves[4];
 			break;
 		case Killer1:
-			if (filters[1] != filters[0])
-				m = filters[1];
+			if (_killerMoves[1] != _killerMoves[0])
+				m = _killerMoves[1];
 			break;
 		case Killer2:
-			if ((filters[2] != filters[0]) && filters[2] != filters[1])
-				m = filters[2];
+			if ((_killerMoves[2] != _killerMoves[0]))// && _killerMoves[2] != _killerMoves[1])
+				m = _killerMoves[2];
 			break;
 		case InitCaptures:
 			m_movegen->reset();
 			m_movegen->generate<capture, pieces>();
-			m_captures = std::make_shared<ScoredMoves>(pos, m_movegen.get(), filters, previous, followup, threat, m_stack, score_captures,  Score::draw);
+			m_captures = std::make_shared<ScoredMoves>(pos, m_movegen.get(), _killerMoves, previous, followup, threat, m_stack, score_captures,  Score::draw);
 			break;
 		case GoodCaptures:
 		case BadCaptures:
@@ -234,7 +248,7 @@ namespace haVoc {
 			if (!skipQuiets) {
 				m_movegen->reset();
 				m_movegen->generate<quiet, pieces>();
-				m_quiets = std::make_shared<ScoredMoves>(pos, m_movegen.get(), filters, previous, followup, threat, m_stack, score_quiets, Score::draw);
+				m_quiets = std::make_shared<ScoredMoves>(pos, m_movegen.get(), _killerMoves, previous, followup, threat, m_stack, score_quiets, Score::draw);
 			}
 			else
 				m_quiets = std::make_shared<ScoredMoves>();
@@ -287,33 +301,33 @@ namespace haVoc {
 	QMoveorder::QMoveorder(position& p, Move& hashmove, node* stack) : Moveorder(p, hashmove, stack) { }
 
 
-	bool QMoveorder::next_move(position& pos, Move& m, const Move& previous, const Move& followup, const Move& threat, bool skipQuiets) {
+	bool QMoveorder::next_move(position& pos, Move& m, const Move& previous, const Move& followup, const Move& threat, bool skipQuiets, bool rootMoves) {
 		m = {};
 		switch (m_phase) {
 		case HashMove:
-			if (valid_qmove(filters[0]) && filters[0].type != Movetype::no_type)
-				m = filters[0];
+			if (valid_qmove(_killerMoves[0]) && _killerMoves[0].type != Movetype::no_type)
+				m = _killerMoves[0];
 			break;
 		case MateKiller1:
-			if (valid_qmove(filters[3]) && filters[3] != filters[0])
-				m = filters[3];
+			if (valid_qmove(_killerMoves[3]) && _killerMoves[3] != _killerMoves[0])
+				m = _killerMoves[3];
 			break;
 		case MateKiller2:
-			if (valid_qmove(filters[4]) && filters[4] != filters[0] && filters[4] != filters[3])
-				m = filters[4];
+			if (valid_qmove(_killerMoves[4]) && _killerMoves[4] != _killerMoves[0] && _killerMoves[4] != _killerMoves[3])
+				m = _killerMoves[4];
 			break;
 		case Killer1:
-			if (valid_qmove(filters[1]) && filters[1] != filters[0])
-				m = filters[1];
+			if (valid_qmove(_killerMoves[1]) && _killerMoves[1] != _killerMoves[0])
+				m = _killerMoves[1];
 			break;
 		case Killer2:
-			if (valid_qmove(filters[2]) && (filters[2] != filters[0]) && filters[2] != filters[1])
-				m = filters[2];
+			if (valid_qmove(_killerMoves[2]) && (_killerMoves[2] != _killerMoves[0]) && _killerMoves[2] != _killerMoves[1])
+				m = _killerMoves[2];
 			break;
 		case InitCaptures:
 			m_movegen->reset();
 			m_movegen->generate<capture, pieces>();
-			m_captures = std::make_shared<ScoredMoves>(pos, m_movegen.get(), filters, previous, followup, threat, m_stack, score_qcaptures, Score::draw);
+			m_captures = std::make_shared<ScoredMoves>(pos, m_movegen.get(), _killerMoves, previous, followup, threat, m_stack, score_qcaptures, Score::draw);
 			break;
 		case GoodCaptures:
 		case BadCaptures:
@@ -326,7 +340,7 @@ namespace haVoc {
 			if (m_incheck && !skipQuiets) {
 				m_movegen->reset();
 				m_movegen->generate<quiet, pieces>();
-				m_quiets = std::make_shared<ScoredMoves>(pos, m_movegen.get(), filters, previous, followup, threat, m_stack, score_quiets, Score::draw);
+				m_quiets = std::make_shared<ScoredMoves>(pos, m_movegen.get(), _killerMoves, previous, followup, threat, m_stack, score_quiets, Score::draw);
 			}
 			else 
 				m_quiets = std::make_shared<ScoredMoves>();
