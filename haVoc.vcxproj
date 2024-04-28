@@ -169,6 +169,7 @@
     <ClInclude Include="endgame.h" />
     <ClInclude Include="epd.hpp" />
     <ClInclude Include="evaluate.h" />
+    <ClInclude Include="eval\eval.h" />
     <ClInclude Include="hashtable.h" />
     <ClInclude Include="info.h" />
     <ClInclude Include="magics.h" />
@@ -199,6 +200,13 @@
   <ItemGroup>
     <ClCompile Include="bitboards.cpp" />
     <ClCompile Include="evaluate.cpp" />
+    <ClCompile Include="eval\eg\eval_material_eg.cpp" />
+    <ClCompile Include="eval\eg\eval_pawn_island_eg.cpp" />
+    <ClCompile Include="eval\eval.cpp" />
+    <ClCompile Include="eval\eval_material.cpp" />
+    <ClCompile Include="eval\eval_pawns.cpp" />
+    <ClCompile Include="eval\mg\eval_material_mg.cpp" />
+    <ClCompile Include="eval\mg\eval_pawn_island_mg.cpp" />
     <ClCompile Include="hashtable.cpp" />
     <ClCompile Include="haVoc.cpp" />
     <ClCompile Include="magics.cpp" />
