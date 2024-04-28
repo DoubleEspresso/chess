@@ -7,6 +7,7 @@
 #include "hashtable.h"
 //#include "tuning_manager.h"
 #include "threads.h"
+#include "eval/eval.h"
 
 position uci_pos;
 Move dbgmove;
@@ -87,6 +88,12 @@ bool uci::parse_command(const std::string& input) {
 			uci_pos.print();
 			std::cout << "position hash key: " << uci_pos.key() << std::endl;
 			std::cout << "evaluation: " << eval::evaluate(uci_pos, *SearchThreads[0], -1) << std::endl;
+		}
+		else if (cmd == "neweval") {
+			uci_pos.print();
+			std::cout << "position hash key: " << uci_pos.key() << std::endl;
+			Evaluation::Evaluation e;
+			std::cout << "evaluation: " << e.evaluate(uci_pos, *SearchThreads[0], -1) << std::endl;
 		}
 		else if (cmd == "undo") {
 			uci_pos.undo_move(dbgmove);
