@@ -900,12 +900,22 @@ namespace {
 	}
 
 
+	bool opposite_side_castling(const position& p, einfo& ei) {
+		int kcw = util::col(p.king_square(white));
+		int kcb = util::col(p.king_square(black));
+
+		return !ei.me->is_endgame() &&
+			p.has_castled<white>() &&
+			p.has_castled<black>() &&
+			((kcw < Col::E) != (kcb < Col::E));
+	}
+
 	template<Color c> float eval_flank_attack(const position& p, einfo& ei)
 	{
 		float score = 0;
 		if (!ei.pe->locked_center) return score;
 
-		if (!opposite_side_castling()) return score;
+		if (!opposite_side_castling(p, ei)) return score;
 
 		U64 flank_bb = bitboards::col[A] | bitboards::col[B] | bitboards::col[C] |
 			bitboards::col[F] | bitboards::col[G] | bitboards::col[H];
@@ -1052,15 +1062,6 @@ namespace {
 	}
 
 
-	bool opposite_side_castling(const position& p, einfo& ei) {
-		int kcw = util::col(p.king_square(white));
-		int kcb = util::col(p.king_square(black));
-
-		return !ei.me->is_endgame() &&
-			p.has_castled<white>() &&
-			p.has_castled<black>() &&
-			((kcw < Col::E) != (kcb < Col::E));
-	}
 
 	////////////////////////////////////////////////////////////////////////////////
 	// endgame evaluations
