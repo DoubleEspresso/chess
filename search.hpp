@@ -12,6 +12,7 @@
 #include "order.h"
 #include "material.h"
 #include "options.h"
+#include "eval/eval.h"
 
 
 std::ofstream debug_file;
@@ -312,6 +313,7 @@ Score Search::search(position& pos, int16 alpha, int16 beta, U16 depth, node* st
 
 	assert(alpha < beta);
 
+	Evaluation::Evaluation eval;
 	Score bestScore = Score::ninf;
 	Move best_move = {};
 	best_move.type = Movetype::no_type;
@@ -373,7 +375,7 @@ Score Search::search(position& pos, int16 alpha, int16 beta, U16 depth, node* st
 	Score static_eval = (ttvalue != Score::ninf ? ttvalue :
 		(stack-2)->static_eval != ninf && !in_check && (stack-2)->static_eval >= (stack-1)->static_eval ? Score((stack-2)->static_eval + 15) :
 		!in_check ? 
-		Score(std::lround(eval::evaluate(pos, *SearchThreads[pos.id()], lazy_eval_margin_search(depth, anyPawnsOn7th)))) :
+		Score(std::lround(eval.evaluate(pos, *SearchThreads[pos.id()], lazy_eval_margin_search(depth, anyPawnsOn7th)))) :
 		Score::ninf);
 	 
 	//Score static_eval = Score::ninf;
@@ -695,6 +697,7 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node* sta
 	if (UCI_SIGNALS.stop) 
 		return Score::draw; 
 
+	Evaluation::Evaluation eval;
 	Score best_score = Score::ninf;
 	Move best_move = {};
 	best_move.type = Movetype::no_type;
@@ -743,7 +746,7 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node* sta
 		if (!pv_type && ttvalue != Score::ninf && e.depth >= depth)
 			best_score = ttvalue;
 		else
-			best_score = (Score)std::lround(eval::evaluate(p, *SearchThreads[p.id()], lazy_eval_margin(qsdepth, anyPawnsOn7th)));
+			best_score = (Score)std::lround(eval.evaluate(p, *SearchThreads[p.id()], lazy_eval_margin(qsdepth, anyPawnsOn7th)));
 		
 		// Stand pat
 		if (best_score >= beta)

@@ -26,11 +26,13 @@ namespace Evaluation {
 		} og;
 
 		struct  {
-			std::vector<float> material_vals{ 0.0f, 300.0f, 315.0f, 480.0f, 910.0f };
+			int tempo = 15;
+			std::vector<float> material_vals{ 100.0f, 300.0f, 315.0f, 480.0f, 910.0f };
 		} mg;
 
 		struct  {
-			std::vector<float> material_vals{ 0.0f, 300.0f, 315.0f, 480.0f, 910.0f };
+			int tempo = 15;
+			std::vector<float> material_vals{ 115.0f, 285.0f, 330.0f, 495.0f, 895.0f };
 		} eg;
 	};
 
@@ -41,6 +43,9 @@ namespace Evaluation {
 
 		pawn_entry * pe = nullptr;
 		material_entry * me = nullptr;
+
+		// The interpolation coefficient between endgame and middlegame - computed from minor piece material
+		float egCoeff = 0.0f;
 
 		// Placeholder to evaluate the opening game (tbd)
 		struct {
@@ -109,15 +114,15 @@ namespace Evaluation {
 
 		/*Material evaluation specific*/
 		int eval_material(const position& p, const Searchthread& t);
-		int eval_material(const Color& stm, const position& p);
-		int eval_material_mg(const Color& stm, const position& p);
-		int eval_material_eg(const Color& stm, const position& p);
+		int eval_material(const position& p, material_entry& e);
+		int eval_material_mg(const Color& stm, const position& p, material_entry& e);
+		int eval_material_eg(const Color& stm, const position& p, material_entry& e);
 
 		/*Pawn evaluation specific*/
 		int eval_pawns(const position& p, const Searchthread& t);
-		int eval_pawns(const Color& stm, const position& p);
-		int eval_pawn_island_mg(const Color& stm, const position& p);
-		int eval_pawn_island_eg(const Color& stm, const position& p);
+		int eval_pawns(const position& p, pawn_entry& e);
+		int eval_pawn_island_mg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_pawn_island_eg(const Color& stm, const position& p, pawn_entry& e);
 
 		/*Knight evaluation specific*/
 

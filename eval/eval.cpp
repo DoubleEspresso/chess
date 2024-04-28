@@ -25,21 +25,28 @@ namespace Evaluation {
 		// Material (both middle game + endgame)
 		auto matScore = eval_material(p, t);
 
-		// Lazy eval if material score beyond the lazy margin..
+		// TODO: Lazy eval if material score beyond the lazy margin..
+		//if (lazy_margin > 0 && !ei.me->is_endgame() && abs(score) >= lazy_margin)
+		//	return (p.to_move() == white ? score : -score) + p.params.tempo;
 
 		// Pawns (both middle game + endgame)
 		auto pawnScore = eval_pawns(p, t);
 
 		// ----- Evaluate static features of the position ---- //
 		// Middlegame
+		auto mgScore = 0;
 
 		// Endgame
-		_dInfo.eg.scores.push_back(0);
+		auto egScore = 0;
 
 
 		// ----- Post-process scores and return ---- //
+		auto posScore = (int)std::round(
+			mgScore * (1.0 - _dInfo.egCoeff) + _dInfo.egCoeff * egScore);
 
-		return 0;
+		// Accumulate all scores
+		auto score = matScore + pawnScore + posScore;
+		return (p.to_move() == white ? score : -score)/* + p.params.tempo*/;
 	};
 }
 

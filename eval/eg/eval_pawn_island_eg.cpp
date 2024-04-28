@@ -9,12 +9,8 @@ namespace Evaluation {
 		/*Specialized utility methods*/
 	}
 
-	int Evaluation::eval_pawn_island_eg(const Color& stm, const position& p) {
+	int Evaluation::eval_pawn_island_eg(const Color& stm, const position& p, pawn_entry& e) {
 		int score = 0;
-
-		// for example...
-		auto& bi = _dInfo.mg.bishopInfo;
-
 		return score;
 	}
 
