@@ -61,7 +61,7 @@ inline void options::load_args(int argc, char* argv[]) {
 	//read_param_file(std::string("engine.conf"));
 
 	auto matches = [](std::string& s1, const char* s2) { return strcmp(s1.c_str(), s2) == 0; };
-	auto set = [this](std::string& k, std::string& v) { this->opts.emplace(k.substr(1), v); };
+	auto set = [this](const std::string& k, const std::string& v) { this->opts.emplace(k.substr(1), v); };
 
 	for (int j = 1; j < argc - 1; j += 2) {
 		std::string key = argv[j]; std::string val = argv[j + 1];

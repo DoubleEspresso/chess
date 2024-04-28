@@ -278,12 +278,10 @@ void uci::load_position(const std::string& pos) {
 }
 
 std::string uci::move_to_string(const Move& m) {
-	std::string fromto = SanSquares[m.f] + SanSquares[m.t];
+	auto fromto = SanSquares[m.f] + SanSquares[m.t];
 	Movetype t = Movetype(m.type);
 
-	std::string ps = "";
-
-	ps = (t == capture_promotion_q ? "q" :
+	auto ps = (t == capture_promotion_q ? "q" :
 		t == capture_promotion_r ? "r" :
 		t == capture_promotion_b ? "b" :
 		t == capture_promotion_n ? "n" :

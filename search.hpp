@@ -77,7 +77,7 @@ inline int futility_move_count(const bool& improving, const U16& depth) {
 
 
 // ------- Main searching methods ------ //
-std::vector<std::shared_ptr<position>> mPositions;
+std::vector<std::unique_ptr<position>> mPositions;
 int selDepth = 0;
 size_t hashHits = 0;
 std::mutex search_mtx;
@@ -106,7 +106,7 @@ void Search::start(position& p, limits& lims, bool silent) {
 	}
 
 	for (unsigned i = 0; i < SearchThreads.size(); ++i) {
-		mPositions.emplace_back(util::make_unique<position>(p));
+		mPositions.emplace_back(std::make_unique<position>(p));
 		mPositions[i]->set_id(i);
 	}
 
@@ -114,6 +114,7 @@ void Search::start(position& p, limits& lims, bool silent) {
 	searching = true;
 
 	timer_thread.enqueue(search_timer, p, lims);
+
 
 	// Launch worker threads
 	if (SearchThreads.size() > 1) {
@@ -233,8 +234,8 @@ void Search::iterative_deepening(position& p, U16 depth, bool silent) {
 	node stack[stack_size];
 	Move pv[Depth::MAX_PLY + 4];
 
-	std::memset(stack, 0, sizeof(node) * stack_size);
 	(stack + 2)->pv = pv;
+
 
 	// Main iterative deepening loop
 	for (unsigned id = 1 + p.id(); id <= depth; ++id) {
@@ -242,7 +243,7 @@ void Search::iterative_deepening(position& p, U16 depth, bool silent) {
 		if (UCI_SIGNALS.stop)
 			break;
 
-		stack->ply = (stack + 1)->ply = (stack + 2)->ply = 0;
+		(stack+0)->ply = (stack + 1)->ply = (stack + 2)->ply = 0;
 
 		auto failLow = false;
 		auto failHigh = false;
@@ -262,6 +263,7 @@ void Search::iterative_deepening(position& p, U16 depth, bool silent) {
 					failHigh = false;
 				}
 			}
+
 			selDepth = 0;
 			eval = search<root>(p, alpha, beta, id, stack + 2);
 
@@ -307,8 +309,6 @@ Score Search::search(position& pos, int16 alpha, int16 beta, U16 depth, node* st
 
 	if (UCI_SIGNALS.stop)
 		return Score::draw;
-
-
 
 	assert(alpha < beta);
 
@@ -670,7 +670,7 @@ Score Search::search(position& pos, int16 alpha, int16 beta, U16 depth, node* st
 	// Update best move stats
 	auto bestMoveBonus = 2 * depth;
 	if (bestScore >= alpha && bestScore < beta && best_move.f != best_move.t) {
-		stack->bestMoveHistory[to_mv][best_move.f][best_move.t] += bestMoveBonus;
+		stack->bestMoveHistory->bm[to_mv][best_move.f][best_move.t] += bestMoveBonus;
 	}
 
 

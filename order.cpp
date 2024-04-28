@@ -18,7 +18,7 @@ namespace haVoc {
 	//---------------- Sorting lambdas ---------------//
 	Score score_captures(const position& p, const Move& m, const Move& prev, const Move& followup, const Move& threat, node* stack) {
 		Score s = Score(p.see(m));
-		s = Score(s + stack->bestMoveHistory[p.to_move()][m.f][m.t]);
+		s = Score(s + stack->bestMoveHistory->bm[p.to_move()][m.f][m.t]);
 		return s;
 	}
 
@@ -31,7 +31,7 @@ namespace haVoc {
 		auto tomove = p.to_move();
 		auto stats = p.history_stats();
 		auto s = Score(stats->score(m, (Color)(tomove), prev, followup, threat));
-		s = Score(s + stack->bestMoveHistory[tomove][m.f][m.t]);
+		s = Score(s + stack->bestMoveHistory->bm[tomove][m.f][m.t]);
 
 		// Use a LUT to order quiet moves without any history data
 		if (s == Score::draw) {
@@ -183,6 +183,7 @@ namespace haVoc {
 		m_isendgame = false; // ei.me->is_endgame();
 		endgame = m_isendgame;
 		m_stack = stack;
+		
 		m_movegen = std::make_shared<Movegen>(p);
 		_killerMoves = { hashmove, stack->killers[0], stack->killers[1], stack->killers[2], stack->killers[3] };
 		

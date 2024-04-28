@@ -119,10 +119,10 @@ public:
 
 	size_t num_workers() { return workers.size(); }
 
-	template<class T, typename... Args> void enqueue(T&& f, Args&&... args) {
+	template<class TT, typename... Args> void enqueue(TT&& f, Args&&... args) {
 		std::unique_lock<std::mutex> lock(m);
 		// args to bind are copied or moved (not passed by reference) .. unless wrapped in std::ref()
-		tasks.emplace_back(std::bind(std::forward<T>(f), std::ref(std::forward<Args>(args))...));
+		tasks.emplace_back(std::bind(std::forward<TT>(f), std::ref(std::forward<Args>(args))...));
 		cv_task.notify_one();
 	}
 

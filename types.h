@@ -169,14 +169,44 @@ enum EndgameType {
 	Unknown = 137
 };
 
+// Save stack space by allocating history arrays on the heap
+struct History {
+
+	struct bmHistory {
+		int (*bm)[64][64];
+	};
+
+	static bmHistory * createBmHist() {
+		auto * h = new bmHistory();
+		h->bm = new int[2][64][64];
+		return h;
+	}
+	static void destroyBmHistory(bmHistory * h)
+	{
+		if (h != nullptr) {
+			if (h->bm != nullptr)
+				delete[] h->bm;
+			delete h;
+		}
+		
+	}
+};
+
 struct node {
+	node() { 
+		bestMoveHistory = History::createBmHist();
+	}
+	~node() {
+		History::destroyBmHistory(bestMoveHistory);
+	}
+
 	U16 ply;
 	bool in_check, null_search, gen_checks;
 	Move curr_move, best_move, threat_move;
 	Move* pv;
 	int selDepth;
-	int capHistory[2][64][64];
-	int bestMoveHistory[2][64][64];
+	//int capHistory[2][64][64];
+	History::bmHistory * bestMoveHistory;
 	/*Move deferred_moves[218];*/
 	Move killers[4];
 	Score static_eval;

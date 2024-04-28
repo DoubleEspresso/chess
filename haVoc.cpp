@@ -11,12 +11,13 @@
 #include "magics.h"
 #include "zobrist.h"
 
+
 std::unique_ptr<options> opts;
 
 int main(int argc, char* argv[]) {
 
 	greeting();
-	
+
 	opts = std::unique_ptr<options>(new options(argc, argv));
 	zobrist::load();
 	bitboards::load();
