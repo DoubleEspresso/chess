@@ -370,7 +370,9 @@ Score Search::search(position& pos, int16 alpha, int16 beta, U16 depth, node* st
 	const bool anyPawnsOn7th = pos.pawns_near_promotion(); // either side has pawns on 7th
 	const bool weHavePawnsOn7th = pos.pawns_on_7th(); // only side to move has pawns on 7th
 
-	Score static_eval = (ttvalue != Score::ninf ? ttvalue : !in_check ? 
+	Score static_eval = (ttvalue != Score::ninf ? ttvalue :
+		(stack-2)->static_eval != ninf && !in_check && (stack-2)->static_eval >= (stack-1)->static_eval ? Score((stack-2)->static_eval + 15) :
+		!in_check ? 
 		Score(std::lround(eval::evaluate(pos, *SearchThreads[pos.id()], lazy_eval_margin_search(depth, anyPawnsOn7th)))) :
 		Score::ninf);
 	 

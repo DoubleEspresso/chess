@@ -179,6 +179,7 @@ struct History {
 	static bmHistory * createBmHist() {
 		auto * h = new bmHistory();
 		h->bm = new int[2][64][64];
+		memset(h->bm, 0, sizeof(int) * 2 * 64 * 64);
 		return h;
 	}
 	static void destroyBmHistory(bmHistory * h)
@@ -200,16 +201,18 @@ struct node {
 		History::destroyBmHistory(bestMoveHistory);
 	}
 
-	U16 ply;
-	bool in_check, null_search, gen_checks;
+	U16 ply				= 0;
+	bool in_check		= false;
+	bool null_search	= false;
+	bool gen_checks		= false;
 	Move curr_move, best_move, threat_move;
-	Move* pv;
-	int selDepth;
+	Move* pv = nullptr;
+	int selDepth = 0;
 	//int capHistory[2][64][64];
 	History::bmHistory * bestMoveHistory;
 	/*Move deferred_moves[218];*/
 	Move killers[4];
-	Score static_eval;
+	Score static_eval = Score(ninf);
 };
 
 // enum type enabled iterators
