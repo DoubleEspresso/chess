@@ -7,7 +7,7 @@
 #include "types.h"
 #include "threads.h"
 #include "move.h"
-
+#include "eval/eval.h"
 
 
 namespace Search {
@@ -23,6 +23,9 @@ namespace Search {
 
 	template<Nodetype type>
 	Score search(position& p, int16 alpha, int16 beta, U16 depth, node* stack);
+
+	template<Nodetype type>
+	Score qsearch(position& p, int16 alpha, int16 beta, U16 depth, node* stack, Evaluation::Evaluation& eval);
 
 	template<Nodetype type>
 	Score qsearch(position& p, int16 alpha, int16 beta, U16 depth, node* stack);

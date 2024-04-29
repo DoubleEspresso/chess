@@ -204,6 +204,7 @@
     <ClCompile Include="eval\eg\eval_pawn_island_eg.cpp" />
     <ClCompile Include="eval\eval.cpp" />
     <ClCompile Include="eval\eval_material.cpp" />
+    <ClCompile Include="eval\eval_optimize.cpp" />
     <ClCompile Include="eval\eval_pawns.cpp" />
     <ClCompile Include="eval\mg\eval_material_mg.cpp" />
     <ClCompile Include="eval\mg\eval_pawn_island_mg.cpp" />
@@ -219,6 +220,9 @@
     <ClCompile Include="uci.cpp" />
     <!--ClCompile Include="xml_parser.cpp" /> -->
     <ClCompile Include="zobrist.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="tuning\sgd\sgd.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

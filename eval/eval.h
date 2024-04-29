@@ -27,12 +27,12 @@ namespace Evaluation {
 
 		struct  {
 			int tempo = 15;
-			std::vector<float> material_vals{ 100.0f, 300.0f, 315.0f, 480.0f, 910.0f };
+			std::vector<int> material_vals{ 100, 300, 315, 480, 910 };
 		} mg;
 
 		struct  {
 			int tempo = 15;
-			std::vector<float> material_vals{ 115.0f, 285.0f, 330.0f, 495.0f, 895.0f };
+			std::vector<int> material_vals{ 115, 285, 330, 495, 895 };
 		} eg;
 	};
 
@@ -98,7 +98,7 @@ namespace Evaluation {
 		int evaluate(const position& p, const Searchthread& t, const float& lazy_margin);
 
 		// Parameter optimization methods
-		/*int update_params();*/
+		void Initialize(const std::vector<int>& parameters);
 
 	private:
 		/*Members*/

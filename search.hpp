@@ -690,14 +690,21 @@ Score Search::search(position& pos, int16 alpha, int16 beta, U16 depth, node* st
 	return bestScore;
 }
 
+// Tuning friendly interface
+template<Nodetype type>
+Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node* stack) { 
+
+	Evaluation::Evaluation eval;
+	return qsearch<type>(p, alpha, beta, depth, stack, eval);
+}
+
 
 template<Nodetype type>
-Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node* stack) {
+Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node* stack, Evaluation::Evaluation& eval) {
 
 	if (UCI_SIGNALS.stop) 
 		return Score::draw; 
 
-	Evaluation::Evaluation eval;
 	Score best_score = Score::ninf;
 	Move best_move = {};
 	best_move.type = Movetype::no_type;

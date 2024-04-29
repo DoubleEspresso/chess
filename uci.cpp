@@ -8,6 +8,7 @@
 //#include "tuning_manager.h"
 #include "threads.h"
 #include "eval/eval.h"
+#include "tuning/sgd/sgd.h"
 
 position uci_pos;
 Move dbgmove;
@@ -126,10 +127,10 @@ bool uci::parse_command(const std::string& input) {
 			}
 			else std::cout << " (dbg) See : error, illegal move." << std::endl;
 		}
-		//else if (cmd == "evaltune") {
-		//	auto& tm = haVoc::Tuningmanager::instance();
-		//	tm.tune_evaluation();
-		//}
+		else if (cmd == "tune") {
+			SGD sgd;
+			sgd.Train();
+		}
 		else if (cmd == "domove" && instream >> cmd) {
 			Movegen mvs(uci_pos);
 			bool isok = false;
