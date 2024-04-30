@@ -15,14 +15,13 @@ namespace Evaluation {
 		// Note: it is assumed the layout of parameter vector is *in order* according to 
 		// the layout of the eval data struct.
 
-		ParamInfo pi;
 		// Middle game parameters (in order)
-		pi.mg.tempo = parameters[0];
+		//pi.mg.tempo = parameters[0];
 		// Pawn, knight, bishop, rook, queen material (mg)
-		pi.mg.material_vals = { parameters[1], parameters[2], parameters[3], parameters[4], parameters[5] };
+		_pInfo.mg.material_vals = { 100, parameters[0], parameters[1], parameters[2], parameters[3] };
 
-		pi.eg.tempo = parameters[6];
+		//pi.eg.tempo = parameters[6];
 		// Pawn, knight, bishop, rook, queen material (eg)
-		pi.eg.material_vals = { parameters[7], parameters[8], parameters[9], parameters[10], parameters[11] };
+		_pInfo.eg.material_vals = { 115, parameters[4], parameters[5], parameters[6], parameters[7] };
 	}
 };

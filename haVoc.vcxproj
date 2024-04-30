@@ -191,6 +191,9 @@
     <ClInclude Include="singleton.h" />
     <ClInclude Include="squares.h" />
     <ClInclude Include="threads.h" />
+    <ClInclude Include="tuning\pbil\pbil.h" />
+    <ClInclude Include="tuning\pbil\pbil.hpp" />
+    <ClInclude Include="tuning\random\ars.h" />
     <ClInclude Include="types.h" />
     <ClInclude Include="uci.h" />
     <ClInclude Include="utils.h" />

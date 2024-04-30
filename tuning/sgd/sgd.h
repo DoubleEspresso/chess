@@ -9,6 +9,13 @@
 #include "../../search.h"
 
 
+/*
+Summary: decided to pass on this for now, the integerized gradients
+are difficult to handle and possible numerically unstable. The qSearch
+with ttable must have a properly tuned parameter adjust size - else most gradients
+will vanish and no learning occurs. The required fine-tuning even for simple problems is discouraging.
+*/
+
 namespace Funcs {
 
 	inline double Sigmoid(const double& x, const double& K) {
@@ -38,13 +45,19 @@ namespace LossFuncs {
 	}
 
 	// Each prediction is the relative score from qSearch for position i.
-	inline double QE(const std::vector<double>& predictions, const std::vector<double>& targets) {
+	inline double QE(const std::vector<double>& predictions, const std::vector<double>& targets, double K) {
 		double err = 0;
-		auto scale = 1.0 / 400.0; // TODO: Tuneable (!)
 
 		for (int i = 0; i < predictions.size(); ++i) {
-			auto s = Funcs::Sigmoid(predictions[i], scale);
-			err += (targets[i] - s) * (targets[i] - s);
+			auto s = Funcs::Sigmoid(predictions[i], K);
+
+			// weight a misclassification identically - otherwise draws
+			// will be preferred..
+			auto dP = std::round(2.0 * std::abs(targets[i] - s)) / 2.0;
+			if (dP == 0.5f)
+				dP == 1.0;
+			//auto dP = std::abs(targets[i] - s);
+			err += dP/* * dP*/;
 		}
 		return err / predictions.size();
 	}
@@ -61,11 +74,13 @@ namespace qSearch {
 		// Initialize the evaluation method with tunable input parameters
 		Evaluation::Evaluation e;
 		e.Initialize(parameters);
+		//ttable.clear();
 
 		// Run qsearch on this position
-		const unsigned stack_size = 64 + 4;
-		node stack[stack_size];
-		return Search::qsearch<non_pv>(p, alpha, beta, 0, stack + 2, e);
+		//const unsigned stack_size = 64 + 4;
+		//node stack[stack_size];
+		//return Search::qsearch<non_pv>(p, alpha, beta, 0, stack + 2, e);
+		return e.evaluate(p, *SearchThreads[p.id()], -1);
 	}
 }
 
@@ -80,13 +95,16 @@ struct TrainingElement {
 namespace Gradients {
 
 	inline double dSigma(double x, double k) {
+		if (std::abs(k * x) > 10)
+			return 0;
+
 		auto p = std::pow(10, -k * x);
 		auto n = 2.30259 * k * p;
 		auto d = (p + 1) * (p + 1);
 		return n / d;
 	}
 
-	inline double dQE(std::vector<TrainingElement> batch, std::vector<double> qPrev, std::vector<int> parameters, double K) {
+	inline double dQE(std::vector<TrainingElement> batch, std::vector<double> qPrev, std::vector<int> parameters, double K, double maxScore) {
 		// E = 2/N * Sum_{1,N}(Ri - Sigmoid(qi))*d/dwj(-Sigmoid(qi(wj)))
 		// E = 2/N * Sum_{1,N}(Ri - Sigmoid(qi)) * (-sig'(qi(wj)) * d/dwj qi(wj))
 
@@ -101,7 +119,7 @@ namespace Gradients {
 			p.setup(fen);
 
 			//  - recompute qsearch for this position -> qi(wj+h), compute quotient (qi(wj+h) - qi(wj)) / h
-			auto qScore = qSearch::qSearch(p, parameters);
+			auto qScore = (int)std::round((double)qSearch::qSearch(p, parameters) / maxScore);
 			auto dQ = qScore - qPrev[count];
 
 			//  - analytical evaluation of sig'(qi(wj))
@@ -118,16 +136,14 @@ namespace Gradients {
 // Batched minimiziation of 
 //  w:= w - lr/n sum_{1,n} grad(Fi({param}))
 class SGD {
-	using LossFunc = std::function<double(const std::vector<double>&, const std::vector<double>&)>;
 
 	private:
-		LossFunc _loss;
-		int _batchSize = 2;
+		int _batchSize = 35;
 		//int _miniBatchSize = 64;
-		int _epochs = 150;
+		int _epochs = 700;
 		std::vector<TrainingElement> _trainData;
 		std::vector<int> _parameters;
-		double _learnRate = 1e-3;
+		double _learnRate = 10;
 
 		void LoadTrainData() {
 			std::ifstream trainFile("train.txt");
@@ -148,23 +164,21 @@ class SGD {
 		void InitializeDefaultParams() {
 			// These are initialized *in order* according to ParamInfo struct
 			// found in eval.h
-			_parameters = { 15, 100, 300, 315, 480, 910, 15, 115, 285, 330, 495, 895 };
-			//_parameters = { 15, -10, -3, -35, -48, -90, -15, 215, 185, 30, 5, 5 };
+			_parameters = { 300, 315, 480, 910, 285, 330, 495, 895 };
+			//_parameters = { 10, 20, 30, 40, 50, 60, 70, 80 };
 		}
 
 		// Setup a derivative-like quotient (delta=1). We do not use a symmetric difference to avoid
 		// running qSearch multiple times. 
 		std::vector<int> AdjustParameter(int k) {
 			std::vector<int> adjusted = _parameters;
-			adjusted[k] += 1;
+			adjusted[k] += 100;
 			return adjusted;
 		}
 
 	public:
 
-
-		SGD(const LossFunc& f) : _loss(f) { }
-		SGD() : _loss(LossFuncs::QE) { }
+		SGD() { }
 
 		bool Train() {
 			// 0. Load and shuffle training data
@@ -178,23 +192,23 @@ class SGD {
 			InitializeDefaultParams();
 
 			// Empirical for now, should be fit when eval is ready.
-			double K = 4.0;
+			constexpr double K = 1.0/400.0;
 
 			std::random_device rd;
 			std::mt19937 g(rd());
 
 			// 2 Strategies - standard SGD or mini-batch.
 			for (int k = 0; k < _epochs; ++k) {
-				std::cout << "..Running epoch " << (k+1) << " of " << _epochs << std::endl;
+				//std::cout << "..Running epoch " << (k+1) << " of " << _epochs << std::endl;
 
-				std::vector<double> targets;
-				std::vector<double> qValues;
-				std::vector<double> predictions;
 
 				// Shuffle data
 				std::shuffle(_trainData.begin(), _trainData.end(), g);
 
 				for (int j = 0; j < numBatches; ++j) {
+
+					std::vector<double> targets;
+					std::vector<double> predictions;
 
 					// 1. collect batch
 					auto startIdx = j * _batchSize;
@@ -211,21 +225,37 @@ class SGD {
 						// Qsearch predict
 						auto qScore = qSearch::qSearch(p, _parameters);
 						targets.push_back(obs.target);
-						predictions.push_back(Funcs::Sigmoid(qScore, K));
-						qValues.push_back(qScore);
+						predictions.push_back(qScore/*Funcs::Sigmoid(qScore, K)*/);
 					}
 
 					// Compute error
-					auto loss = _loss(targets, predictions);
-					std::cout << "..Epoch " << (k + 1) << " batch idx " << (j + 1) << " loss: " << loss << std::endl;
+					auto loss = LossFuncs::QE(predictions, targets, K);
+					
+					if ((k+1) % 100 == 0)
+						std::cout << "..Epoch " << (k + 1) << " batch idx " << (j + 1) << " loss: " << loss << std::endl;
 
-					// Parameter update (batched gradient)
+					// 3. Parameter update (batched gradient)
+
 					for (int pIdx = 0; pIdx < _parameters.size(); ++pIdx) {
+						std::vector<double> adjPredictions;
 						auto adjusted = AdjustParameter(pIdx);
-						auto dQ = Gradients::dQE(batch, qValues, adjusted, K);
 
+						for (const auto& obs : batch) {
+							// Setup position
+							position p;
+							std::istringstream fen(obs.fen);
+							p.setup(fen);
+
+							// Qsearch predict
+							auto qScore = qSearch::qSearch(p, adjusted);
+							adjPredictions.push_back(qScore); ///*Funcs::Sigmoid(qScore, K)*/);
+						}
+
+						auto lossAdj = LossFuncs::QE(adjPredictions, targets, K);
+						auto grad = (lossAdj - loss);
+						//std::cout << "\tdP(" << pIdx << ")=" << _learnRate * grad << std::endl;
 						//  - wj(new) = wj(old) - lr * dQE()
-						_parameters[pIdx] -= _learnRate * dQ;
+						_parameters[pIdx] -= _learnRate * grad;
 					}
 				}
 

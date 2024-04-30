@@ -9,6 +9,7 @@
 #include "threads.h"
 #include "eval/eval.h"
 #include "tuning/sgd/sgd.h"
+#include "tuning/random/ars.h"
 
 position uci_pos;
 Move dbgmove;
@@ -128,8 +129,10 @@ bool uci::parse_command(const std::string& input) {
 			else std::cout << " (dbg) See : error, illegal move." << std::endl;
 		}
 		else if (cmd == "tune") {
-			SGD sgd;
-			sgd.Train();
+			//SGD sgd;
+			//sgd.Train();
+			ARS ars;
+			ars.Train();
 		}
 		else if (cmd == "domove" && instream >> cmd) {
 			Movegen mvs(uci_pos);
