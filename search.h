@@ -15,7 +15,7 @@ namespace Search {
 	std::atomic_bool searching;
 	std::mutex mtx;
 	void search_timer(position& p, limits& lims);
-	void start(position& p, limits& lims, bool silent);
+	Score start(position& p, limits& lims, bool silent);
 	void iterative_deepening(position& p, U16 depth, bool silent);
 	void readout_pv(node* stack, const Rootmoves& mRoots, const Score& eval, const Score& alpha, const Score& beta, const U16& depth);
 	double estimate_max_time(position& p, limits& lims);

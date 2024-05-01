@@ -106,7 +106,8 @@
       <PreprocessorDefinitions>_64BIT;DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
       <WholeProgramOptimization>false</WholeProgramOptimization>
-      <AdditionalIncludeDirectories>external\rapidxml\1.13\include; external\plog\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>external\rapidxml\1.13\include;Submodules\pso-cpp\dep\eigen;external\plog\include</AdditionalIncludeDirectories>
+      <OpenMPSupport>true</OpenMPSupport>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -143,9 +144,10 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <WholeProgramOptimization>true</WholeProgramOptimization>
-      <AdditionalIncludeDirectories>external\rapidxml\1.13\include; external\plog\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>Submodules\pso-cpp\dep\eigen;external\rapidxml\1.13\include;external\plog\include</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <OpenMPSupport>true</OpenMPSupport>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -191,9 +193,8 @@
     <ClInclude Include="singleton.h" />
     <ClInclude Include="squares.h" />
     <ClInclude Include="threads.h" />
-    <ClInclude Include="tuning\pbil\pbil.h" />
-    <ClInclude Include="tuning\pbil\pbil.hpp" />
-    <ClInclude Include="tuning\random\ars.h" />
+    <ClInclude Include="tuning\gen\gen_scores.h" />
+    <ClInclude Include="tuning\pso\pso.h" />
     <ClInclude Include="types.h" />
     <ClInclude Include="uci.h" />
     <ClInclude Include="utils.h" />
@@ -223,9 +224,6 @@
     <ClCompile Include="uci.cpp" />
     <!--ClCompile Include="xml_parser.cpp" /> -->
     <ClCompile Include="zobrist.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="tuning\sgd\sgd.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -10,6 +10,8 @@
 #include "eval/eval.h"
 #include "tuning/sgd/sgd.h"
 #include "tuning/random/ars.h"
+#include "tuning/gen/gen_scores.h"
+#include "tuning/pso/pso.h"
 
 position uci_pos;
 Move dbgmove;
@@ -131,8 +133,14 @@ bool uci::parse_command(const std::string& input) {
 		else if (cmd == "tune") {
 			//SGD sgd;
 			//sgd.Train();
-			ARS ars;
-			ars.Train();
+			//ARS ars;
+			//ars.Train();
+			PSO pso;
+			pso.Train();
+		}
+		else if (cmd == "gen") {
+			GEN gen;
+			gen.MakeTrainData();
 		}
 		else if (cmd == "domove" && instream >> cmd) {
 			Movegen mvs(uci_pos);

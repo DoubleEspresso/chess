@@ -84,7 +84,7 @@ size_t hashHits = 0;
 std::mutex search_mtx;
 const std::vector<float> material_vals{ 100.0f, 300.0f, 315.0f, 480.0f, 910.0f };
 
-void Search::start(position& p, limits& lims, bool silent) {
+Score Search::start(position& p, limits& lims, bool silent) {
 
 	mPositions.clear();
 
@@ -163,6 +163,8 @@ void Search::start(position& p, limits& lims, bool silent) {
 	if (p.debug_search) {
 		debug_file.close();
 	}
+
+	return bestRoots[0].score;
 }
 
 void Search::search_timer(position& p, limits& lims) {
