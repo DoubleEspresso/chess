@@ -35,10 +35,10 @@ namespace Evaluation {
 
 
 		// Middlegame
-		_dInfo.mg.mat_scores.push_back(eval_material_mg(white, p, e) - eval_material_mg(black, p, e));
+		_ifo.mg.mat_scores.push_back(eval_material_mg(white, p, e) - eval_material_mg(black, p, e));
 
 		// Endgame
-		_dInfo.eg.mat_scores.push_back(eval_material_eg(white, p, e) - eval_material_eg(black, p, e));
+		_ifo.eg.mat_scores.push_back(eval_material_eg(white, p, e) - eval_material_eg(black, p, e));
 
 		auto total = 0;
 		for (auto& n : e.number)
@@ -49,10 +49,10 @@ namespace Evaluation {
 		// endgame_coeff of 0 --> piece count = 14
 		// endgame_coeff of 1 --> piece count = 2
 		// coeff = -1/12*total + 7/6
-		_dInfo.egCoeff = std::min(-0.083333f * total + 1.16667f, 1.0f);
+		_ifo.egCoeff = std::min(-0.083333f * total + 1.16667f, 1.0f);
 
 		score = (int)std::round(
-			_dInfo.mg.mat_scores[0] * (1.0 - _dInfo.egCoeff) + _dInfo.egCoeff * _dInfo.eg.mat_scores[0]);
+			_ifo.mg.mat_scores[0] * (1.0 - _ifo.egCoeff) + _ifo.egCoeff * _ifo.eg.mat_scores[0]);
 
 		return score;
 

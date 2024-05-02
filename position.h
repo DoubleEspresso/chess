@@ -300,11 +300,19 @@ public:
 	template<Color c, Piece p>
 	inline U64 get_pieces() const { return pcs.bitmap[c][p]; }
 
+	template< Piece p>
+	inline U64 get_pieces(const Color& c) const { return pcs.bitmap[c][p]; }
+
 	template<Color c>
 	inline U64 get_pieces() const { return pcs.bycolor[c]; }
 
 	template<Color c, Piece p>
 	inline Square* squares_of() const {
+		return const_cast<Square*>(pcs.square_of[c][p].data() + 1);
+	}
+
+	template<Piece p>
+	inline Square* squares_of(const Color& c) const {
 		return const_cast<Square*>(pcs.square_of[c][p].data() + 1);
 	}
 

@@ -12,6 +12,8 @@ namespace Evaluation {
 	int Evaluation::eval_pawn_island_mg(const Color& stm, const position& p, pawn_entry& e) {
 		int score = 0;
 
+		auto pawns = p.get_pieces<pawn>(stm);
+
 		return score;
 	}
 

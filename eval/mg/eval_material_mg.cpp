@@ -17,7 +17,7 @@ namespace Evaluation {
 		for (const auto& piece : pieces) {
 			int n = p.number_of(c, piece);
 			e.number[piece] += n;
-			score += n * _pInfo.mg.material_vals[piece];
+			score += n * _pIfo.mg.material_vals[piece];
 		}
 
 

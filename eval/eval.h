@@ -27,6 +27,7 @@ namespace Evaluation {
 
 		struct  {
 			int tempo = 15;
+			float knightSqScale = 2.5f;
 			std::vector<int> material_vals{ 100, 300, 315, 480, 910 };
 		} mg;
 
@@ -54,11 +55,12 @@ namespace Evaluation {
 
 		struct {
 			struct  {
-
 			} pawnInfo;
 
 			struct  {
+				int sqScore = 0;
 
+				int eval = 0;
 			} knightInfo;
 
 			struct  {
@@ -88,6 +90,25 @@ namespace Evaluation {
 			std::vector<int> pawn_scores;
 			std::vector<int> scores;
 		} eg;
+
+		/*Useful position data*/
+		struct {
+			std::vector<U64> wPawnIslands;
+			std::vector<U64> bPawnIslands;
+			U64 qPawnMajorities[2] = { 0ULL, 0ULL };
+			U64 kPawnMajorities[2] = { 0ULL, 0ULL };
+			U64 lightSqPawns[2] = { 0ULL, 0ULL };
+			U64 darkSqPawns[2] = { 0ULL, 0ULL };
+		} pawnInfo;
+
+		U64 pieces[2] = { 0ULL, 0ULL };
+		U64 empty = 0ULL;
+		U64 all_pieces = 0ULL;
+		U64 open_files = 0ULL;
+		U64 semiOpen_files[2] = { 0ULL, 0ULL };
+		U64 doubled_pawns[2] = { 0ULL, 0ULL };
+		U64 isolated_pawns[2] = { 0ULL, 0ULL };
+		U64 backward_pawns[2] = { 0ULL, 0ULL };
 	};
 
 
@@ -102,11 +123,11 @@ namespace Evaluation {
 
 	private:
 		/*Members*/
-		ParamInfo _pInfo;
-		EData _dInfo;
+		ParamInfo _pIfo;
+		EData _ifo;
 
 		/*State data*/
-		bool _trace = false;
+		bool _trace = true;
 		bool _tune = false;
 
 		/*Initialization*/
@@ -118,14 +139,47 @@ namespace Evaluation {
 		int eval_material_mg(const Color& stm, const position& p, material_entry& e);
 		int eval_material_eg(const Color& stm, const position& p, material_entry& e);
 
+
 		/*Pawn evaluation specific*/
 		int eval_pawns(const position& p, const Searchthread& t);
 		int eval_pawns(const position& p, pawn_entry& e);
 		int eval_pawn_island_mg(const Color& stm, const position& p, pawn_entry& e);
 		int eval_pawn_island_eg(const Color& stm, const position& p, pawn_entry& e);
 
-		/*Knight evaluation specific*/
+		// TODO...
+		/*
+		int eval_doubled_pawns_mg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_doubled_pawns_eg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_pawn_holes_mg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_pawn_holes_eg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_isolated_mg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_isolated_eg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_majorities_mg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_majorities_eg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_passed_mg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_passed_eg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_shelter_mg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_shelter_eg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_undermine_mg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_undermine_eg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_pawn_control_mg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_pawn_control_eg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_pawn_color_mg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_pawn_color_eg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_pawn_center_mg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_pawn_center_eg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_backward_mg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_backward_eg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_pawn_levers_mg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_pawn_levers_eg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_pawn_storm_mg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_pawn_storm_eg(const Color& stm, const position& p, pawn_entry& e);
+		*/
 
+
+		/*Knight evaluation specific*/
+		int eval_knight_mg(const Color& c, const position& p);
+		int eval_knight_eg(const Color& c, const position& p);
 
 		/*Bishop evaluation specific*/
 		/*Rook evaluation specific*/

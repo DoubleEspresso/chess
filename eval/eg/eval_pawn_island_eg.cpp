@@ -4,9 +4,11 @@
 namespace Evaluation {
 
 	namespace {
-		/*Specialized debug methods*/
-		/*Specialized square scores*/
-		/*Specialized utility methods*/
+
+		/*Pawn island utility methods*/
+		int find_pawn_islands() {
+
+		}
 	}
 
 	int Evaluation::eval_pawn_island_eg(const Color& stm, const position& p, pawn_entry& e) {

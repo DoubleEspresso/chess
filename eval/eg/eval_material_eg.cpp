@@ -17,7 +17,7 @@ namespace Evaluation {
 			int n = p.number_of(c, piece);
 			// Note: the numbers are *already* tracked in the mg evaluation, do not double-count them(!)
 			//e.number[piece] += n;
-			score += n * _pInfo.eg.material_vals[piece];
+			score += n * _pIfo.eg.material_vals[piece];
 		}
 
 		return score;
