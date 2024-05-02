@@ -19,10 +19,10 @@ namespace Evaluation {
 		//U64 equeen_sq = ei.queen_sqs[them];
 		//int ks = p.king_square(c);
 
-		for (Square s = *knights; s != no_square; s = *++knights)
-			score += _pIfo.mg.knightSqScale * (c == white ? 
-				mg_square_score<white>(knight, s) :
-				mg_square_score<black>(knight, s));
+		//for (Square s = *knights; s != no_square; s = *++knights)
+		//	score += _pIfo.mg.knightSqScale * (c == white ? 
+		//		mg_square_score<white>(knight, s) :
+		//		mg_square_score<black>(knight, s));
 				
 
 		return score;

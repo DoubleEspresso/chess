@@ -1,3 +1,4 @@
+#include <numeric>
 
 #include "eval.h"
 
@@ -260,6 +261,8 @@ namespace Evaluation {
 		find_passed_pawns(black, p, _ifo);
 		find_king_shelter(white, p, _ifo);
 		find_king_shelter(black, p, _ifo);
+		// Center specific
+		// Pawn storms
 
 
 		if (_trace) {
@@ -338,13 +341,37 @@ namespace Evaluation {
 			bits::print(_ifo.kingShelter[black]);
 		}
 
+		// TODO:
+		//  - square scores
+		//  - material
+		//  - majorities
+		//  - color complexes
+		//  - passed pawns
+		//  - undermining (levers)
+		//  - king shelter
+		//  - central control
+		//  - pawn storms
+
 		// Middlegame
-		_ifo.mg.pawn_scores.push_back(eval_pawn_island_mg(white, p, e) - eval_pawn_island_mg(black, p, e));
+		_ifo.mg.pawn_scores.push_back(eval_pawn_island_mg(white, p) - eval_pawn_island_mg(black, p));
+		_ifo.mg.pawn_scores.push_back(eval_doubled_pawn_mg(white, p) - eval_doubled_pawn_mg(black, p));
+		_ifo.mg.pawn_scores.push_back(eval_isolated_pawn_mg(white, p) - eval_isolated_pawn_mg(black, p));
+		_ifo.mg.pawn_scores.push_back(eval_backward_pawn_mg(white, p) - eval_backward_pawn_mg(black, p));
+
+		auto mgScore = std::accumulate(_ifo.mg.pawn_scores.begin(), _ifo.mg.pawn_scores.end(), 0);
 
 		// Endgame
-		_ifo.eg.pawn_scores.push_back(eval_pawn_island_eg(white, p, e) - eval_pawn_island_eg(black, p, e));
+		_ifo.eg.pawn_scores.push_back(eval_pawn_island_eg(white, p) - eval_pawn_island_eg(black, p));
+		_ifo.eg.pawn_scores.push_back(eval_doubled_pawn_eg(white, p) - eval_doubled_pawn_eg(black, p));
+		_ifo.eg.pawn_scores.push_back(eval_isolated_pawn_eg(white, p) - eval_isolated_pawn_eg(black, p));
+		_ifo.eg.pawn_scores.push_back(eval_backward_pawn_eg(white, p) - eval_backward_pawn_eg(black, p));
 
-		// Post process scores
+		auto egScore = std::accumulate(_ifo.eg.pawn_scores.begin(), _ifo.eg.pawn_scores.end(), 0);
+
+		// ----- Post-process scores and return ---- //
+		score = (int)std::round(
+			mgScore * (1.0 - _ifo.egCoeff) + _ifo.egCoeff * egScore);
+
 		return score;
 	}
 

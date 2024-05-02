@@ -206,12 +206,18 @@
   <ItemGroup>
     <ClCompile Include="bitboards.cpp" />
     <ClCompile Include="evaluate.cpp" />
+    <ClCompile Include="eval\eg\eval_backward_pawn_eg.cpp" />
+    <ClCompile Include="eval\eg\eval_doubled_pawn_eg.cpp" />
+    <ClCompile Include="eval\eg\eval_isolated_pawn_eg.cpp" />
     <ClCompile Include="eval\eg\eval_material_eg.cpp" />
     <ClCompile Include="eval\eg\eval_pawn_island_eg.cpp" />
     <ClCompile Include="eval\eval.cpp" />
     <ClCompile Include="eval\eval_material.cpp" />
     <ClCompile Include="eval\eval_optimize.cpp" />
     <ClCompile Include="eval\eval_pawns.cpp" />
+    <ClCompile Include="eval\mg\eval_backward_pawn_mg.cpp" />
+    <ClCompile Include="eval\mg\eval_doubled_pawn_mg.cpp" />
+    <ClCompile Include="eval\mg\eval_isolated_pawn_mg.cpp" />
     <ClCompile Include="eval\mg\eval_knight_mg.cpp" />
     <ClCompile Include="eval\mg\eval_material_mg.cpp" />
     <ClCompile Include="eval\mg\eval_pawn_island_mg.cpp" />

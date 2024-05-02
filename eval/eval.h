@@ -27,13 +27,40 @@ namespace Evaluation {
 
 		struct  {
 			int tempo = 15;
-			float knightSqScale = 2.5f;
 			std::vector<int> material_vals{ 100, 300, 315, 480, 910 };
+
+			/*Pawn eval specific*/
+			std::vector<int> islandPenalty { 0, 2, 6, 12, 36, 72 };
+			std::vector<int> doubledPenalty{ 0, 6, 6, 12, 12, 24, 24, 72 };
+			std::vector<int> doubledOpen{ 0, 12, 12, 24, 24, 72, 72, 144 };
+			int doubledDefendedBonus = 2;
+			int isolatedPenalty = 4; // Only applied to pawns on flanks
+			int isolated2BishopsBonus = 6; // Bonus for having 2 bishops with an isolani
+			int isolatedKnightPostBonus = 1; // Bonus for having a knight posted at the isolani attack pts (valid?)
+			int isolatedPassedPenalty = 2; // Rational is that this pawn is now easier to attack
+			int isolatedControlPenalty = 6; // Blockaded passed pawn is a problem
+			std::vector<int> isoFileBonus {0, 0, 0, 4, 2, 0}; // pawn, knight, bishop, rook, queen, king
+			int backwardPenalty = 8; // Backward pawns are generally weak (no benefits)
+			int backwardNeighborPenalty = 4; // Backward pawns are harder to advance with enemy neighbors
+			int backwardControlPenalty = 10; // Backward pawns are generally weak (no benefits)
+
 		} mg;
 
 		struct  {
 			int tempo = 15;
 			std::vector<int> material_vals{ 115, 285, 330, 495, 895 };
+
+			/*Pawn eval specific*/
+			std::vector<int> islandPenalty{ 0, 1, 3, 6, 18, 36 };
+			std::vector<int> doubledPenalty{ 0, 12, 12, 24, 24, 72, 72, 144 };
+			std::vector<int> doubledOpen{ 0, 24, 242, 48, 48, 96, 96, 144 };
+			int doubledDefendedBonus = 4;
+			int isolatedPenalty = 14; // All isolated pawns are considered much weaker now
+			int isolatedControlPenalty = 12; // Blockaded passed pawn is a problem
+			int backwardPenalty = 14; // Backward pawns are generally weak (no benefits)
+			int backwardNeighborPenalty = 8; // Backward pawns are harder to advance with enemy neighbors
+			int backwardControlPenalty = 15; // Backward pawns are generally weak (no benefits)
+
 		} eg;
 	};
 
@@ -150,8 +177,14 @@ namespace Evaluation {
 		/*Pawn evaluation specific*/
 		int eval_pawns(const position& p, const Searchthread& t);
 		int eval_pawns(const position& p, pawn_entry& e);
-		int eval_pawn_island_mg(const Color& stm, const position& p, pawn_entry& e);
-		int eval_pawn_island_eg(const Color& stm, const position& p, pawn_entry& e);
+		int eval_pawn_island_mg(const Color& stm, const position& p);
+		int eval_pawn_island_eg(const Color& stm, const position& p);
+		int eval_doubled_pawn_mg(const Color& stm, const position& p);
+		int eval_doubled_pawn_eg(const Color& stm, const position& p);
+		int eval_isolated_pawn_mg(const Color& c, const position& p);
+		int eval_isolated_pawn_eg(const Color& c, const position& p);
+		int eval_backward_pawn_mg(const Color& c, const position& p);
+		int eval_backward_pawn_eg(const Color& c, const position& p);
 
 		// TODO...
 		/*

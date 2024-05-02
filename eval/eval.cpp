@@ -49,7 +49,6 @@ namespace Evaluation {
 
 		// Endgame
 		auto egScore = 0;
-		
 
 
 		// ----- Post-process scores and return ---- //
