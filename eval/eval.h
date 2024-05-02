@@ -99,8 +99,13 @@ namespace Evaluation {
 			U64 kPawnMajorities[2] = { 0ULL, 0ULL };
 			U64 lightSqPawns[2] = { 0ULL, 0ULL };
 			U64 darkSqPawns[2] = { 0ULL, 0ULL };
+			U64 defended[2] = { 0ULL, 0ULL };
+			U64 undefended[2] = { 0ULL, 0ULL };
+			U64 chainBases[2] = { 0ULL, 0ULL };
+			U64 chainTips[2] = { 0ULL, 0ULL };
 		} pawnInfo;
 
+		U64 kingShelter[2] = { 0ULL, 0ULL };
 		U64 pieces[2] = { 0ULL, 0ULL };
 		U64 empty = 0ULL;
 		U64 all_pieces = 0ULL;
@@ -109,6 +114,8 @@ namespace Evaluation {
 		U64 doubled_pawns[2] = { 0ULL, 0ULL };
 		U64 isolated_pawns[2] = { 0ULL, 0ULL };
 		U64 backward_pawns[2] = { 0ULL, 0ULL };
+		U64 passed_pawns[2] = { 0ULL, 0ULL };
+		U64 pawn_attacks[2] = { 0ULL, 0ULL };
 	};
 
 

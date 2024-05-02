@@ -57,8 +57,8 @@ namespace Evaluation {
 		inline void find_doubled_pawns(const Color& c, const position& p, EData& e) {
 			auto pawns = p.get_pieces<pawn>(c);
 			U64 doubled = 0ULL;
-			for (int c = 0; c < 8; ++c) {
-				auto filePawns = bitboards::col[c] & pawns;
+			for (int cIdx = 0; cIdx < 8; ++cIdx) {
+				auto filePawns = bitboards::col[cIdx] & pawns;
 				if (filePawns && bits::more_than_one(filePawns))
 					doubled |= filePawns;
 			}
@@ -68,10 +68,10 @@ namespace Evaluation {
 		inline void find_isolated_pawns(const Color& c, const position& p, EData& e) {
 			auto pawns = p.get_pieces<pawn>(c);
 			U64 isolated = 0ULL;
-			for (int c = 0; c < 8; ++c) {
-				auto neighbors = bitboards::neighbor_cols[c] & pawns;
+			for (int cIdx = 0; cIdx < 8; ++cIdx) {
+				auto neighbors = bitboards::neighbor_cols[cIdx] & pawns;
 				if (!neighbors)
-					isolated |= bitboards::col[c] & pawns;
+					isolated |= bitboards::col[cIdx] & pawns;
 			}
 			e.isolated_pawns[c] = isolated;
 		}
@@ -137,6 +137,77 @@ namespace Evaluation {
 			e.pawnInfo.lightSqPawns[black] = bitboards::colored_sqs[white] & bPawns;
 			e.pawnInfo.darkSqPawns[black] = bitboards::colored_sqs[black] & bPawns;
 		}
+
+		// Note this method also finds defended/undefended pawns
+		inline void find_pawn_attacks(const Color& c, const position& p, EData& e) {
+			U64 pawns = p.get_pieces<pawn>(c);
+			U64 attacks = 0ULL;
+			U64 undefended = 0ULL;
+
+			Square* sqs = (c == white ? p.squares_of<white, pawn>() : p.squares_of<black, pawn>());
+			for (auto s = *sqs; s != no_square; s = *++sqs) {
+				attacks |= bitboards::pattks[c][s];
+			}
+			e.pawn_attacks[c] = attacks;
+			e.pawnInfo.defended[c] = attacks & pawns;
+			e.pawnInfo.undefended[c] = pawns & (~e.pawnInfo.defended[c]);
+		}
+
+		inline void find_pawn_bases(const Color& c, const position& p, EData& e) {
+			// Pawns undefended by pawns - members of islands are 'bases' of chains
+			auto islands = (c == white ? e.pawnInfo.wPawnIslands : e.pawnInfo.bPawnIslands);
+			auto undefended = e.pawnInfo.undefended[c];
+			U64 chainBases = 0ULL;
+			for (const auto& chain : islands) {
+				chainBases |= (chain & undefended);
+			}
+			e.pawnInfo.chainBases[c] = chainBases;
+		}
+
+		inline void find_chain_tips(const Color& c, const position& p, EData& e) {
+			auto islands = (c == white ? e.pawnInfo.wPawnIslands : e.pawnInfo.bPawnIslands);
+			auto undefended = e.pawnInfo.undefended[c];
+			U64 chainTips = 0ULL;
+			for (const auto& chain : islands) {
+				if (c == white) {
+					for (int r = 7; r >= 0; --r) {
+						if (chain & bitboards::row[r]) {
+							chainTips |= (chain & bitboards::row[r]);
+							break;
+						}
+					}
+				}
+				else {
+					for (int r = 0; r < 8; ++r) {
+						if (chain & bitboards::row[r]) {
+							chainTips |= (chain & bitboards::row[r]);
+							break;
+						}
+					}
+				}
+			}
+			e.pawnInfo.chainTips[c] = chainTips;
+		}
+
+		inline void find_passed_pawns(const Color& c, const position& p, EData& e) {
+			U64 pawns = p.get_pieces<pawn>(c); 
+			U64 epawns = p.get_pieces<pawn>(Color(c ^ 1));
+			U64 passed = 0ULL;
+
+			Square* sqs = (c == white ? p.squares_of<white, pawn>() : p.squares_of<black, pawn>());
+			for (auto s = *sqs; s != no_square; s = *++sqs) {
+				U64 mask = bitboards::passpawn_mask[c][s] & epawns;
+				if (!mask)
+					passed |= bitboards::squares[s];
+			}
+			e.passed_pawns[c] = passed;
+		}
+
+		inline void find_king_shelter(const Color& c, const position& p, EData& e) {
+			U64 pawns = p.get_pieces<pawn>(c);
+			auto ks = p.king_square(c);
+			e.kingShelter[c] = pawns & bitboards::kzone[ks];
+		}
 	}
 
 
@@ -179,10 +250,17 @@ namespace Evaluation {
 		find_backward_pawns(black, p, _ifo);
 		find_majorities(p, _ifo);
 		find_colored_pawns(p, _ifo);
+		find_pawn_attacks(white, p, _ifo);
+		find_pawn_attacks(black, p, _ifo);
+		find_pawn_bases(white, p, _ifo);
+		find_pawn_bases(black, p, _ifo);
+		find_chain_tips(white, p, _ifo);
+		find_chain_tips(black, p, _ifo);
+		find_passed_pawns(white, p, _ifo);
+		find_passed_pawns(black, p, _ifo);
+		find_king_shelter(white, p, _ifo);
+		find_king_shelter(black, p, _ifo);
 
-		// pawns undefended by pawns - members of islands are 'bases' of chains
-
-		// chain 'tips' are the 'most' advanced members of islands
 
 		if (_trace) {
 			std::cout << "\n  === open files === " << std::endl;
@@ -234,6 +312,30 @@ namespace Evaluation {
 			std::cout << "\n  ===  light/dark sq pawns black === " << std::endl;
 			bits::print(_ifo.pawnInfo.lightSqPawns[black]);
 			bits::print(_ifo.pawnInfo.darkSqPawns[black]);
+
+			std::cout << "\n  ===  white passed === " << std::endl;
+			bits::print(_ifo.passed_pawns[white]);
+
+			std::cout << "\n  ===  black passed === " << std::endl;
+			bits::print(_ifo.passed_pawns[black]);
+
+			std::cout << "\n  ===  white chain tips === " << std::endl;
+			bits::print(_ifo.pawnInfo.chainTips[white]);
+
+			std::cout << "\n  ===  black chain tips === " << std::endl;
+			bits::print(_ifo.pawnInfo.chainTips[black]);
+
+			std::cout << "\n  ===  white chain bases === " << std::endl;
+			bits::print(_ifo.pawnInfo.chainBases[white]);
+
+			std::cout << "\n  ===  black chain bases === " << std::endl;
+			bits::print(_ifo.pawnInfo.chainBases[black]);
+
+			std::cout << "\n  ===  white king shelter === " << std::endl;
+			bits::print(_ifo.kingShelter[white]);
+
+			std::cout << "\n  ===  black king shelter === " << std::endl;
+			bits::print(_ifo.kingShelter[black]);
 		}
 
 		// Middlegame
