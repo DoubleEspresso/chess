@@ -342,9 +342,9 @@ namespace Evaluation {
 		}
 
 		// TODO:
-		//  - square scores
-		//  - material
-		//  - majorities
+		//  - square scores [x]
+		//  - material [x]
+		//  - majorities [x]
 		//  - color complexes
 		//  - passed pawns
 		//  - undermining (levers)
@@ -353,18 +353,24 @@ namespace Evaluation {
 		//  - pawn storms
 
 		// Middlegame
+		_ifo.mg.pawn_scores.push_back(eval_pawn_squares_mg(white, p) - eval_pawn_squares_mg(black, p));
 		_ifo.mg.pawn_scores.push_back(eval_pawn_island_mg(white, p) - eval_pawn_island_mg(black, p));
 		_ifo.mg.pawn_scores.push_back(eval_doubled_pawn_mg(white, p) - eval_doubled_pawn_mg(black, p));
 		_ifo.mg.pawn_scores.push_back(eval_isolated_pawn_mg(white, p) - eval_isolated_pawn_mg(black, p));
 		_ifo.mg.pawn_scores.push_back(eval_backward_pawn_mg(white, p) - eval_backward_pawn_mg(black, p));
+		_ifo.mg.pawn_scores.push_back(eval_pawn_majority_mg(white, p) - eval_pawn_majority_mg(black, p));
+		_ifo.mg.pawn_scores.push_back(eval_passed_pawn_mg(white, p) - eval_passed_pawn_mg(black, p));
 
 		auto mgScore = std::accumulate(_ifo.mg.pawn_scores.begin(), _ifo.mg.pawn_scores.end(), 0);
 
 		// Endgame
+		_ifo.eg.pawn_scores.push_back(eval_pawn_squares_eg(white, p) - eval_pawn_squares_eg(black, p));
 		_ifo.eg.pawn_scores.push_back(eval_pawn_island_eg(white, p) - eval_pawn_island_eg(black, p));
 		_ifo.eg.pawn_scores.push_back(eval_doubled_pawn_eg(white, p) - eval_doubled_pawn_eg(black, p));
 		_ifo.eg.pawn_scores.push_back(eval_isolated_pawn_eg(white, p) - eval_isolated_pawn_eg(black, p));
 		_ifo.eg.pawn_scores.push_back(eval_backward_pawn_eg(white, p) - eval_backward_pawn_eg(black, p));
+		_ifo.eg.pawn_scores.push_back(eval_pawn_majority_eg(white, p) - eval_pawn_majority_eg(black, p));
+		_ifo.eg.pawn_scores.push_back(eval_passed_pawn_eg(white, p) - eval_passed_pawn_eg(black, p));
 
 		auto egScore = std::accumulate(_ifo.eg.pawn_scores.begin(), _ifo.eg.pawn_scores.end(), 0);
 

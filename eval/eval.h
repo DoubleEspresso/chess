@@ -28,6 +28,7 @@ namespace Evaluation {
 		struct  {
 			int tempo = 15;
 			std::vector<int> material_vals{ 100, 300, 315, 480, 910 };
+			std::vector<float> sq_scaling{ 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f };
 
 			/*Pawn eval specific*/
 			std::vector<int> islandPenalty { 0, 2, 6, 12, 36, 72 };
@@ -43,12 +44,20 @@ namespace Evaluation {
 			int backwardPenalty = 8; // Backward pawns are generally weak (no benefits)
 			int backwardNeighborPenalty = 4; // Backward pawns are harder to advance with enemy neighbors
 			int backwardControlPenalty = 10; // Backward pawns are generally weak (no benefits)
-
+			int kMajorityBonus = 5;
+			int qMajorityBonus = 10;
+			int passedPawnBonus = 4;
+			int passedUnblockedBonus = 1;
+			int passedPawnControlBonus = 6;
+			int passedConnectedBonus = 25;
+			int passedDefendedBonus = 6;
+			std::vector<int> passedDistBonus{ 180, 90, 45 }; // 1, 2, 3, sqs from queening
 		} mg;
 
 		struct  {
 			int tempo = 15;
 			std::vector<int> material_vals{ 115, 285, 330, 495, 895 };
+			std::vector<float> sq_scaling{ 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f };
 
 			/*Pawn eval specific*/
 			std::vector<int> islandPenalty{ 0, 1, 3, 6, 18, 36 };
@@ -60,7 +69,10 @@ namespace Evaluation {
 			int backwardPenalty = 14; // Backward pawns are generally weak (no benefits)
 			int backwardNeighborPenalty = 8; // Backward pawns are harder to advance with enemy neighbors
 			int backwardControlPenalty = 15; // Backward pawns are generally weak (no benefits)
-
+			int kMajorityBonus = 15;
+			int qMajorityBonus = 30;
+			int passedPawnBonus = 8;
+			int passedPawnControlBonus = 12;
 		} eg;
 	};
 
@@ -161,7 +173,7 @@ namespace Evaluation {
 		EData _ifo;
 
 		/*State data*/
-		bool _trace = true;
+		bool _trace = false;
 		bool _tune = false;
 
 		/*Initialization*/
@@ -177,6 +189,8 @@ namespace Evaluation {
 		/*Pawn evaluation specific*/
 		int eval_pawns(const position& p, const Searchthread& t);
 		int eval_pawns(const position& p, pawn_entry& e);
+		int eval_pawn_squares_mg(const Color& c, const position& p);
+		int eval_pawn_squares_eg(const Color& c, const position& p);
 		int eval_pawn_island_mg(const Color& stm, const position& p);
 		int eval_pawn_island_eg(const Color& stm, const position& p);
 		int eval_doubled_pawn_mg(const Color& stm, const position& p);
@@ -185,6 +199,10 @@ namespace Evaluation {
 		int eval_isolated_pawn_eg(const Color& c, const position& p);
 		int eval_backward_pawn_mg(const Color& c, const position& p);
 		int eval_backward_pawn_eg(const Color& c, const position& p);
+		int eval_pawn_majority_mg(const Color& c, const position& p);
+		int eval_pawn_majority_eg(const Color& c, const position& p);
+		int eval_passed_pawn_mg(const Color& c, const position& p);
+		int eval_passed_pawn_eg(const Color& c, const position& p);
 
 		// TODO...
 		/*

@@ -210,7 +210,10 @@
     <ClCompile Include="eval\eg\eval_doubled_pawn_eg.cpp" />
     <ClCompile Include="eval\eg\eval_isolated_pawn_eg.cpp" />
     <ClCompile Include="eval\eg\eval_material_eg.cpp" />
+    <ClCompile Include="eval\eg\eval_passed_pawn_eg.cpp" />
     <ClCompile Include="eval\eg\eval_pawn_island_eg.cpp" />
+    <ClCompile Include="eval\eg\eval_pawn_majority_eg.cpp" />
+    <ClCompile Include="eval\eg\eval_pawn_squarese_eg.cpp" />
     <ClCompile Include="eval\eval.cpp" />
     <ClCompile Include="eval\eval_material.cpp" />
     <ClCompile Include="eval\eval_optimize.cpp" />
@@ -220,7 +223,10 @@
     <ClCompile Include="eval\mg\eval_isolated_pawn_mg.cpp" />
     <ClCompile Include="eval\mg\eval_knight_mg.cpp" />
     <ClCompile Include="eval\mg\eval_material_mg.cpp" />
+    <ClCompile Include="eval\mg\eval_passed_pawn_mg.cpp" />
     <ClCompile Include="eval\mg\eval_pawn_island_mg.cpp" />
+    <ClCompile Include="eval\mg\eval_pawn_majority_mg.cpp" />
+    <ClCompile Include="eval\mg\eval_pawn_squares_mg.cpp" />
     <ClCompile Include="hashtable.cpp" />
     <ClCompile Include="haVoc.cpp" />
     <ClCompile Include="magics.cpp" />

@@ -87,7 +87,11 @@ namespace Evaluation {
 			}
 		};
 
-
+		inline int eg_square_score(const Piece& p, const Color& c, const Square& s) {
+			if (c == white)
+				return eg_scores[p][s];
+			return eg_scores[p][56 - 8 * util::row(s) + util::col(s)];
+		}
 
 		template<Color c> inline float eg_square_score(const Piece& p, const Square& s);
 

@@ -88,17 +88,22 @@ namespace Evaluation {
 		};
 
 
+		inline int mg_square_score(const Piece& p, const Color& c, const Square& s) {
+			if (c == white)
+				return mg_scores[p][s];
+			return mg_scores[p][56 - 8 * util::row(s) + util::col(s)];
+		}
 
 		template<Color c> inline int mg_square_score(const Piece& p, const Square& s);
 
 
 		template<> int mg_square_score<black>(const Piece& p, const Square& s) {
-			return 6 * mg_scores[p][56 - 8 * util::row(s) + util::col(s)];
+			return mg_scores[p][56 - 8 * util::row(s) + util::col(s)];
 		}
 
 
 		template<> int mg_square_score<white>(const Piece& p, const Square& s) {
-			return 6 * mg_scores[p][s];
+			return mg_scores[p][s];
 		}
 	}
 
