@@ -14,7 +14,7 @@
 #include <sstream>
 
 
-#include "pgn.h"
+#include "tuning/gen/pgn.h"
 #include "position.h"
 #include "uci.h"
 #include "utils.h"

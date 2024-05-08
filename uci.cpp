@@ -12,6 +12,7 @@
 #include "tuning/random/ars.h"
 #include "tuning/gen/gen_scores.h"
 #include "tuning/pso/pso.h"
+#include "tuning/gen/pgn.h"
 
 position uci_pos;
 Move dbgmove;
@@ -139,8 +140,17 @@ bool uci::parse_command(const std::string& input) {
 			pso.Train();
 		}
 		else if (cmd == "gen") {
-			GEN gen;
-			gen.MakeTrainData();
+			std::vector<std::string> pgnFiles {R"(C:\Code\chess-testing\kpk_train_results.txt)"};
+			pgn pgn(pgnFiles);
+			auto trainData = pgn.labeled_positions();
+			std::ofstream outfile;
+			outfile.open(R"(C:\Code\chess-testing\tuning\kpk-train-self-match.txt)", std::ios_base::app);
+			for (const auto& obs : trainData) {
+				outfile << obs.fen << "\n";
+			}
+			
+/*			GEN gen;
+			gen.MakeTrainData()*/;
 		}
 		else if (cmd == "domove" && instream >> cmd) {
 			Movegen mvs(uci_pos);

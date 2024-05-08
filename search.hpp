@@ -486,7 +486,8 @@ Score Search::search(position& pos, int16 alpha, int16 beta, U16 depth, node* st
 			pos.is_cap_promotion(Movetype(move.type));
 		auto isQuiet = move.type == Movetype::quiet;
 		auto isEvasion = in_check;
-		auto advancedPawnPush = (pos.piece_on(Square(move.t)) == Piece::pawn) &&
+		auto pawnPush = (pos.piece_on(Square(move.t)) == Piece::pawn);
+		auto advancedPawnPush = pawnPush &&
 			(to_mv == white ? util::row(move.t) >= Row::r6 : util::row(move.t) <= Row::r3);
 		auto quietFollowingCapture = (stack - 1)->curr_move.type == Movetype::capture && isQuiet;
 		auto quietFollowup = (stack - 1)->curr_move.type == Movetype::quiet && isQuiet;
@@ -500,6 +501,7 @@ Score Search::search(position& pos, int16 alpha, int16 beta, U16 depth, node* st
 			!pvNode &&
 			!isEvasion &&
 			!isPromotion &&
+			!advancedPawnPush &&
 			bestScore < alpha &&
 			depth <= 1 &&
 			moves_searched > 1 &&
@@ -545,7 +547,7 @@ Score Search::search(position& pos, int16 alpha, int16 beta, U16 depth, node* st
 			depth <= 2 &&
 			bestScore < alpha &&
 			bestScore > mated_max_ply &&
-			(dangerousQuietCheck || advancedPawnPush || threatResponse))
+			(dangerousQuietCheck || pawnPush || threatResponse))
 			extensions += 1;
 
 		// 7. Reduce losing captures
@@ -571,7 +573,7 @@ Score Search::search(position& pos, int16 alpha, int16 beta, U16 depth, node* st
 		(stack + 1)->pv = nullptr;
 
 		Score score = Score::ninf;
-		if (moves_searched < 3) {
+		if (moves_searched < 1) {
 			(stack + 1)->pv = pv;
 			(stack + 1)->pv[0].set(A1, A1, Movetype::no_type);
 			score = Score(newdepth <= 1 ? -qsearch<Nodetype::pv>(pos, -beta, -alpha, 0, stack + 1) :
@@ -584,7 +586,7 @@ Score Search::search(position& pos, int16 alpha, int16 beta, U16 depth, node* st
 				!hashOrKiller &&
 				!dangerousQuietCheck &&
 				!captureFollowup &&
-				!advancedPawnPush &&
+				!pawnPush &&
 				!isPromotion &&
 				!isEvasion &&
 				!givesCheck &&
@@ -825,14 +827,14 @@ Score Search::qsearch(position& p, int16 alpha, int16 beta, U16 depth, node* sta
 				move.type == capture_promotion_n ? material_vals[idx] + material_vals[knight] : 0);
 			int margin = 200;
 
-			if (//!advancedPawnPush &&
-				//!isPromotion &&
+			if (!advancedPawnPush &&
+				!isPromotion &&
 				capture_score > 0 &&
 				(best_score + capture_score + margin < alpha))
 				continue;
 
-			if (//!isPromotion &&
-				//!advancedPawnPush &&
+			if (!isPromotion &&
+				!advancedPawnPush &&
 				capture_score > 0 &&
 				(best_score - capture_score - margin > beta))
 				continue;

@@ -33,6 +33,7 @@ namespace bitboards {
 	extern U64 big_center_mask;
 	extern U64 pawn_majority_masks[3];
 	extern U64 passpawn_mask[2][64];
+	extern U64 passpawn_square[2][64]; // king square to catch a passed pawn
 	extern U64 neighbor_cols[8];
 	extern U64 colored_sqs[2];
 	extern U64 front_region[2][64];

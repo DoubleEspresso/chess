@@ -30,7 +30,7 @@ namespace Evaluation {
 		// Give a small bonus if any of these doubled pawns are defended
 		const auto defended = _ifo.pawnInfo.defended[c] & doubled;
 		if (defended)
-			score += _pIfo.mg.doubledDefendedBonus;
+			score += _pIfo.mg.doubledDefendedBonus.val;
 
 		return score;
 	}

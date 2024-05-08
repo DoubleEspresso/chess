@@ -16,12 +16,12 @@ class ARS {
 	private:
 		int _epochs = 3000;
 		int _iStepSize = 50;
-		int _populationSize = 100;
+		int _populationSize = 200;
 		std::vector<TrainingElement> _trainData;
 		std::vector<int> _parameters;
 
 		void LoadTrainData() {
-			std::ifstream trainFile("train.txt");
+			std::ifstream trainFile("train_.txt");
 			std::string line;
 			while (std::getline(trainFile, line))
 			{
@@ -56,6 +56,19 @@ class ARS {
 			// 1. Initialize parameters to defaults
 			InitializeDefaultParams();
 
+			// 2. Optionally standardize the scores
+			//{
+			//	std::vector<double> scores;
+			//	for (auto& obs : _trainData) {
+			//		scores.push_back(obs.target);
+			//	}
+			//	auto mean = Util::mean(scores);
+			//	auto stdev = Util::variance(scores);
+			//	for (auto& obs : _trainData) {
+			//		obs.target -= mean;
+			//		//obs.target /= stdev;
+			//	}
+			//}
 			// Empirical for now, should be fit when eval is ready.
 			constexpr double K = 1.0 / 400.0;
 
@@ -107,6 +120,7 @@ class ARS {
 
 					// Compute error
 					losses.push_back(LossFuncs::QE(predictions, targets, K));
+					losses.push_back(LossFuncs::MSE(predictions, targets));
 				}
 
 				// Get best individual

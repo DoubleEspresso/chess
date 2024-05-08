@@ -14,6 +14,7 @@ namespace Evaluation {
 		//  - not blockaded, not attacked ?
 		//  - is a central pawn?
 		//  - is passed
+
 		auto isolated = _ifo.isolated_pawns[c];
 		if (!isolated)
 			return score;
@@ -23,6 +24,8 @@ namespace Evaluation {
 		const auto& queens = p.get_pieces<queen>(c);
 		const auto& bishops = p.get_pieces<bishop>(c);
 		const auto& knights = p.get_pieces<knight>(c);
+		const auto& eks = p.king_square(Color(c ^ 1));
+		const auto& ks = p.king_square(Color(c ^ 1));
 
 		while (isolated) {
 
@@ -33,6 +36,16 @@ namespace Evaluation {
 			// Note: that an outside passed pawn is generally a strength.
 			// Make sure the passed pawn eval overcomes this penalty (!)
 			score -= _pIfo.eg.isolatedPenalty;
+
+
+			// In kpk endings, isolated pawns nearer the enemy king
+			// are problems
+			if (_ifo.endgameType == EndgameType::KpK) {
+				int fk_dist = std::max(util::col_dist(eks, s), util::row_dist(ks, s));
+				int ek_dist = std::max(util::col_dist(eks, s), util::row_dist(eks, s));
+				if (fk_dist > ek_dist)
+					score -= _pIfo.eg.isolatedKingDistPenalty;
+			}
 
 
 			// 4. Is this pawn blockaded - do we control the 'front sq'

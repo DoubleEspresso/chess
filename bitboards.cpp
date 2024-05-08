@@ -25,6 +25,7 @@ namespace bitboards {
 	U64 diagonals[64];
 	U64 between[64][64];
 	U64 passpawn_mask[2][64];
+	U64 passpawn_square[2][64]; // king square to catch a passed pawn
 	U64 neighbor_cols[8];
 	U64 colored_sqs[2];
 	U64 front_region[2][64];
@@ -242,6 +243,28 @@ void bitboards::load() {
 						util::squares_infront(col[util::col(sq)], c, sq);
 					if (s != sq)
 						neighbor_cols[util::col(s)] |= col[util::col(sq)];
+				}
+
+				// Load the "passed pawn square" the region within which the enemy
+				// king can catch a passed pawn.
+				passpawn_square[c][s] = 0ULL;
+				auto prow = util::row(s);
+				auto pcol = util::col(s);
+				auto dir = (c == white ? 1 : -1);
+				auto toEnd = (c == white ? 7 - prow : prow);
+				for (int dy = 0; dy <= toEnd; ++dy) {
+					for (int dx = -toEnd; dx <= toEnd; ++dx) {
+						auto nCol = pcol + dx;
+						auto nRow = prow + dir * dy;
+						if (nCol < 0 || nCol >= 8)
+							continue;
+						if (nRow < 0 || nRow >= 8)
+							continue;
+						auto sq = nRow * 8 + nCol;
+						if (!util::on_board(sq))
+							continue;
+						passpawn_square[c][s] |= bitboards::squares[sq];
+					}
 				}
 			}
 		}

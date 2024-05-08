@@ -44,6 +44,12 @@ namespace Evaluation {
 		for (auto& n : e.number)
 			total += n;
 
+		// encoding endgame type if applicable
+		// see types.h for enumeration of different endgame types
+		if (total == 0)
+			_ifo.endgameType = EndgameType::KpK;
+
+
 		// Compute the endgame interpolation coefficient
 		// computed from piece count - excludes pawns
 		// endgame_coeff of 0 --> piece count = 14

@@ -1,5 +1,5 @@
-#ifndef PGN_H
-#define PGN_H
+#ifndef PGN_H_
+#define PGN_H_
 
 #include <fstream>
 #include <algorithm>
@@ -7,15 +7,16 @@
 #include <string>
 #include <iostream>
 #include <cmath>
+#include <regex>
 
-#include "../move.h"
-#include "../position.h"
-#include "../types.h"
-#include "../utils.h"
+#include "../../move.h"
+#include "../../position.h"
+#include "../../types.h"
+#include "../../utils.h"
 
 enum Result { pgn_draw, pgn_wwin, pgn_bwin, pgn_none };
 
-const std::string START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const std::string StartFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 struct game {
   Result result;
@@ -28,15 +29,20 @@ struct game {
   inline unsigned rating_diff() const { return fabs(white_elo - black_elo); }
 };
 
+struct LabeledPosition {
+    std::string fen = "";
+    float eval = 0;
+};
+
 
 class pgn {
  private:
   std::vector<game> games;
   std::vector<std::string> pgn_files;
+  std::vector<LabeledPosition> positions;
   
   bool parse_files();
   bool parse_moves(position& p, const std::string& line, game& g);
-  bool move_from_san(position& p, std::string& s, Move& m);
 
   inline bool is_header(const std::string& line);
   inline bool is_elo(const std::string& line);
@@ -44,26 +50,39 @@ class pgn {
   inline void parse_elo(game& g, const std::string& line);
   inline void strip(std::string& token);
   inline Square get_square(const std::string& s, int start);
+  inline void remove(std::string& str, const std::string& substr);
+
+ /*Position filters*/
+  inline bool isKpK(const position& p);
 
   template<Piece piece>
   bool find_move(position& p, const Square& to, Move& m, int row = -1, int col = -1);
   
  public:
   pgn(const std::vector<std::string>& files);
+  pgn() { }
   ~pgn() { }
   pgn(const pgn& o)=delete;
   pgn(const pgn&& o)=delete;
   pgn& operator=(const pgn& o)=delete;
   pgn& operator=(const pgn&& o)=delete;
 
+  bool move_from_san(position& p, std::string& s, Move& m);
   
   std::vector<game>& parsed_games() { return games; }
+  std::vector<LabeledPosition>& labeled_positions() { return positions; }
   
 };
 
 inline bool pgn::is_elo(const std::string& line) {
   return (line.find("[WhiteElo") != std::string::npos ||
 	  line.find("[BlackElo") != std::string::npos);
+}
+
+inline void pgn::remove(std::string& str, const std::string& substr) {
+    std::regex target(substr);
+    std::string replacement = "";
+    str = std::regex_replace(str, target, replacement);
 }
 
 
@@ -93,7 +112,7 @@ inline bool pgn::is_empty(const std::string& line) {
 }
 
 inline void pgn::strip(std::string& token) {
-  std::string skip = "!?+#[]\"{}";
+  std::string skip = "!?+#[]()$@%^&*\"{}";
   std::string result = "";
   for (const auto& c : token) {
     if (skip.find(c) != std::string::npos) { continue; }
@@ -102,6 +121,20 @@ inline void pgn::strip(std::string& token) {
   token = result;
 }
 
+bool pgn::isKpK(const position& p) {
+    auto whiteMinors =
+        p.number_of(white, knight) + 
+        p.number_of(white, bishop) + 
+        p.number_of(white, rook) + 
+        p.number_of(white, queen);
+    auto blackMinors =
+        p.number_of(black, knight) +
+        p.number_of(black, bishop) +
+        p.number_of(black, rook) +
+        p.number_of(black, queen);
+    auto pawns = p.number_of(white, pawn) + p.number_of(black, pawn);
+    return whiteMinors == 0 && blackMinors == 0 && pawns > 0;
+}
 
 template<Piece piece>
 bool pgn::find_move(position& p, const Square& to, Move& m, int row, int col) {

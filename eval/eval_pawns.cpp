@@ -346,7 +346,7 @@ namespace Evaluation {
 		//  - material [x]
 		//  - majorities [x]
 		//  - color complexes
-		//  - passed pawns
+		//  - passed pawns [x]
 		//  - undermining (levers)
 		//  - king shelter
 		//  - central control
@@ -370,7 +370,9 @@ namespace Evaluation {
 		_ifo.eg.pawn_scores.push_back(eval_isolated_pawn_eg(white, p) - eval_isolated_pawn_eg(black, p));
 		_ifo.eg.pawn_scores.push_back(eval_backward_pawn_eg(white, p) - eval_backward_pawn_eg(black, p));
 		_ifo.eg.pawn_scores.push_back(eval_pawn_majority_eg(white, p) - eval_pawn_majority_eg(black, p));
-		_ifo.eg.pawn_scores.push_back(eval_passed_pawn_eg(white, p) - eval_passed_pawn_eg(black, p));
+		if (_ifo.endgameType != EndgameType::KpK)
+			_ifo.eg.pawn_scores.push_back(eval_passed_pawn_eg(white, p) - eval_passed_pawn_eg(black, p));
+		_ifo.eg.pawn_scores.push_back(eval_undermine_eg(white, p) - eval_undermine_eg(black, p));
 
 		auto egScore = std::accumulate(_ifo.eg.pawn_scores.begin(), _ifo.eg.pawn_scores.end(), 0);
 

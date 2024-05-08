@@ -30,7 +30,7 @@ namespace Evaluation {
 			// Protected passed bonus
 			auto defended = (attacks & bitboards::squares[f]) != 0ULL;
 			if (defended)
-				score += _pIfo.mg.passedDefendedBonus; // this is counted twice.
+				score += _pIfo.mg.passedDefendedBonus;
 
 			// Distance to promotion bonus
 			score += (

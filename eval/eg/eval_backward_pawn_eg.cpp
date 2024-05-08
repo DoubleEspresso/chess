@@ -25,13 +25,13 @@ namespace Evaluation {
 			auto s = bits::pop_lsb(backward);
 
 			// Simple penalty for backward pawns in middle game (they are generally always weak)
-			score -= _pIfo.mg.backwardPenalty;
+			score -= _pIfo.eg.backwardPenalty;
 
 			// Backward pawns with enemy pawns on either neighboring column likely will 
 			// not be able to advance easily
 			auto neighbors = bitboards::neighbor_cols[s] & epawns;
 			if (neighbors)
-				score -= _pIfo.mg.backwardNeighborPenalty;
+				score -= _pIfo.eg.backwardNeighborPenalty;
 
 			// Is this pawn blockaded - do we control the 'front sq'
 			// Note: we could create a weak squares bb and add this to a weak square eval.
@@ -42,7 +42,7 @@ namespace Evaluation {
 				auto eCount = bits::count(eAttks);
 				auto fCount = bits::count(fAttks);
 				if (eCount > fCount)
-					score -= _pIfo.mg.backwardControlPenalty;
+					score -= _pIfo.eg.backwardControlPenalty;
 			}
 		}
 		return score;

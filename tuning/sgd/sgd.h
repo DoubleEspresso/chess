@@ -5,6 +5,7 @@
 #include <functional>
 #include <fstream>
 #include <algorithm>
+#include <numeric>
 
 #include "../../search.h"
 
@@ -50,16 +51,42 @@ namespace LossFuncs {
 
 		for (int i = 0; i < predictions.size(); ++i) {
 			auto s = Funcs::Sigmoid(predictions[i], K);
-
-			// weight a misclassification identically - otherwise draws
-			// will be preferred..
-			auto dP = std::round(2.0 * std::abs(targets[i] - s)) / 2.0;
-			if (dP == 0.5f)
-				dP == 1.0;
-			//auto dP = std::abs(targets[i] - s);
-			err += dP/* * dP*/;
+			auto t = Funcs::Sigmoid(targets[i], K);
+			auto dP = t - s;
+			err += dP * dP;
 		}
 		return err / predictions.size();
+	}
+}
+
+namespace Util {
+
+
+	template<typename T>
+	T mean(const std::vector<T>& vec) {
+		const size_t sz = vec.size();
+		if (sz <= 1) {
+			return vec[0];
+		}
+		return std::accumulate(vec.begin(), vec.end(), 0.0) / sz;
+	}
+
+	template<typename T>
+	T variance(const std::vector<T>& vec) {
+		const size_t sz = vec.size();
+		if (sz <= 1) {
+			return 0.0;
+		}
+
+		// Calculate the mean
+		const T mean = std::accumulate(vec.begin(), vec.end(), 0.0) / sz;
+
+		// Now calculate the variance
+		auto variance_func = [&mean, &sz](T accumulator, const T& val) {
+			return accumulator + ((val - mean) * (val - mean) / (sz - 1));
+			};
+
+		return std::accumulate(vec.begin(), vec.end(), 0.0, variance_func);
 	}
 }
 
@@ -73,7 +100,8 @@ namespace qSearch {
 
 		// Initialize the evaluation method with tunable input parameters
 		Evaluation::Evaluation e;
-		e.Initialize(parameters);
+		e.isTuning = true;
+		e.Initialize_KpK(parameters);
 		//ttable.clear();
 
 		// Run qsearch on this position
@@ -155,6 +183,8 @@ class SGD {
 				std::getline(ss, fen, ';');
 				std::getline(ss, result, ';');
 				TrainingElement d;
+				if (result.find("in check") != std::string::npos)
+					continue;
 				d.target = std::atof(result.c_str());
 				d.fen = fen;
 				_trainData.push_back(d);
